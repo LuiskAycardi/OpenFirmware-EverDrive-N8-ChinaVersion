@@ -43,6 +43,16 @@ testbenches and real games.
 
 ## Probar en tu cartucho / Test it on your cartridge
 
+> **ES** — **No hace falta compilar nada.** Si no quieres compilar todo el proyecto, descarga la versión
+> ya compilada desde [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases)
+> y reemplaza en tu SD los archivos de la carpeta `EDFC` (los RBF de `EDFC/MAPS/` y `EDFC/MAPROUT.BIN`),
+> siguiendo el `LEEME.md` del paquete. Haz antes una copia de seguridad de tu carpeta `EDFC`.
+>
+> **EN** — **You don't need to build anything.** If you don't want to build the whole project, download
+> the prebuilt version from [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases)
+> and replace the files of the `EDFC` folder on your SD card (the RBF files in `EDFC/MAPS/` and
+> `EDFC/MAPROUT.BIN`), following the package's `LEEME.md`. Back up your `EDFC` folder first.
+
 **ES** — En [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases)
 hay un paquete listo para la microSD (los RBF y un `MAPROUT.BIN`, con instrucciones en `LEEME.md`). Los
 resultados, buenos o malos, se agradecen como *issues*. El paquete se genera con `make -C hdl build` y
@@ -97,6 +107,13 @@ RBF files requires an N8 with its own OS and SD card.
 | `docs/` | **ES** Documentación del hardware, del banco y de cada fase. **EN** Documentation of the hardware, the bench and each phase (in Spanish). |
 
 ## Uso / Usage
+
+**ES** — Esta sección es para compilar y probar el proyecto. Para usarlo en tu cartucho basta con la
+versión compilada de [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases).
+
+**EN** — This section is for building and testing the project. To use it on your cartridge, the
+prebuilt version from [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases)
+is all you need.
 
 **ES** — Requisitos: Icarus Verilog, Python 3, Quartus II 13.0sp1 (para los RBF), Verilator y .NET (para
 el banco Mesen2).
