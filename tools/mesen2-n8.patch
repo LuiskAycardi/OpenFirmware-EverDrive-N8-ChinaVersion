@@ -1,0 +1,174 @@
+diff --git a/Core/NES/BaseNesPpu.h b/Core/NES/BaseNesPpu.h
+index 674a519..85be61a 100644
+--- a/Core/NES/BaseNesPpu.h
++++ b/Core/NES/BaseNesPpu.h
+@@ -121,6 +121,8 @@ protected:
+ 	void UpdateMinimumDrawCycles();
+ 
+ public:
++	uint64_t GetMasterClockN8() { return _masterClock; }   // banco de pruebas N8
++	uint8_t GetMasterClockDividerN8() { return _masterClockDivider; }   // banco de pruebas N8
+ 	virtual void Reset(bool softReset) = 0;
+ 	virtual void Run(uint64_t runTo) = 0;
+ 
+diff --git a/Core/NES/MapperFactory.cpp b/Core/NES/MapperFactory.cpp
+index 4f7744d..98ca9b4 100644
+--- a/Core/NES/MapperFactory.cpp
++++ b/Core/NES/MapperFactory.cpp
+@@ -1,3 +1,7 @@
++#ifdef N8_FPGA_SIM
++class BaseMapper;
++BaseMapper* CreateN8FpgaMapper();   // tools/n8sim/N8FpgaMapper.cpp (banco de pruebas N8)
++#endif
+ #include "pch.h"
+ #include "NES/MapperFactory.h"
+ #include "NES/NesConsole.h"
+@@ -278,6 +282,11 @@
+ 
+ BaseMapper* MapperFactory::GetMapperFromID(RomData &romData)
+ {
++#ifdef N8_FPGA_SIM
++	if(getenv("N8_FPGA")) {
++		return CreateN8FpgaMapper();
++	}
++#endif
+ 	switch(romData.Info.MapperID) {
+ 		case 0: return new NROM();
+ 		case 1: return new MMC1();
+diff --git a/Core/NES/Mappers/Audio/Namco163Audio.h b/Core/NES/Mappers/Audio/Namco163Audio.h
+index 307dd0e..a03ae6b 100644
+--- a/Core/NES/Mappers/Audio/Namco163Audio.h
++++ b/Core/NES/Mappers/Audio/Namco163Audio.h
+@@ -4,6 +4,10 @@
+ #include "NES/APU/NesApu.h"
+ #include "NES/APU/BaseExpansionAudio.h"
+ #include "Utilities/Serializer.h"
++#ifdef N8_FPGA_SIM
++#include "NES/NesCpu.h"
++#include "N8AudioLog.h"   // banco N8: registro del nivel para comparar
++#endif
+ 
+ class Namco163Audio : public BaseExpansionAudio
+ {
+@@ -106,6 +110,9 @@ private:
+ 			summedOutput += _channelOutput[i];
+ 		}
+ 		summedOutput /= GetNumberOfChannels() + 1;
++#ifdef N8_FPGA_SIM
++		N8AudioLog(_console->GetCpu()->GetCycleCount(), (summedOutput + 120) * 2);
++#endif
+ 
+ 		_console->GetApu()->AddExpansionAudioDelta(AudioChannel::Namco163, summedOutput - _lastOutput);
+ 		_lastOutput = summedOutput;
+diff --git a/Core/NES/Mappers/Audio/Sunsoft5bAudio.h b/Core/NES/Mappers/Audio/Sunsoft5bAudio.h
+index 695f011..8e75e79 100644
+--- a/Core/NES/Mappers/Audio/Sunsoft5bAudio.h
++++ b/Core/NES/Mappers/Audio/Sunsoft5bAudio.h
+@@ -4,6 +4,10 @@
+ #include "NES/APU/NesApu.h"
+ #include "NES/APU/BaseExpansionAudio.h"
+ #include "Utilities/Serializer.h"
++#ifdef N8_FPGA_SIM
++#include "NES/NesCpu.h"
++#include "N8AudioLog.h"   // banco N8: registro del nivel para comparar
++#endif
+ 
+ class Sunsoft5bAudio : public BaseExpansionAudio
+ {
+@@ -69,6 +73,9 @@ private:
+ 			}
+ 		}
+ 
++#ifdef N8_FPGA_SIM
++		N8AudioLog(_console->GetCpu()->GetCycleCount(), summedOutput);
++#endif
+ 		_console->GetApu()->AddExpansionAudioDelta(AudioChannel::Sunsoft5B, summedOutput - _lastOutput);
+ 		_lastOutput = summedOutput;
+ 	}
+diff --git a/Core/NES/Mappers/Audio/Vrc6Audio.h b/Core/NES/Mappers/Audio/Vrc6Audio.h
+index 2a4e146..4fa20e2 100644
+--- a/Core/NES/Mappers/Audio/Vrc6Audio.h
++++ b/Core/NES/Mappers/Audio/Vrc6Audio.h
+@@ -5,6 +5,10 @@
+ #include "NES/APU/NesApu.h"
+ #include "NES/NesConsole.h"
+ #include "Utilities/Serializer.h"
++#ifdef N8_FPGA_SIM
++#include "NES/NesCpu.h"
++#include "N8AudioLog.h"   // banco N8: registro del nivel para comparar
++#endif
+ 
+ class Vrc6Audio : public BaseExpansionAudio
+ {
+@@ -34,6 +38,9 @@ protected:
+ 		}
+ 
+ 		int32_t outputLevel = _pulse1.GetVolume() + _pulse2.GetVolume() + _saw.GetVolume();
++#ifdef N8_FPGA_SIM
++		N8AudioLog(_console->GetCpu()->GetCycleCount(), outputLevel * 8);
++#endif
+ 		_console->GetApu()->AddExpansionAudioDelta(AudioChannel::VRC6, (outputLevel - _lastOutput) * 15);
+ 		_lastOutput = outputLevel;
+ 	}
+diff --git a/Core/NES/Mappers/Audio/Vrc7Audio.h b/Core/NES/Mappers/Audio/Vrc7Audio.h
+index ddfd44f..144f32e 100644
+--- a/Core/NES/Mappers/Audio/Vrc7Audio.h
++++ b/Core/NES/Mappers/Audio/Vrc7Audio.h
+@@ -6,6 +6,7 @@
+ #include "Shared/Utilities/emu2413.h"
+ #include "Shared/Utilities/Emu2413Serializer.h"
+ #include "Utilities/Serializer.h"
++#include "N8AudioLog.h"   // banco N8: registro del nivel para comparar
+ 
+ class Vrc7Audio : public BaseExpansionAudio
+ {
+@@ -31,6 +32,11 @@ protected:
+ 			int16_t output = OPLL_calc(_opll);
+ 			_console->GetApu()->AddExpansionAudioDelta(AudioChannel::VRC7, _muted ? 0 : (output - _previousOutput));
+ 			_previousOutput = output;
++			{
++				// banco N8: misma escala que hdl/rtl/mapper_vrc7.v (512 + muestra / 16, 512 en silencio)
++				int lv = _muted ? 512 : 512 + (output >> 4);
++				N8AudioLog(_console->GetCpu()->GetCycleCount(), lv < 0 ? 0 : (lv > 1023 ? 1023 : lv));
++			}
+ 			_clockTimer = ((double)_console->GetMasterClockRate()) / Vrc7Audio::OpllSampleRate;
+ 		}
+ 	}
+diff --git a/Core/NES/NesCpu.h b/Core/NES/NesCpu.h
+index 6c0da75..4c7389b 100644
+--- a/Core/NES/NesCpu.h
++++ b/Core/NES/NesCpu.h
+@@ -808,6 +808,8 @@ public:
+ 	virtual ~NesCpu() = default;
+ 	
+ 	uint64_t GetCycleCount() { return _state.CycleCount; }
++	uint64_t GetMasterClockN8() { return _masterClock; }   // banco de pruebas N8
++	uint8_t GetPpuOffsetN8() { return _ppuOffset; }        // banco de pruebas N8
+ 	void SetMasterClockDivider(ConsoleRegion region);
+ 	void SetNmiFlag() { _state.NmiFlag = true; }
+ 	void ClearNmiFlag() { _state.NmiFlag = false; }
+diff --git a/makefile b/makefile
+index f765b32..6aabb3f 100644
+--- a/makefile
++++ b/makefile
+@@ -135,6 +135,11 @@ else
+ endif
+ 
+ 
++ifneq ($(N8SIM),)
++	CXXFLAGS += -DN8_FPGA_SIM -I$(N8SIM)
++	N8SIMLIBS := -ldl
++endif
++
+ CORESRC := $(shell find Core -name '*.cpp')
+ COREOBJ := $(CORESRC:.cpp=.o)
+ 
+@@ -224,7 +229,7 @@ pgohelper: InteropDLL/$(OBJFOLDER)/$(SHAREDLIB)
+ InteropDLL/$(OBJFOLDER)/$(SHAREDLIB): $(SEVENZIPOBJ) $(LUAOBJ) $(UTILOBJ) $(COREOBJ) $(SDLOBJ) $(LIBEVDEVOBJ) $(LINUXOBJ) $(DLLOBJ) $(MACOSOBJ)
+ 	mkdir -p bin
+ 	mkdir -p InteropDLL/$(OBJFOLDER)
+-	$(CXX) $(CXXFLAGS) $(LINKOPTIONS) $(LINKCHECKUNRESOLVED) -shared -o $(SHAREDLIB) $(DLLOBJ) $(SEVENZIPOBJ) $(LUAOBJ) $(LINUXOBJ) $(MACOSOBJ) $(LIBEVDEVOBJ) $(UTILOBJ) $(SDLOBJ) $(COREOBJ) $(SDL2INC) -pthread $(FSLIB) $(SDL2LIB) $(LIBEVDEVLIB) $(X11LIB)
++	$(CXX) $(CXXFLAGS) $(LINKOPTIONS) $(LINKCHECKUNRESOLVED) -shared -o $(SHAREDLIB) $(DLLOBJ) $(SEVENZIPOBJ) $(LUAOBJ) $(LINUXOBJ) $(MACOSOBJ) $(LIBEVDEVOBJ) $(UTILOBJ) $(SDLOBJ) $(COREOBJ) $(SDL2INC) -pthread $(FSLIB) $(SDL2LIB) $(LIBEVDEVLIB) $(X11LIB) $(N8SIMLIBS)
+ 	cp $(SHAREDLIB) bin/pgohelperlib.so
+ 	mv $(SHAREDLIB) InteropDLL/$(OBJFOLDER)
+ 

@@ -1,0 +1,24 @@
+{
+ "_nota": "Guiones en el formato de N8_SCRIPT (tools/n8sim/run_test.lua): 'ini-fin:boton+boton;...' en fotogramas completos desde el arranque del juego. Máximo 64 tramos. shots = fotogramas que se comparan con Mesen2. por_rom manda sobre por_defecto (clave: nombre del archivo de la ROM).",
+ "por_defecto": {
+  "guion": "100-106:start;220-226:start;340-346:start;460-466:a;520-640:right;640-700:right+b;700-760:right+a;760-820:left;820-900:right+b;900-960:a;960-1080:right;1080-1140:b",
+  "shots": [120, 300, 480, 660, 840, 1020, 1200],
+  "fotogramas": 1200
+ },
+ "blargg": {
+  "guion": "",
+  "shots": [300, 600, 900, 1200],
+  "fotogramas": 1200
+ },
+ "por_rom": {
+  "Super Mario Bros. (World) (HVC-SM).nes": {
+   "guion": "120-126:start;300-700:right;330-345:a;420-440:a+right;520-540:a+right;700-1100:right+b;760-780:a;860-880:a;960-980:a",
+   "shots": [120, 300, 480, 660, 840, 1020, 1200]
+  },
+  "calibracion.nes": {
+   "guion": "30-40:a;50-60:b;70-80:select;90-100:start;110-120:up;130-140:down;150-160:left;170-180:right",
+   "shots": [35, 55, 75, 95, 115, 135, 155, 175, 200],
+   "fotogramas": 200
+  }
+ }
+}

@@ -1,0 +1,1970 @@
+[
+ {
+  "id": "nes-repetir-tras-las-correcciones-y-la-optim",
+  "consola": "nes",
+  "titulo": "Repetir tras las correcciones y la optimización (5 y 6 de noviembre)",
+  "carpeta": "PRUEBAS/10 Repetir (y tu SD de fábrica para las comparaciones)",
+  "rbf": "100.RBF, 101.RBF y 102.RBF nuevos (8 de noviembre)",
+  "intro": "Antes: copia a la microSD los tres RBF nuevos (EDFC/MAPS/100.RBF, 101.RBF y 102.RBF), el MAPROUT.BIN nuevo (EDFC) y las carpetas PRUEBAS/10 Repetir y PRUEBAS/11 Fase 4. No toques EDFC/SAVE. Los RBF del 6 de noviembre están optimizados (menos lógica, mismo comportamiento comprobado en el emulador); los cuatro últimos juegos de esta lista prueban justo lo que se tocó. Los tres últimos se prueban con tu SD de fábrica de siempre, en el mismo NES: sirven para saber si los sprites negros son de nuestro mapper o del juego/consola (en el emulador salen bien con nuestro mapper). Ojo con las ROMs (Europe)/(PAL): están hechas para consolas PAL y en tu NES y tu Famicom (NTSC) pueden ir rápidas, con basura o colgarse aunque el mapper esté bien.",
+  "juegos": [
+   {
+    "id": "nes-pruebas-10-repetir-y-tu-sd-de-fabrica-pa-mike-tyson-s-punch-out-repetir",
+    "n": "Mike Tyson's Punch-Out!! (repetir)",
+    "m": "9 MMC2",
+    "mirar": "Latch del MMC2 corregido. Caras, poses y público sin tiles cambiados; pelea un par de asaltos.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-10-repetir-y-tu-sd-de-fabrica-pa-fire-emblem-gaiden-repetir",
+    "n": "Fire Emblem Gaiden (repetir)",
+    "m": "10 MMC4",
+    "mirar": "Latch del MMC4 corregido. Textos, menús y nombres sin letras rotas.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-10-repetir-y-tu-sd-de-fabrica-pa-fire-emblem-ankoku-ryuu-to-hikari-no-tsu",
+    "n": "Fire Emblem - Ankoku Ryuu to Hikari no Tsurugi",
+    "m": "10 MMC4",
+    "mirar": "El juego en el que Krikzz corrigió el MMC4. Textos y mapa sin letras rotas.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-10-repetir-y-tu-sd-de-fabrica-pa-gimmick-japan",
+    "n": "Gimmick! (Japan)",
+    "m": "69 FME-7",
+    "mirar": "La versión normal (la Memorial Series no arranca ni en el emulador). En el NES suena sin la música del 5B: es normal.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-10-repetir-y-tu-sd-de-fabrica-pa-high-speed-usa",
+    "n": "High Speed (USA)",
+    "m": "119 TQROM",
+    "mirar": "La versión de EE. UU. La europea (PAL) falla también en el emulador cuando se le da la velocidad de una consola NTSC como la tuya: título con basura y pantalla negra, justo lo que viste.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-10-repetir-y-tu-sd-de-fabrica-pa-pin-bot-usa",
+    "n": "Pin Bot (USA)",
+    "m": "119 TQROM",
+    "mirar": "Igual que High Speed: la europea se cuelga en una consola NTSC (también en el emulador). Prueba esta.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-10-repetir-y-tu-sd-de-fabrica-pa-fantastic-adventures-of-dizzy-usa",
+    "n": "Fantastic Adventures of Dizzy (USA)",
+    "m": "71 Camerica",
+    "mirar": "Versión NTSC (la que probaste era la europea, PAL, hecha para otra velocidad de consola). ¿Siguen saliendo sprites negros?",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-10-repetir-y-tu-sd-de-fabrica-pa-quattro-adventure-con-la-sd-de-fabrica",
+    "n": "Quattro Adventure con la SD de fábrica",
+    "m": "232",
+    "mirar": "Mismo juego y misma escena donde viste los sprites negros, pero con tu SD de fábrica.",
+    "anota": "Si se ve igual (negro) o bien.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-10-repetir-y-tu-sd-de-fabrica-pa-magic-giral-con-la-sd-de-fabrica",
+    "n": "Magic Giral con la SD de fábrica",
+    "m": "0 NROM",
+    "mirar": "Juega hasta que se quite una prenda, con tu SD de fábrica.",
+    "anota": "Si parpadea / se pone negro igual o no.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-10-repetir-y-tu-sd-de-fabrica-pa-dizzy-europe-con-la-sd-de-fabrica",
+    "n": "Dizzy (Europe) con la SD de fábrica",
+    "m": "71 Camerica",
+    "mirar": "La versión europea con tu SD de fábrica.",
+    "anota": "Si salen los sprites negros igual o no.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-10-repetir-y-tu-sd-de-fabrica-pa-gradius-ii-japan",
+    "n": "Gradius II (Japan)",
+    "m": "25 VRC4",
+    "mirar": "Contador de IRQ de los VRC optimizado. Juega el nivel 1: los efectos y la parte de abajo de la pantalla no deben temblar ni cortarse en otro sitio.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-10-repetir-y-tu-sd-de-fabrica-pa-akumajou-densetsu-japan",
+    "n": "Akumajou Densetsu (Japan)",
+    "m": "24 VRC6",
+    "mirar": "Misma IRQ (VRC6). La barra de estado de arriba debe quedarse quieta al avanzar. En el NES no suena la música del VRC6: es normal.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-10-repetir-y-tu-sd-de-fabrica-pa-lagrange-point-japan",
+    "n": "Lagrange Point (Japan)",
+    "m": "85 VRC7",
+    "mirar": "Misma IRQ (VRC7). Llega al mapa y abre un menú. Sin la música FM: es normal (no está hecha).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-10-repetir-y-tu-sd-de-fabrica-pa-wagyan-land-2-japan",
+    "n": "Wagyan Land 2 (Japan)",
+    "m": "210 Namco 340",
+    "mirar": "Detección del Namco 340 corregida (el banco con mando vio una columna rota y la barra de abajo sin texto). Juega el primer nivel: ni columnas raras ni barra sin letras.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-10-repetir-y-tu-sd-de-fabrica-pa-minelvaton-saga-japan",
+    "n": "Minelvaton Saga (Japan)",
+    "m": "80 X1-005",
+    "mirar": "La RAM interna del chip (la que guarda la partida) cambió de sitio en la PRG-RAM. Empieza, guarda en el juego, apaga 10 segundos y vuelve a cargar.",
+    "anota": "Si la partida sigue tras apagar.",
+    "pila": true,
+    "tipo": "n"
+   }
+  ]
+ },
+ {
+  "id": "nes-fase-4-mappers-nuevos-lote-1-y-2",
+  "consola": "nes",
+  "titulo": "Fase 4: mappers nuevos (lotes 1 y 2)",
+  "carpeta": "PRUEBAS/11 Fase 4",
+  "rbf": "102.RBF (144 en el 100)",
+  "intro": "Primeros 49 mappers de la fase 4 (los que faltaban para los 177 de la lista oficial). Estos 14 son los que tienen juego en tu colección; en el emulador todos arrancan igual que con el mapper de referencia. Arranca cada uno y juega un poco.",
+  "juegos": [
+   {
+    "id": "nes-pruebas-11-fase-4-videomation-usa",
+    "n": "Videomation (USA)",
+    "m": "13 CPROM",
+    "mirar": "Programa de dibujo con 16 KB de CHR-RAM: dibuja algo y cambia de herramienta; los gráficos no deben corromperse.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-11-fase-4-crime-busters-brazil",
+    "n": "Crime Busters (Brazil)",
+    "m": "38 Bit Corp",
+    "mirar": "Juego de pistola: basta con ver que arranca y llega al juego (sin la Zapper no se puede jugar).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-11-fase-4-senjou-no-ookami-japan",
+    "n": "Senjou no Ookami (Japan)",
+    "m": "94 UN1ROM",
+    "mirar": "Commando japonés: juega el principio.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-11-fase-4-kaiketsu-yancha-maru-japan",
+    "n": "Kaiketsu Yancha Maru (Japan)",
+    "m": "97 Irem TAM-S1",
+    "mirar": "Juega el primer nivel (mirroring y bancos).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-11-fase-4-death-race-usa",
+    "n": "Death Race (USA)",
+    "m": "144 AGCI",
+    "mirar": "Variante de Color Dreams con un conflicto de bus que el N8 no puede imitar: comprueba que arranca y juega una carrera.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-11-fase-4-sidewinder-asia-pal",
+    "n": "Sidewinder (Asia, PAL)",
+    "m": "145 Sachen",
+    "mirar": "ROM PAL: puede ir rápida en tu consola NTSC sin culpa del mapper. Mira que arranque.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-11-fase-4-taiwan-mahjong-16",
+    "n": "Taiwan Mahjong 16",
+    "m": "149 Sachen",
+    "mirar": "Arranca (los primeros instantes pueden salir con basura) y entra en una partida.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-11-fase-4-magic-jewelry-2",
+    "n": "Magic Jewelry 2",
+    "m": "216",
+    "mirar": "Juega una partida (tipo Columns).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-11-fase-4-sheng-huo-lie-zhuan",
+    "n": "Sheng Huo Lie Zhuan",
+    "m": "240",
+    "mirar": "RPG chino: llega a la primera pantalla de juego.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-11-fase-4-wai-xing-zhan-shi",
+    "n": "Wai Xing Zhan Shi",
+    "m": "242 Waixing",
+    "mirar": "Llega al título y pulsa Start.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-11-fase-4-decathlon-asia",
+    "n": "Decathlon (Asia)",
+    "m": "244 C&E",
+    "mirar": "Haz una prueba (cambia de bancos por tabla).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-11-fase-4-ying-xiong-yuan-yi-jing-chuan-qi",
+    "n": "Ying Xiong Yuan Yi Jing Chuan Qi",
+    "m": "245 MMC3 Waixing",
+    "mirar": "RPG chino con CHR-RAM: llega al juego; textos legibles.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-11-fase-4-feng-shen-bang",
+    "n": "Feng Shen Bang",
+    "m": "246",
+    "mirar": "RPG chino: arranca y llega al juego.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-11-fase-4-time-diver-avenger",
+    "n": "Time Diver Avenger",
+    "m": "250 MMC3 Nitra",
+    "mirar": "Juega el primer nivel (IRQ del MMC3).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   }
+  ]
+ },
+ {
+  "id": "nes-regresion-nrom-mmc1-uxrom-cnrom-y-axrom",
+  "consola": "nes",
+  "titulo": "Regresión: NROM, MMC1, UxROM, CNROM y AxROM",
+  "carpeta": "PRUEBAS/ (raíz), 1 MMC1, 2 UxROM, 3 CNROM, 7 AxROM",
+  "rbf": "100.RBF",
+  "intro": "Ya funcionaron en la fase 1. Desde entonces el RBF 100 ha cambiado mucho: basta con arrancar cada uno y jugar un minuto.",
+  "juegos": [
+   {
+    "id": "nes-pruebas-raiz-super-mario-bros",
+    "n": "Super Mario Bros.",
+    "m": "0 NROM",
+    "mirar": "Juega el 1-1 y entra en una tubería (1-2 subterráneo).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-balloon-fight",
+    "n": "Balloon Fight",
+    "m": "0 NROM",
+    "mirar": "Arranca y juega una fase.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-excitebike",
+    "n": "Excitebike",
+    "m": "0 NROM",
+    "mirar": "Arranca y haz una carrera corta.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-ice-climber",
+    "n": "Ice Climber",
+    "m": "0 NROM",
+    "mirar": "Arranca y sube un par de pisos (scroll vertical).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-magic-giral",
+    "n": "Magic Giral",
+    "m": "0 NROM",
+    "mirar": "Arranca y juega un minuto.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-castlevania-ii-simon-s-quest",
+    "n": "Castlevania II - Simon's Quest",
+    "m": "1 MMC1",
+    "mirar": "Entra en la primera ciudad; textos legibles.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-dragon-warrior-iv",
+    "n": "Dragon Warrior IV",
+    "m": "1 MMC1 (SUROM)",
+    "mirar": "Era el fallo gráfico de la fase 1. Crea partida, juega un poco y guarda.",
+    "anota": "Si guarda y recupera la partida.",
+    "pila": true,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-final-fantasy",
+    "n": "Final Fantasy",
+    "m": "1 MMC1",
+    "mirar": "Guarda en una posada.",
+    "anota": "Si la partida sigue tras apagar.",
+    "pila": true,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-the-legend-of-zelda",
+    "n": "The Legend of Zelda",
+    "m": "1 MMC1",
+    "mirar": "Crea partida, guarda (Continue/Save) y apaga.",
+    "anota": "Si la partida sigue tras apagar.",
+    "pila": true,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-mega-man-2",
+    "n": "Mega Man 2",
+    "m": "1 MMC1",
+    "mirar": "Elige un jefe y juega el principio del nivel.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-metroid",
+    "n": "Metroid",
+    "m": "1 MMC1",
+    "mirar": "Pasa por unas salas con scroll vertical y horizontal.",
+    "anota": "Basura en los bordes al hacer scroll.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-castlevania",
+    "n": "Castlevania",
+    "m": "2 UxROM",
+    "mirar": "Juega el primer nivel.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-contra",
+    "n": "Contra",
+    "m": "2 UxROM",
+    "mirar": "Juega el primer nivel.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-ducktales",
+    "n": "DuckTales",
+    "m": "2 UxROM",
+    "mirar": "Elige un nivel y juega un poco.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-mega-man",
+    "n": "Mega Man",
+    "m": "2 UxROM",
+    "mirar": "Elige un jefe y juega un poco.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-adventure-island",
+    "n": "Adventure Island",
+    "m": "3 CNROM",
+    "mirar": "Juega el 1-1.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-arkanoid",
+    "n": "Arkanoid",
+    "m": "3 CNROM",
+    "mirar": "Juega la primera pantalla (sin el mando especial se mueve mal: es normal).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-gradius",
+    "n": "Gradius",
+    "m": "3 CNROM",
+    "mirar": "Juega el principio del nivel 1.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-solomon-s-key",
+    "n": "Solomon's Key",
+    "m": "3 CNROM",
+    "mirar": "Juega la primera sala.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-battletoads",
+    "n": "Battletoads",
+    "m": "7 AxROM",
+    "mirar": "Juega el nivel 1.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-marble-madness",
+    "n": "Marble Madness",
+    "m": "7 AxROM",
+    "mirar": "Juega la primera pista.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-r-c-pro-am",
+    "n": "R.C. Pro-Am",
+    "m": "7 AxROM",
+    "mirar": "Haz una carrera.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-raiz-wizards-warriors",
+    "n": "Wizards & Warriors",
+    "m": "7 AxROM",
+    "mirar": "Juega el principio del nivel 1.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   }
+  ]
+ },
+ {
+  "id": "nes-mmc3-fase-2",
+  "consola": "nes",
+  "titulo": "MMC3 (fase 2)",
+  "carpeta": "PRUEBAS/4 MMC3",
+  "rbf": "100.RBF",
+  "intro": "El MMC3 corta la pantalla con su IRQ (barras de estado). Fíjate en que las barras no tiemblen ni salten.",
+  "juegos": [
+   {
+    "id": "nes-pruebas-4-mmc3-super-mario-bros-3",
+    "n": "Super Mario Bros. 3",
+    "m": "4 MMC3",
+    "mirar": "La barra de abajo no debe saltar. Mira la esquina superior izquierda: antes había un leve parpadeo.",
+    "anota": "¿Sigue el parpadeo? ¿Lo ves igual con la SD de fábrica?",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-4-mmc3-super-mario-bros-2",
+    "n": "Super Mario Bros. 2",
+    "m": "4 MMC3",
+    "mirar": "Juega el 1-1.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-4-mmc3-kirby-s-adventure",
+    "n": "Kirby's Adventure",
+    "m": "4 MMC3",
+    "mirar": "Barra de estado de abajo estable. Guarda partida (se guarda sola al pasar de nivel).",
+    "anota": "Si la partida sigue tras apagar.",
+    "pila": true,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-4-mmc3-mega-man-3",
+    "n": "Mega Man 3",
+    "m": "4 MMC3",
+    "mirar": "Elige un jefe; barra de energía estable.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-4-mmc3-mega-man-4",
+    "n": "Mega Man 4",
+    "m": "4 MMC3 (CHR-RAM)",
+    "mirar": "Elige un jefe; gráficos correctos (usa CHR-RAM).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-4-mmc3-mega-man-5",
+    "n": "Mega Man 5",
+    "m": "4 MMC3",
+    "mirar": "Elige un jefe y juega un poco.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-4-mmc3-ninja-gaiden-ii",
+    "n": "Ninja Gaiden II",
+    "m": "4 MMC3",
+    "mirar": "Escenas de introducción y barra superior del nivel 1.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-4-mmc3-tmnt-iii-the-manhattan-project",
+    "n": "TMNT III: The Manhattan Project",
+    "m": "4 MMC3",
+    "mirar": "Barra de estado y primer nivel.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-4-mmc3-crystalis",
+    "n": "Crystalis",
+    "m": "4 MMC3",
+    "mirar": "Guarda partida (en el menú, con un objeto de guardar o al principio).",
+    "anota": "Si la partida sigue tras apagar.",
+    "pila": true,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-4-mmc3-startropics",
+    "n": "StarTropics",
+    "m": "4 MMC3 (MMC6)",
+    "mirar": "Guarda partida.",
+    "anota": "Si la partida sigue tras apagar.",
+    "pila": true,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-4-mmc3-rad-racer-ii",
+    "n": "Rad Racer II",
+    "m": "4 MMC3 (4 pantallas)",
+    "mirar": "Ya funcionó; comprobar que sigue igual (carretera y fondo).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   }
+  ]
+ },
+ {
+  "id": "nes-pruebas-automaticas-del-mmc3-blargg",
+  "consola": "nes",
+  "titulo": "Pruebas automáticas del MMC3 (blargg)",
+  "carpeta": "PRUEBAS/8 Tests MMC3",
+  "rbf": "100.RBF",
+  "intro": "Cada ROM escribe el resultado en pantalla en pocos segundos. Anota el texto exacto (Passed o Failed #n).",
+  "juegos": [
+   {
+    "id": "nes-pruebas-8-tests-mmc3-1-clocking",
+    "n": "1-clocking",
+    "m": "4 MMC3",
+    "mirar": "Esperado: Passed.",
+    "anota": "Texto que sale en pantalla.",
+    "pila": false,
+    "tipo": "b"
+   },
+   {
+    "id": "nes-pruebas-8-tests-mmc3-2-details",
+    "n": "2-details",
+    "m": "4 MMC3",
+    "mirar": "Esperado: Passed.",
+    "anota": "Texto que sale en pantalla.",
+    "pila": false,
+    "tipo": "b"
+   },
+   {
+    "id": "nes-pruebas-8-tests-mmc3-3-a12-clocking",
+    "n": "3-A12_clocking",
+    "m": "4 MMC3",
+    "mirar": "Esperado: Passed.",
+    "anota": "Texto que sale en pantalla.",
+    "pila": false,
+    "tipo": "b"
+   },
+   {
+    "id": "nes-pruebas-8-tests-mmc3-4-scanline-timing",
+    "n": "4-scanline_timing",
+    "m": "4 MMC3",
+    "mirar": "La prueba decisiva: mide el tiempo exacto de la IRQ. En el banco falla; aquí decide si hay que acelerar el filtro de A12.",
+    "anota": "Texto exacto (Passed o Failed #n).",
+    "pila": false,
+    "tipo": "b"
+   },
+   {
+    "id": "nes-pruebas-8-tests-mmc3-5-mmc3",
+    "n": "5-MMC3",
+    "m": "4 MMC3",
+    "mirar": "Esperado: Passed.",
+    "anota": "Texto que sale en pantalla.",
+    "pila": false,
+    "tipo": "b"
+   },
+   {
+    "id": "nes-pruebas-8-tests-mmc3-6-mmc3-alt",
+    "n": "6-MMC3_alt",
+    "m": "4 MMC3",
+    "mirar": "Esperado: Failed #2 (prueba otra revisión del chip; es normal).",
+    "anota": "Texto que sale en pantalla.",
+    "pila": false,
+    "tipo": "b"
+   }
+  ]
+ },
+ {
+  "id": "nes-fase-3a-17-mappers-sencillos",
+  "consola": "nes",
+  "titulo": "Fase 3a: 17 mappers sencillos",
+  "carpeta": "PRUEBAS/5 Fase 3a",
+  "rbf": "100.RBF",
+  "intro": "Arranca cada uno y juega un minuto. Lo importante: que arranque y que los gráficos y el scroll estén bien.",
+  "juegos": [
+   {
+    "id": "nes-pruebas-5-fase-3a-bible-adventures",
+    "n": "Bible Adventures",
+    "m": "11 Color Dreams",
+    "mirar": "Elige un juego del menú y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-akira",
+    "n": "Akira",
+    "m": "33 Taito TC0190",
+    "mirar": "Arranca; pantallas de texto y gráficos.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-deadly-towers",
+    "n": "Deadly Towers",
+    "m": "34 BNROM",
+    "mirar": "Juega; cambio de pantallas.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-impossible-mission-ii",
+    "n": "Impossible Mission II",
+    "m": "34 NINA-001",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-dragon-power",
+    "n": "Dragon Power",
+    "m": "66 GxROM",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-kamen-rider-club",
+    "n": "Kamen Rider Club",
+    "m": "70 Bandai",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-the-fantastic-adventures-of-dizzy",
+    "n": "The Fantastic Adventures of Dizzy",
+    "m": "71 Camerica",
+    "mirar": "Muévete entre pantallas.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-firehawk",
+    "n": "Firehawk",
+    "m": "71 Camerica",
+    "mirar": "Juega el principio (pantalla única).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-double-strike",
+    "n": "Double Strike",
+    "m": "79 NINA-03",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-moero-pro-yakyuu",
+    "n": "Moero!! Pro Yakyuu",
+    "m": "86 Jaleco",
+    "mirar": "Arranca y juega. La voz (\"Play ball\") no suena: no está implementada.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-goonies-japan",
+    "n": "Goonies (Japan)",
+    "m": "87 Jaleco",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-hes-6-pak",
+    "n": "HES 6-Pak",
+    "m": "113 HES",
+    "mirar": "Elige varios juegos del menú.",
+    "anota": "Cuáles fallan, si alguno.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-bio-senshi-dan",
+    "n": "Bio Senshi Dan",
+    "m": "140 Jaleco",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-galactic-crusader",
+    "n": "Galactic Crusader",
+    "m": "146 NINA-06",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-mahjong-world",
+    "n": "Mahjong World",
+    "m": "148 Sachen",
+    "mirar": "Arranca (los primeros instantes pueden mostrar basura) y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-saint-seiya-ougon-densetsu",
+    "n": "Saint Seiya - Ougon Densetsu",
+    "m": "152 Bandai",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-madoola-no-tsubasa",
+    "n": "Madoola no Tsubasa",
+    "m": "184 Sunsoft-1",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-fantasy-zone-tengen",
+    "n": "Fantasy Zone (Tengen)",
+    "m": "206 Namco 108",
+    "mirar": "Juega el primer nivel.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-gauntlet-tengen",
+    "n": "Gauntlet (Tengen)",
+    "m": "206 Namco 108, 4 pantallas",
+    "mirar": "Recorre el laberinto en las cuatro direcciones.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-5-fase-3a-quattro-adventure",
+    "n": "Quattro Adventure",
+    "m": "232 Camerica",
+    "mirar": "Prueba los 4 juegos del menú.",
+    "anota": "Cuáles fallan, si alguno.",
+    "pila": false,
+    "tipo": "n"
+   }
+  ]
+ },
+ {
+  "id": "nes-fase-3b-mappers-complejos",
+  "consola": "nes",
+  "titulo": "Fase 3b: mappers complejos",
+  "carpeta": "PRUEBAS/7 Fase 3b",
+  "rbf": "100.RBF",
+  "intro": "Chips con IRQ y bancos finos. Fíjate en las barras de estado, los efectos a media pantalla y las partidas con pila.",
+  "juegos": [
+   {
+    "id": "nes-pruebas-7-fase-3b-mike-tyson-s-punch-out",
+    "n": "Mike Tyson's Punch-Out!!",
+    "m": "9 MMC2",
+    "mirar": "REPETIR con el 100.RBF nuevo (latch del MMC2 corregido el 5-nov). Las caras y poses de los boxeadores cambian bien, sin tiles cambiados.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-7-fase-3b-fire-emblem-gaiden",
+    "n": "Fire Emblem Gaiden",
+    "m": "10 MMC4",
+    "mirar": "REPETIR con el 100.RBF nuevo (latch del MMC4 corregido el 5-nov). Textos y menús sin letras rotas; guarda partida.",
+    "anota": "Si la partida sigue tras apagar.",
+    "pila": true,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-7-fase-3b-dragon-ball-z-ii",
+    "n": "Dragon Ball Z II",
+    "m": "16 Bandai FCG",
+    "mirar": "Efectos y barra (IRQ). NO guarda partida: su EEPROM no está hecha; es lo esperado.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-7-fase-3b-goal",
+    "n": "Goal!!",
+    "m": "18 Jaleco SS88006",
+    "mirar": "Arranca y juega un partido (IRQ).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-7-fase-3b-wai-wai-world-2",
+    "n": "Wai Wai World 2",
+    "m": "21 VRC4",
+    "mirar": "Juega el principio.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-7-fase-3b-ganbare-pennant-race",
+    "n": "Ganbare Pennant Race!",
+    "m": "22 VRC2a",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-7-fase-3b-contra-japan",
+    "n": "Contra (Japan)",
+    "m": "23 VRC2b",
+    "mirar": "Mapa del principio y primer nivel.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-7-fase-3b-getsu-fuuma-den",
+    "n": "Getsu Fuuma Den",
+    "m": "23 VRC2b/VRC4e",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-7-fase-3b-gradius-ii",
+    "n": "Gradius II",
+    "m": "25 VRC4",
+    "mirar": "Efectos a media pantalla del nivel 1.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-7-fase-3b-tmnt-japan",
+    "n": "TMNT (Japan)",
+    "m": "25 VRC4",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-7-fase-3b-dynamite-batman",
+    "n": "Dynamite Batman",
+    "m": "69 FME-7",
+    "mirar": "Juega; barra de estado (IRQ).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-7-fase-3b-gimmick-memorial-series",
+    "n": "Gimmick! (Memorial Series)",
+    "m": "69 FME-7 + 5B",
+    "mirar": "Esta ROM no arranca ni en el emulador (es la versión modificada del recopilatorio de PS1): no es fallo del mapper. Prueba en su lugar 9c Prueba sonido (Famicom)/Gimmick! (Japan), que también arranca en el NES (sin la música del 5B).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-7-fase-3b-armadillo",
+    "n": "Armadillo",
+    "m": "118 TxSROM",
+    "mirar": "En la intro, el corte de pantalla debe quedar en su sitio (abajo, no a media pantalla).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-7-fase-3b-goal-two",
+    "n": "Goal! Two",
+    "m": "118 TxSROM",
+    "mirar": "Arranca y juega un partido.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-7-fase-3b-family-circuit-91",
+    "n": "Family Circuit '91",
+    "m": "210 Namco 175",
+    "mirar": "Guarda (opciones o datos de carrera).",
+    "anota": "Si los datos siguen tras apagar.",
+    "pila": true,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-7-fase-3b-famista-94",
+    "n": "Famista '94",
+    "m": "210 Namco 340",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   }
+  ]
+ },
+ {
+  "id": "nes-fase-3c-variantes-en-el-rbf-100",
+  "consola": "nes",
+  "titulo": "Fase 3c: variantes en el RBF 100",
+  "carpeta": "PRUEBAS/9a Fase 3c RBF 100",
+  "rbf": "100.RBF",
+  "intro": "Variantes de MMC1, UxROM, CNROM, MMC3, Namco 108 y Taito. Dos comprueban algo eléctrico: Mighty Bomb Jack y High Speed.",
+  "juegos": [
+   {
+    "id": "nes-pruebas-9a-fase-3c-rbf-100-mighty-bomb-jack",
+    "n": "Mighty Bomb Jack",
+    "m": "185 CNROM con protección",
+    "mirar": "IMPORTANTE: tiene que arrancar. Comprueba la CHR apagada leída como $FF (pull-up del bus de la PPU).",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9a-fase-3c-rbf-100-b-wings",
+    "n": "B-Wings",
+    "m": "185 CNROM con protección",
+    "mirar": "Tiene que arrancar (misma protección).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9a-fase-3c-rbf-100-high-speed",
+    "n": "High Speed",
+    "m": "119 TQROM",
+    "mirar": "IMPORTANTE: marcador y textos del pinball, que se dibujan en CHR-RAM extra.",
+    "anota": "Gráficos del marcador rotos o bien.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9a-fase-3c-rbf-100-pin-bot",
+    "n": "Pin Bot",
+    "m": "119 TQROM",
+    "mirar": "Tablero y marcador.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9a-fase-3c-rbf-100-the-jetsons",
+    "n": "The Jetsons",
+    "m": "48 Taito TC0690",
+    "mirar": "Barra de estado sin temblar.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9a-fase-3c-rbf-100-the-flintstones-japan",
+    "n": "The Flintstones (Japan)",
+    "m": "48 Taito TC0690",
+    "mirar": "Barra de estado sin temblar.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9a-fase-3c-rbf-100-bubble-bobble-2",
+    "n": "Bubble Bobble 2",
+    "m": "48 Taito TC0690",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9a-fase-3c-rbf-100-super-mario-bros-tetris-nwc",
+    "n": "Super Mario Bros. + Tetris + NWC",
+    "m": "37 MMC3 multijuego",
+    "mirar": "El menú y los tres juegos.",
+    "anota": "Cuáles fallan, si alguno.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9a-fase-3c-rbf-100-super-spike-v-ball-nwc",
+    "n": "Super Spike V'Ball + NWC",
+    "m": "47 MMC3 multijuego",
+    "mirar": "Los dos juegos.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9a-fase-3c-rbf-100-lei-dian-ii",
+    "n": "Lei Dian II",
+    "m": "115 MMC3 Kasheng",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9a-fase-3c-rbf-100-thunder-warrior",
+    "n": "Thunder Warrior",
+    "m": "189 MMC3 TXC",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9a-fase-3c-rbf-100-megami-tensei-digital-devil-story",
+    "n": "Megami Tensei (Digital Devil Story)",
+    "m": "76 Namco 108",
+    "mirar": "Arranca; mapa y textos.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9a-fase-3c-rbf-100-dragon-spirit",
+    "n": "Dragon Spirit",
+    "m": "88 Namco 108",
+    "mirar": "Juega el primer nivel.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9a-fase-3c-rbf-100-dragon-buster",
+    "n": "Dragon Buster",
+    "m": "95 Namco 108",
+    "mirar": "Arranca y juega (mirroring por registro).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9a-fase-3c-rbf-100-devil-man",
+    "n": "Devil Man",
+    "m": "154 Namco 108",
+    "mirar": "Arranca; cambios de pantalla correctos.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9a-fase-3c-rbf-100-the-money-game",
+    "n": "The Money Game",
+    "m": "155 MMC1A",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9a-fase-3c-rbf-100-crazy-climber",
+    "n": "Crazy Climber",
+    "m": "180 UNROM",
+    "mirar": "Arranca (se juega con dos mandos; basta con ver que va).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   }
+  ]
+ },
+ {
+  "id": "nes-fase-3c-chips-nuevos-en-el-rbf-101",
+  "consola": "nes",
+  "titulo": "Fase 3c: chips nuevos en el RBF 101",
+  "carpeta": "PRUEBAS/9b Fase 3c RBF 101",
+  "rbf": "101.RBF",
+  "intro": "Primera vez que se usa el RBF 101 en la consola. Si NINGUNO arranca, el problema es el RBF entero: avísame en seguida.",
+  "juegos": [
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-shinobi",
+    "n": "Shinobi",
+    "m": "64 RAMBO-1",
+    "mirar": "Primer nivel; barra de estado.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-rolling-thunder",
+    "n": "Rolling Thunder",
+    "m": "64 RAMBO-1",
+    "mirar": "Primer nivel.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-klax",
+    "n": "Klax",
+    "m": "64 RAMBO-1",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-alien-syndrome",
+    "n": "Alien Syndrome",
+    "m": "158 RAMBO-1",
+    "mirar": "Arranca; mirroring al moverse.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-after-burner",
+    "n": "After Burner",
+    "m": "68 Sunsoft-4",
+    "mirar": "El cielo y el suelo usan nametables de CHR-ROM: tienen que verse bien.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-maharaja",
+    "n": "Maharaja",
+    "m": "68 Sunsoft-4",
+    "mirar": "Guarda partida.",
+    "anota": "Si la partida sigue tras apagar.",
+    "pila": true,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-minelvaton-saga",
+    "n": "Minelvaton Saga",
+    "m": "80 Taito X1-005",
+    "mirar": "Guarda partida (RAM del chip).",
+    "anota": "Si la partida sigue tras apagar.",
+    "pila": true,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-fudou-myouou-den",
+    "n": "Fudou Myouou Den",
+    "m": "207 Taito X1-005",
+    "mirar": "Arranca; cambios de pantalla.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-sd-keiji-blader",
+    "n": "SD Keiji - Blader",
+    "m": "82 Taito X1-017",
+    "mirar": "Guarda partida.",
+    "anota": "Si la partida sigue tras apagar.",
+    "pila": true,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-image-fight",
+    "n": "Image Fight",
+    "m": "32 Irem G-101",
+    "mirar": "Primer nivel.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-spartan-x-2",
+    "n": "Spartan X 2",
+    "m": "65 Irem H3001",
+    "mirar": "Primer nivel; barra (IRQ).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-holy-diver",
+    "n": "Holy Diver",
+    "m": "78 Irem",
+    "mirar": "Haz scroll: el mirroring debe ser correcto (sin basura).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-uchuusen-cosmo-carrier",
+    "n": "Uchuusen Cosmo Carrier",
+    "m": "78 Jaleco",
+    "mirar": "Arranca (pantalla única).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-ganbare-goemon",
+    "n": "Ganbare Goemon!",
+    "m": "75 VRC1",
+    "mirar": "Primer nivel.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-akumajou-densetsu",
+    "n": "Akumajou Densetsu",
+    "m": "24 VRC6",
+    "mirar": "Gráficos y juego. En el NES falta la música extra: es normal.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-mouryou-senki-madara",
+    "n": "Mouryou Senki Madara",
+    "m": "26 VRC6b",
+    "mirar": "Arranca y guarda partida.",
+    "anota": "Si la partida sigue tras apagar.",
+    "pila": true,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-lagrange-point",
+    "n": "Lagrange Point",
+    "m": "85 VRC7",
+    "mirar": "Arranca y guarda. No tiene música FM (VRC7 sin sonido todavía).",
+    "anota": "Si la partida sigue tras apagar.",
+    "pila": true,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-fantasy-zone-ii",
+    "n": "Fantasy Zone II",
+    "m": "67 Sunsoft-3",
+    "mirar": "Primer nivel (IRQ).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-fantasy-zone-sunsoft",
+    "n": "Fantasy Zone (Sunsoft)",
+    "m": "93 Sunsoft-2",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-tenka-no-goikenban-mito-koumon",
+    "n": "Tenka no Goikenban - Mito Koumon",
+    "m": "89 Sunsoft-2",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-pinball-quest",
+    "n": "Pinball Quest",
+    "m": "72 Jaleco",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-moero-pro-soccer",
+    "n": "Moero!! Pro Soccer",
+    "m": "92 Jaleco",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-super-pang",
+    "n": "Super Pang",
+    "m": "141 Sachen 8259A",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-silver-eagle",
+    "n": "Silver Eagle",
+    "m": "138 Sachen 8259B",
+    "mirar": "En el emulador de referencia sale mal; en el N8 debería verse bien.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-final-combat",
+    "n": "Final Combat",
+    "m": "139 Sachen 8259C",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-the-great-wall",
+    "n": "The Great Wall",
+    "m": "137 Sachen 8259D",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-honey-peach",
+    "n": "Honey Peach",
+    "m": "243 Sachen",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-jovial-race",
+    "n": "Jovial Race",
+    "m": "133 Sachen",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-huang-di",
+    "n": "Huang Di",
+    "m": "112 NTDEC",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-war-in-the-gulf",
+    "n": "War in the Gulf",
+    "m": "193 NTDEC",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-metal-force",
+    "n": "Metal Force",
+    "m": "156 Daou",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-caltron-6-in-1",
+    "n": "Caltron 6 in 1",
+    "m": "41 Caltron",
+    "mirar": "Prueba varios juegos del menú.",
+    "anota": "Cuáles fallan, si alguno.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-cheetahmen-ii",
+    "n": "Cheetahmen II",
+    "m": "228 Action 52",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9b-fase-3c-rbf-101-xing-ji-zheng-ba",
+    "n": "Xing Ji Zheng Ba",
+    "m": "241",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   }
+  ]
+ },
+ {
+  "id": "nes-fase-3d-la-fpga-responde-lecturas-de-la-",
+  "consola": "nes",
+  "titulo": "Fase 3d: la FPGA responde lecturas de la CPU",
+  "carpeta": "PRUEBAS/9d Fase 3d lecturas",
+  "rbf": "101.RBF y 100.RBF (115)",
+  "intro": "Primera vez que la FPGA envía datos a la CPU. Si leen un valor equivocado suelen quedarse en negro o reiniciarse (protección). Que arranquen es la prueba.",
+  "juegos": [
+   {
+    "id": "nes-pruebas-9d-fase-3d-lecturas-chinese-checkers",
+    "n": "Chinese Checkers",
+    "m": "150 Sachen",
+    "mirar": "Arranca y juega.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9d-fase-3d-lecturas-english-pyramid",
+    "n": "English, Pyramid",
+    "m": "150 Sachen",
+    "mirar": "Arranca y juega.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9d-fase-3d-lecturas-bingo-txc",
+    "n": "Bingo (TXC)",
+    "m": "132 TXC",
+    "mirar": "Arranca.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9d-fase-3d-lecturas-1991-du-ma-racing",
+    "n": "1991 Du Ma Racing",
+    "m": "132 TXC",
+    "mirar": "Arranca y juega.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9d-fase-3d-lecturas-mahjong-block-idea-tek",
+    "n": "Mahjong Block (Idea-Tek)",
+    "m": "172 TXC JV001",
+    "mirar": "Arranca; mirroring correcto.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9d-fase-3d-lecturas-f-15-city-war-idea-tek",
+    "n": "F-15 City War (Idea-Tek)",
+    "m": "173 TXC",
+    "mirar": "Arranca y juega.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9d-fase-3d-lecturas-mahjong-trap",
+    "n": "Mahjong Trap",
+    "m": "136 Sachen",
+    "mirar": "Arranca.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9d-fase-3d-lecturas-challenge-of-the-dragon",
+    "n": "Challenge of the Dragon",
+    "m": "147 Sachen",
+    "mirar": "Arranca y juega.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9d-fase-3d-lecturas-strike-wolf",
+    "n": "Strike Wolf",
+    "m": "36 TXC",
+    "mirar": "Arranca y juega.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9d-fase-3d-lecturas-magical-mathematics",
+    "n": "Magical Mathematics",
+    "m": "143 Sachen",
+    "mirar": "Arranca (lee la protección en $4100).",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9d-fase-3d-lecturas-shisen-mahjong-2",
+    "n": "Shisen Mahjong 2",
+    "m": "115 Kasheng",
+    "mirar": "Arranca.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   }
+  ]
+ },
+ {
+  "id": "nes-namco-163",
+  "consola": "nes",
+  "titulo": "Namco 163",
+  "carpeta": "PRUEBAS/9e Namco 163",
+  "rbf": "102.RBF",
+  "intro": "Primera vez que se usa el RBF 102. Los primeros instantes de algunos juegos pueden mostrar basura: el chip arranca con registros indefinidos.",
+  "juegos": [
+   {
+    "id": "nes-pruebas-9e-namco-163-megami-tensei-ii",
+    "n": "Megami Tensei II",
+    "m": "19 Namco 163",
+    "mirar": "Arranca (usa la CIRAM como CHR) y guarda partida.",
+    "anota": "Si la partida sigue tras apagar.",
+    "pila": true,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9e-namco-163-final-lap",
+    "n": "Final Lap",
+    "m": "19 Namco 163",
+    "mirar": "Haz una carrera.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9e-namco-163-erika-to-satoru-no-yume-bouken",
+    "n": "Erika to Satoru no Yume Bouken",
+    "m": "19 Namco 163",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9e-namco-163-battle-fleet",
+    "n": "Battle Fleet",
+    "m": "19 Namco 163",
+    "mirar": "Arranca y juega.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "nes-pruebas-9e-namco-163-famista-90",
+    "n": "Famista '90",
+    "m": "19 Namco 163",
+    "mirar": "Arranca y juega un partido.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   }
+  ]
+ },
+ {
+  "id": "famicom-prueba-de-tono",
+  "consola": "famicom",
+  "titulo": "Prueba de tono",
+  "carpeta": "PRUEBAS/9c Prueba sonido (Famicom)",
+  "rbf": "100.RBF",
+  "intro": "Hazla la primera. Comprueba que el audio del cartucho llega a la Famicom AV.",
+  "juegos": [
+   {
+    "id": "famicom-pruebas-9c-prueba-sonido-famicom-tono-1-khz-mapper-250-balloon-fight",
+    "n": "Tono 1 kHz (mapper 247, Balloon Fight)",
+    "m": "247 prueba",
+    "mirar": "Encima de la música de Balloon Fight debe sonar un pitido de 1 kHz, medio segundo sí y medio no. (El tono pasó del mapper 250 al 247: el 250 es un juego oficial.)",
+    "anota": "Se oye / no se oye / zumbido o ruido fuerte (si hay zumbido fuerte, saca el cartucho).",
+    "pila": false,
+    "tipo": "s"
+   }
+  ]
+ },
+ {
+  "id": "famicom-sonido-de-expansion",
+  "consola": "famicom",
+  "titulo": "Sonido de expansión",
+  "carpeta": "PRUEBAS/9c Prueba sonido (Famicom) y 9e Namco 163",
+  "rbf": "101, 100 y 102.RBF",
+  "intro": "Solo si el tono se oye. Escucha la música y anota el volumen de los canales extra frente al sonido normal de la consola.",
+  "juegos": [
+   {
+    "id": "famicom-pruebas-9c-prueba-sonido-famicom-y-9e-na-akumajou-densetsu",
+    "n": "Akumajou Densetsu",
+    "m": "24 VRC6",
+    "mirar": "La música lleva dos pulsos y una sierra extra: suena más llena que Castlevania III de NES.",
+    "anota": "Cómo suena y volumen.",
+    "pila": false,
+    "tipo": "s"
+   },
+   {
+    "id": "famicom-pruebas-9c-prueba-sonido-famicom-y-9e-na-gimmick",
+    "n": "Gimmick!",
+    "m": "69 Sunsoft 5B",
+    "mirar": "La música usa los tres canales del 5B.",
+    "anota": "Cómo suena y volumen.",
+    "pila": false,
+    "tipo": "s"
+   },
+   {
+    "id": "famicom-pruebas-9c-prueba-sonido-famicom-y-9e-na-mouryou-senki-madara",
+    "n": "Mouryou Senki Madara",
+    "m": "26 VRC6b",
+    "mirar": "Música VRC6 (puede tardar en aparecer: avanza un poco).",
+    "anota": "Cómo suena y volumen.",
+    "pila": false,
+    "tipo": "s"
+   },
+   {
+    "id": "famicom-pruebas-9c-prueba-sonido-famicom-y-9e-na-esper-dream-2",
+    "n": "Esper Dream 2",
+    "m": "26 VRC6b",
+    "mirar": "Música VRC6 (avanza un poco en el juego).",
+    "anota": "Cómo suena y volumen.",
+    "pila": false,
+    "tipo": "s"
+   },
+   {
+    "id": "famicom-pruebas-9c-prueba-sonido-famicom-y-9e-na-final-lap",
+    "n": "Final Lap",
+    "m": "19 Namco 163",
+    "mirar": "Música del N163.",
+    "anota": "Cómo suena y volumen.",
+    "pila": false,
+    "tipo": "s"
+   },
+   {
+    "id": "famicom-pruebas-9c-prueba-sonido-famicom-y-9e-na-erika-to-satoru-no-yume-bouken",
+    "n": "Erika to Satoru no Yume Bouken",
+    "m": "19 Namco 163",
+    "mirar": "Música del N163.",
+    "anota": "Cómo suena y volumen.",
+    "pila": false,
+    "tipo": "s"
+   },
+   {
+    "id": "famicom-pruebas-9c-prueba-sonido-famicom-y-9e-na-megami-tensei-ii",
+    "n": "Megami Tensei II",
+    "m": "19 Namco 163",
+    "mirar": "Música del N163.",
+    "anota": "Cómo suena y volumen.",
+    "pila": false,
+    "tipo": "s"
+   },
+   {
+    "id": "famicom-pruebas-9c-prueba-sonido-famicom-y-9e-na-lagrange-point",
+    "n": "Lagrange Point",
+    "m": "85 VRC7",
+    "mirar": "Sin música FM todavía: comprueba solo que no salga ruido raro.",
+    "anota": "",
+    "pila": false,
+    "tipo": "s"
+   }
+  ]
+ },
+ {
+  "id": "famicom-lecturas-sin-transceptores",
+  "consola": "famicom",
+  "titulo": "Lecturas sin transceptores",
+  "carpeta": "PRUEBAS/9d Fase 3d lecturas",
+  "rbf": "101.RBF y 100.RBF (115)",
+  "intro": "La placa de Famicom no tiene transceptores: la FPGA llega al bus de la consola por 100 ohmios. Repite las lecturas aquí.",
+  "juegos": [
+   {
+    "id": "famicom-pruebas-9d-fase-3d-lecturas-chinese-checkers",
+    "n": "Chinese Checkers",
+    "m": "150 Sachen",
+    "mirar": "Arranca y juega.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-pruebas-9d-fase-3d-lecturas-english-pyramid",
+    "n": "English, Pyramid",
+    "m": "150 Sachen",
+    "mirar": "Arranca y juega.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-pruebas-9d-fase-3d-lecturas-bingo-txc",
+    "n": "Bingo (TXC)",
+    "m": "132 TXC",
+    "mirar": "Arranca.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-pruebas-9d-fase-3d-lecturas-1991-du-ma-racing",
+    "n": "1991 Du Ma Racing",
+    "m": "132 TXC",
+    "mirar": "Arranca y juega.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-pruebas-9d-fase-3d-lecturas-mahjong-block-idea-tek",
+    "n": "Mahjong Block (Idea-Tek)",
+    "m": "172 TXC JV001",
+    "mirar": "Arranca.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-pruebas-9d-fase-3d-lecturas-f-15-city-war-idea-tek",
+    "n": "F-15 City War (Idea-Tek)",
+    "m": "173 TXC",
+    "mirar": "Arranca y juega.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-pruebas-9d-fase-3d-lecturas-mahjong-trap",
+    "n": "Mahjong Trap",
+    "m": "136 Sachen",
+    "mirar": "Arranca.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-pruebas-9d-fase-3d-lecturas-challenge-of-the-dragon",
+    "n": "Challenge of the Dragon",
+    "m": "147 Sachen",
+    "mirar": "Arranca y juega.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-pruebas-9d-fase-3d-lecturas-strike-wolf",
+    "n": "Strike Wolf",
+    "m": "36 TXC",
+    "mirar": "Arranca y juega.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-pruebas-9d-fase-3d-lecturas-magical-mathematics",
+    "n": "Magical Mathematics",
+    "m": "143 Sachen",
+    "mirar": "Arranca.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-pruebas-9d-fase-3d-lecturas-shisen-mahjong-2",
+    "n": "Shisen Mahjong 2",
+    "m": "115 Kasheng",
+    "mirar": "Arranca.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   }
+  ]
+ },
+ {
+  "id": "famicom-comprobacion-general-en-la-placa-de-fami",
+  "consola": "famicom",
+  "titulo": "Comprobación general en la placa de Famicom",
+  "carpeta": "varias carpetas",
+  "rbf": "100, 101 y 102.RBF",
+  "intro": "Confirma que los RBF funcionan igual en esta placa, sobre todo lo que depende de la electrónica.",
+  "juegos": [
+   {
+    "id": "famicom-varias-carpetas-super-mario-bros",
+    "n": "Super Mario Bros.",
+    "m": "0 NROM (raíz)",
+    "mirar": "Juega el 1-1.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-varias-carpetas-the-legend-of-zelda",
+    "n": "The Legend of Zelda",
+    "m": "1 MMC1 (1 MMC1)",
+    "mirar": "Guarda y recupera (pila de esta placa).",
+    "anota": "Si la partida sigue tras apagar.",
+    "pila": true,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-varias-carpetas-super-mario-bros-3",
+    "n": "Super Mario Bros. 3",
+    "m": "4 MMC3 (4 MMC3)",
+    "mirar": "Barra de estado sin saltos; mira también el parpadeo de arriba a la izquierda.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-varias-carpetas-rad-racer-ii",
+    "n": "Rad Racer II",
+    "m": "4 MMC3, 4 pantallas",
+    "mirar": "Carretera y fondo correctos.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-varias-carpetas-mega-man-4",
+    "n": "Mega Man 4",
+    "m": "4 MMC3 CHR-RAM",
+    "mirar": "Elige un jefe; gráficos correctos.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-varias-carpetas-armadillo",
+    "n": "Armadillo",
+    "m": "118 TxSROM (7 Fase 3b)",
+    "mirar": "Corte de pantalla de la intro en su sitio.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-varias-carpetas-mighty-bomb-jack",
+    "n": "Mighty Bomb Jack",
+    "m": "185 (9a)",
+    "mirar": "Tiene que arrancar: aquí el pull-up de la PPU llega a la consola sin transceptor.",
+    "anota": "Si arranca o se queda en negro.",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-varias-carpetas-high-speed",
+    "n": "High Speed",
+    "m": "119 TQROM (9a)",
+    "mirar": "Marcador del pinball correcto.",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-varias-carpetas-shinobi",
+    "n": "Shinobi",
+    "m": "64 RAMBO-1 (9b)",
+    "mirar": "Primer nivel (RBF 101).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   },
+   {
+    "id": "famicom-varias-carpetas-battle-fleet",
+    "n": "Battle Fleet",
+    "m": "19 Namco 163 (9e)",
+    "mirar": "Arranca (RBF 102).",
+    "anota": "",
+    "pila": false,
+    "tipo": "n"
+   }
+  ]
+ }
+]

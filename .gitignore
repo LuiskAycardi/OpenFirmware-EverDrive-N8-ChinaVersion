@@ -1,0 +1,57 @@
+# OpenFirmware-EverDrive-N8-ChinaVersion — qué NO entra en git (se regenera, es de terceros o son notas locales).
+
+# --- Material de terceros o con copyright: nunca entra en el repositorio ---
+# Firmware, RBF, OS y código de Krikzz; ROMs; partidas. Si hace falta tenerlos a mano para estudiar,
+# guardarlos en ref/ (ignorada).
+/ref/
+# clon de Mesen2 (GPL-3); nuestros cambios van en tools/mesen2-n8.patch (tools/mesen2-setup.sh)
+/tools/mesen2/
+*.nes
+*.fds
+*.unf
+*.sav
+*.srm
+*.RBF
+*.rbf
+*.BIN
+*.zip
+
+# --- Salidas del banco de pruebas y de las herramientas ---
+/tools/n8sim/homes/
+/tools/n8sim/reports/
+/tools/n8sim/models/
+/tools/n8sim/obj*/
+/tools/n8sim/run/
+/tools/n8sim/*.so
+/tools/consola/.mesen/
+/tools/consola/informes/
+# capturas de referencia de juegos comerciales (las genera tools/consola/prueba.py)
+/tools/consola/refs/
+# listas de ROMs de la colección local para difftest.py --rom-list
+/tools/n8sim/listas/
+/tools/*.log
+
+# --- Salidas de compilación (iverilog / Quartus) ---
+/hdl/out/
+/hdl/quartus/*
+!/hdl/quartus/n8_nrom.qsf
+!/hdl/quartus/n8_nrom.qpf
+!/hdl/quartus/n8_nrom.sdc
+*.vvp
+*.vcd
+*.o
+
+# --- Python, editores, varios ---
+__pycache__/
+*.pyc
+.mesen/
+/transcript
+/*.jpeg
+/*.jpg
+
+# firmware del mando (Arduino): salida de compilación
+/tools/consola/firmware/build/
+
+# --- Notas de trabajo locales (no se publican) ---
+/CONTEXTO-N8.md
+/notas/

@@ -1,0 +1,15 @@
+{
+ "_nota": "Copia este archivo a config.json y cambia solo lo que haga falta. null = buscar solo.",
+ "puerto": null,
+ "video": null,
+ "audio": "auto",
+ "sd": "~/SD_Pruebas",
+ "consola": "nes",
+ "rom_calibracion": "PRUEBAS/0 Calibracion/calibracion.nes",
+ "sensor_5v": false,
+ "teclas_menu": {"abajo": "down", "arriba": "up", "entrar": "a", "volver": "b", "lanzar": ["a"], "pulso_ms": 60, "pausa_ms": 120},
+ "silencio_arranque_ms": 250,
+ "retraso_video_s": 0.08,
+ "ventana_s": 0.35,
+ "reset_ms": 5000
+}

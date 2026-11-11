@@ -1,0 +1,308 @@
+
+<title>Pruebas N8</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Lista de banco de pruebas: una columna, barra fija con NES / Famicom y progreso; cada juego es una ficha con su veredicto. */
+:root {
+  --bg: #efeeea; --surface: #ffffff; --ink: #1e2126; --muted: #5b626c; --line: #d8d5cd;
+  --accent: #a32c2c; --accent-soft: #f4e3e1;
+  --ok: #1f7a4d; --ok-soft: #e1f1e8; --bad: #c2410c; --bad-soft: #fbe6da; --skip: #8a6a12; --skip-soft: #f5ecd2;
+  --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", Roboto, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #16171a; --surface: #202227; --ink: #eceef0; --muted: #a3a9b2; --line: #343840;
+  --accent: #e0605e; --accent-soft: #3a2224;
+  --ok: #4cc38a; --ok-soft: #173326; --bad: #f08a4b; --bad-soft: #3b2417; --skip: #d6ad3c; --skip-soft: #352c14;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #16171a; --surface: #202227; --ink: #eceef0; --muted: #a3a9b2; --line: #343840;
+  --accent: #e0605e; --accent-soft: #3a2224;
+  --ok: #4cc38a; --ok-soft: #173326; --bad: #f08a4b; --bad-soft: #3b2417; --skip: #d6ad3c; --skip-soft: #352c14;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+.wrap { max-width: 780px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+header.top .wrap { padding-block: 10px; display: grid; gap: 8px; }
+.brand { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: 26px; letter-spacing: .02em; margin: 0; text-transform: uppercase; }
+h1 span { color: var(--accent); }
+.save-state { font-size: 12px; color: var(--muted); }
+.tabs { display: flex; gap: 6px; }
+.tab { flex: 1; font-family: var(--f-display); font-weight: 700; font-size: 18px; letter-spacing: .04em; text-transform: uppercase;
+  border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 6px; padding: 6px 10px; cursor: pointer;
+  display: flex; justify-content: space-between; align-items: center; gap: 8px; text-decoration: none; }
+.tab[aria-current="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tab small { font-family: var(--f-mono); font-size: 12px; font-weight: 500; letter-spacing: 0; opacity: .9; font-variant-numeric: tabular-nums; }
+.bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--line); }
+.bar i { display: block; height: 100%; }
+.bar .b-ok { background: var(--ok); } .bar .b-bad { background: var(--bad); } .bar .b-skip { background: var(--skip); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.legend b { color: var(--ink); font-weight: 600; }
+.tools { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+main .wrap { padding-block: 16px 48px; display: grid; gap: 18px; }
+.notice { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+.notice.warn { border-color: var(--bad); background: var(--bad-soft); }
+details.howto { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+details.howto summary { cursor: pointer; font-weight: 600; }
+details.howto ol { margin: 8px 0 2px; padding-left: 20px; display: grid; gap: 4px; }
+section.sec { display: grid; gap: 10px; }
+.sec-head { display: grid; gap: 4px; border-left: 4px solid var(--accent); padding: 2px 0 2px 12px; }
+.sec-head h2 { font-family: var(--f-display); font-weight: 700; font-size: 22px; letter-spacing: .02em; margin: 0; text-wrap: balance; }
+.sec-meta { display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.mono { font-family: var(--f-mono); font-size: 12px; }
+.chip { display: inline-block; border: 1px solid var(--line); border-radius: 4px; padding: 0 6px; font-family: var(--f-mono); font-size: 12px; color: var(--muted); background: var(--bg); }
+.sec-intro { margin: 0; color: var(--muted); font-size: 14px; max-width: 65ch; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 8px; }
+.card.st-ok { border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); }
+.card.st-falla { border-color: var(--bad); box-shadow: inset 4px 0 0 var(--bad); }
+.card.st-salta { opacity: .75; }
+.card-top { display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.card-top h3 { margin: 0; font-size: 16px; font-weight: 600; min-width: 0; }
+.pila { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 0 5px; }
+.mirar { margin: 0; max-width: 65ch; }
+.anota { margin: 0; font-size: 13px; color: var(--muted); }
+.anota b { font-weight: 600; color: var(--ink); }
+.row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.btn { font: 600 13px var(--f-body); border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 6px; padding: 6px 12px; cursor: pointer; min-height: 34px; }
+.btn:focus-visible, .tab:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn[aria-pressed="true"].b-ok { background: var(--ok); border-color: var(--ok); color: #fff; }
+.btn[aria-pressed="true"].b-falla { background: var(--bad); border-color: var(--bad); color: #fff; }
+.btn[aria-pressed="true"].b-salta { background: var(--skip); border-color: var(--skip); color: #fff; }
+.btn.vol[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.vol-label { font-size: 12px; color: var(--muted); margin-right: 2px; }
+textarea { width: 100%; min-height: 54px; resize: vertical; font: 14px var(--f-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+.saved { font-size: 11px; color: var(--muted); min-height: 1em; }
+.hidden-ok .card.st-ok { display: none; }
+@media (prefers-reduced-motion: no-preference) { .card { transition: border-color .15s, opacity .15s; } }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <h1>Pruebas <span>N8</span></h1>
+      <div class="save-state" id="save-state" aria-live="polite">Conectando…</div>
+    </div>
+    <nav class="tabs" aria-label="Consola">
+      <a class="tab" id="tab-nes" href="#nes">NES <small id="cnt-nes"></small></a>
+      <a class="tab" id="tab-famicom" href="#famicom">Famicom <small id="cnt-famicom"></small></a>
+    </nav>
+    <div class="bar" id="bar" aria-hidden="true"><i class="b-ok"></i><i class="b-bad"></i><i class="b-skip"></i></div>
+    <div class="legend" id="legend"></div>
+    <label class="tools"><input type="checkbox" id="hide-ok"> Ocultar los que ya están OK</label>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="notice warn" id="db-notice" hidden></div>
+    <details class="howto" id="howto" open>
+      <summary>Cómo probar y qué anotar</summary>
+      <ol>
+        <li>Usa la microSD de pruebas (la misma sirve para los dos cartuchos). La pestaña <b>NES</b> es para el N8 de NES; <b>Famicom</b>, para la Famicom AV con su N8.</li>
+        <li>Arranca cada juego desde su carpeta y juega uno o dos minutos, o lo que diga la ficha.</li>
+        <li>Marca <b>OK</b> si todo va como debe, <b>Falla</b> si algo va mal y <b>Saltar</b> si no lo puedes probar.</li>
+        <li>En una falla, escribe qué ves (pantalla negra o gris, gráficos rotos, parpadeo, se reinicia, se cuelga), en qué momento y si se repite.</li>
+        <li><b>Partidas con pila</b> (etiqueta PILA): guarda, apaga la consola 10 segundos, enciende, vuelve a cargar el juego desde el menú del N8 y comprueba la partida.</li>
+        <li>Si un juego cuelga la consola, pulsa Reset (el N8 vuelve al menú) o apágala.</li>
+        <li>Lo que marcas se guarda solo. Cuando termines (o a mitad), avísame y leo los resultados.</li>
+      </ol>
+    </details>
+    <div id="secs"></div>
+  </div>
+</main>
+
+<script>
+const PLAN = __PLAN__;
+const VOLS = ["bajo", "bien", "alto", "saturado"];
+const results = {};            // id -> {estado, nota, vol}
+let db = null, col = null, useLocal = false;
+const writing = {};            // cadena de escrituras por documento
+
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "class") e.className = v; else if (k === "text") e.textContent = v; else e.setAttribute(k, v);
+  }
+  for (const k of kids) if (k != null) e.append(k);
+  return e;
+}
+
+function consoleOf(id) { return id.startsWith("famicom") ? "famicom" : "nes"; }
+
+// ------------------------------------------------------------ construcción (una vez)
+const cards = {};
+function build() {
+  const root = document.getElementById("secs");
+  for (const s of PLAN) {
+    const sec = el("section", { class: "sec", "data-consola": s.consola, id: s.id });
+    const head = el("div", { class: "sec-head" },
+      el("h2", { text: s.titulo }),
+      el("div", { class: "sec-meta" },
+        el("span", { class: "chip", text: s.carpeta }), el("span", { class: "chip", text: s.rbf }),
+        el("span", { class: "mono", id: "prog-" + s.id })),
+      el("p", { class: "sec-intro", text: s.intro }));
+    sec.append(head);
+    for (const j of s.juegos) sec.append(buildCard(j));
+    root.append(sec);
+  }
+}
+
+function buildCard(j) {
+  const card = el("article", { class: "card", id: "c-" + j.id });
+  const top = el("div", { class: "card-top" }, el("h3", { text: j.n }), el("span", { class: "chip", text: j.m }));
+  if (j.pila) top.append(el("span", { class: "pila", text: "pila" }));
+  card.append(top, el("p", { class: "mirar", text: j.mirar }));
+  if (j.anota) { const a = el("p", { class: "anota" }); a.append(el("b", { text: "Anota: " }), j.anota); card.append(a); }
+  const btns = el("div", { class: "row", role: "group", "aria-label": "Resultado de " + j.n });
+  const mk = (estado, label, cls) => {
+    const b = el("button", { type: "button", class: "btn " + cls, "aria-pressed": "false", text: label });
+    b.addEventListener("click", () => setResult(j.id, { estado: results[j.id]?.estado === estado ? "" : estado }));
+    return b;
+  };
+  const bOk = mk("ok", "OK", "b-ok"), bBad = mk("falla", "Falla", "b-falla"), bSkip = mk("salta", "Saltar", "b-salta");
+  btns.append(bOk, bBad, bSkip);
+  card.append(btns);
+  let volBtns = [];
+  if (j.tipo === "s") {
+    const vr = el("div", { class: "row", role: "group", "aria-label": "Volumen de " + j.n }, el("span", { class: "vol-label", text: "Volumen:" }));
+    for (const v of VOLS) {
+      const b = el("button", { type: "button", class: "btn vol", "aria-pressed": "false", text: v });
+      b.addEventListener("click", () => setResult(j.id, { vol: results[j.id]?.vol === v ? "" : v }));
+      vr.append(b); volBtns.push(b);
+    }
+    card.append(vr);
+  }
+  const ta = el("textarea", { id: "n-" + j.id, rows: "2",
+    placeholder: j.tipo === "b" ? "Texto de la pantalla: Passed o Failed #n" : "Nota (qué ves, cuándo pasa)",
+    "aria-label": "Nota de " + j.n });
+  let timer = null;
+  ta.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(() => setResult(j.id, { nota: ta.value }), 700); });
+  ta.addEventListener("blur", () => { clearTimeout(timer); if ((results[j.id]?.nota || "") !== ta.value) setResult(j.id, { nota: ta.value }); });
+  const saved = el("div", { class: "saved", id: "s-" + j.id });
+  card.append(ta, saved);
+  cards[j.id] = { card, bOk, bBad, bSkip, volBtns, ta, saved };
+  return card;
+}
+
+// ------------------------------------------------------------ pintar estado
+function paint(id) {
+  const c = cards[id]; if (!c) return;
+  const r = results[id] || {};
+  c.card.classList.remove("st-ok", "st-falla", "st-salta");
+  if (r.estado) c.card.classList.add("st-" + r.estado);
+  c.bOk.setAttribute("aria-pressed", r.estado === "ok"); c.bBad.setAttribute("aria-pressed", r.estado === "falla");
+  c.bSkip.setAttribute("aria-pressed", r.estado === "salta");
+  c.volBtns.forEach((b, i) => b.setAttribute("aria-pressed", r.vol === VOLS[i]));
+  if (document.activeElement !== c.ta && c.ta.value !== (r.nota || "")) c.ta.value = r.nota || "";
+}
+
+function counts(consola) {
+  let ok = 0, bad = 0, skip = 0, tot = 0;
+  for (const s of PLAN) if (s.consola === consola) for (const j of s.juegos) {
+    tot++; const e = results[j.id]?.estado;
+    if (e === "ok") ok++; else if (e === "falla") bad++; else if (e === "salta") skip++;
+  }
+  return { ok, bad, skip, tot, pend: tot - ok - bad - skip };
+}
+
+function paintTotals() {
+  for (const c of ["nes", "famicom"]) {
+    const n = counts(c);
+    document.getElementById("cnt-" + c).textContent = (n.ok + n.bad + n.skip) + "/" + n.tot;
+  }
+  const cur = currentConsole(), n = counts(cur);
+  const bar = document.getElementById("bar").children;
+  bar[0].style.width = (100 * n.ok / n.tot) + "%"; bar[1].style.width = (100 * n.bad / n.tot) + "%"; bar[2].style.width = (100 * n.skip / n.tot) + "%";
+  const lg = document.getElementById("legend"); lg.textContent = "";
+  for (const [k, v] of [["OK", n.ok], ["Falla", n.bad], ["Saltados", n.skip], ["Pendientes", n.pend]]) {
+    const s = el("span"); s.append(k + ": ", el("b", { text: String(v) })); lg.append(s);
+  }
+  for (const s of PLAN) {
+    const done = s.juegos.filter(j => results[j.id]?.estado).length;
+    const p = document.getElementById("prog-" + s.id); if (p) p.textContent = done + "/" + s.juegos.length + " hechos";
+  }
+}
+
+function paintAll() { for (const id of Object.keys(cards)) paint(id); paintTotals(); }
+
+// ------------------------------------------------------------ pestañas (#nes / #famicom)
+function currentConsole() { return location.hash === "#famicom" ? "famicom" : "nes"; }
+function showConsole() {
+  const cur = currentConsole();
+  for (const s of document.querySelectorAll("section.sec")) s.hidden = s.dataset.consola !== cur;
+  document.getElementById("tab-nes").setAttribute("aria-current", cur === "nes");
+  document.getElementById("tab-famicom").setAttribute("aria-current", cur === "famicom");
+  paintTotals();
+}
+window.addEventListener("hashchange", showConsole);
+
+document.getElementById("hide-ok").addEventListener("change", (e) => {
+  document.body.classList.toggle("hidden-ok", e.target.checked);
+  try { localStorage.setItem("n8-hide-ok", e.target.checked ? "1" : "0"); } catch (_) {}
+});
+try { if (localStorage.getItem("n8-hide-ok") === "1") { document.getElementById("hide-ok").checked = true; document.body.classList.add("hidden-ok"); } } catch (_) {}
+
+// ------------------------------------------------------------ guardar
+function saveState(text) { document.getElementById("save-state").textContent = text; }
+
+function setResult(id, patch) {
+  const cur = results[id] || {};
+  const next = { estado: cur.estado || "", nota: cur.nota || "", vol: cur.vol || "", ...patch, consola: consoleOf(id), t: new Date().toISOString() };
+  results[id] = next;
+  paint(id); paintTotals();
+  if (useLocal || !col) {
+    try { localStorage.setItem("n8-res", JSON.stringify(results)); } catch (_) {}
+    return;
+  }
+  const c = cards[id]; if (c) c.saved.textContent = "Guardando…";
+  writing[id] = (writing[id] || Promise.resolve()).then(() => col.doc(id).set(next)).then(
+    () => { if (c) c.saved.textContent = "Guardado"; saveState("Guardado"); },
+    (e) => {
+      if (c) c.saved.textContent = "No se pudo guardar";
+      saveState(e && e.code === "quota_exceeded" ? "La base de datos está llena" : "No se pudo guardar: comprueba la conexión y vuelve a marcar");
+    });
+}
+
+function fallbackLocal(msg) {
+  useLocal = true;
+  try { Object.assign(results, JSON.parse(localStorage.getItem("n8-res") || "{}")); } catch (_) {}
+  const n = document.getElementById("db-notice");
+  n.textContent = msg; n.hidden = false;
+  saveState("Solo en este navegador");
+  paintAll();
+}
+
+// ------------------------------------------------------------ arranque
+build();
+showConsole();
+paintAll();
+
+(async () => {
+  try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch (_) { db = null; }
+  if (!db) {
+    fallbackLocal("No hay conexión con la base de datos de la página: lo que marques se guarda solo en este navegador y Claude no podrá leerlo. Abre la página desde claude.ai con tu sesión iniciada.");
+    return;
+  }
+  col = db.collection("resultados");
+  saveState("Cargando resultados…");
+  const timeout = setTimeout(() => saveState("Los resultados aún no llegan; lo que marques se guardará igual"), 10000);
+  col.onSnapshot((snap) => {
+    if (!snap.metadata.fromCache) clearTimeout(timeout);
+    for (const d of snap.docs) results[d.id] = d.data();
+    for (const ch of snap.docChanges()) if (ch.type === "removed") delete results[ch.doc.id];
+    paintAll();
+    if (!snap.metadata.fromCache && !snap.metadata.hasPendingWrites) saveState("Resultados al día");
+  }, (e) => {
+    clearTimeout(timeout);
+    fallbackLocal("La base de datos dejó de responder (" + (e && e.code) + "): lo nuevo se guarda solo en este navegador. Recarga la página más tarde.");
+  });
+})();
+</script>
+
