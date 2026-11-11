@@ -1,11 +1,12 @@
 # OpenFirmware-EverDrive-N8-ChinaVersion
 
-Mappers propios (Verilog) para el **EverDrive N8 original de cartucho de Famicom/NES**, en concreto para
-el clon chino con FPGA **Altera Cyclone II EP2C5**. Implementación clean room, validada contra el
-emulador Mesen2 con fuzz de ROMs sintéticas, bancos de simulación y juegos reales.
+Mappers propios (Verilog) para el **EverDrive N8 China Version** (el clon chino del EverDrive N8, con FPGA
+**Altera Cyclone II EP2C5**), en sus dos versiones: **Famicom y NES**. Implementación clean room, validada
+contra el emulador Mesen2 con fuzz de ROMs sintéticas, bancos de simulación y juegos reales.
 
-*Own Verilog mapper implementations for the EverDrive N8 (EP2C5 clone), clean-room, validated against
-Mesen2. Documentation is in Spanish.*
+*Own Verilog mapper implementations for the EverDrive N8 China Version (the Chinese EP2C5 clone of the
+EverDrive N8), for both the Famicom and the NES cartridges. Clean-room, validated against Mesen2.
+Documentation is in Spanish.*
 
 > Proyecto independiente: no está afiliado a Krikzz ni a EverDrive, ni respaldado por ellos.
 > «EverDrive» es una marca de su autor.

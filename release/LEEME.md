@@ -1,6 +1,7 @@
 # OpenFirmware-EverDrive-N8-ChinaVersion — paquete de pruebas {VERSION}
 
-Mappers libres (GPL-3.0-or-later) para el **EverDrive N8 clon chino con FPGA EP2C5**, listos para copiar
+Mappers libres (GPL-3.0-or-later) para el **EverDrive N8 China Version** (clon chino con FPGA EP2C5) de
+**Famicom y NES**, listos para copiar
 a la microSD. **Versión de pruebas**: todos los mappers coinciden con el emulador Mesen2 en el banco de
 pruebas, pero **casi nada se ha probado aún en la consola real**. Para eso es este paquete: para que
 quien tenga uno de estos cartuchos nos ayude a probarlos.
@@ -21,8 +22,8 @@ quien tenga uno de estos cartuchos nos ayude a probarlos.
 
 ## Requisitos
 
-- EverDrive N8 **clon chino con EP2C5** (el que se vende con la SD «de fábrica» de un pack vietnamita/chino),
-  de NES o de Famicom.
+- **EverDrive N8 China Version** (clon chino con EP2C5, el que se vende con la SD «de fábrica» de un pack
+  vietnamita/chino), de Famicom o de NES.
 - Su **OS de fábrica**. ⚠️ **No instales los OS oficiales 1.24–1.26 de Krikzz en el clon**: llevan un
   bloqueo contra clones.
 
@@ -70,7 +71,8 @@ Los informes de «funciona bien» también sirven mucho.
 
 ## English summary
 
-Free (GPL-3.0-or-later) mapper bitstreams for the **Chinese EverDrive N8 clone (EP2C5 FPGA)**, plus a
+Free (GPL-3.0-or-later) mapper bitstreams for the **EverDrive N8 China Version** (Chinese EP2C5 clone),
+Famicom and NES cartridges, plus a
 matching `MAPROUT.BIN`. **Test release**: everything matches the Mesen2 emulator on our test bench, but
 almost nothing has been tried on real hardware yet. Back up your SD's `EDFC` folder, copy
 `EDFC/MAPS/1xx.RBF` into `EDFC/MAPS/` (keep the existing files), replace `EDFC/MAPROUT.BIN`, and
