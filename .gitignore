@@ -55,3 +55,6 @@ __pycache__/
 # --- Notas de trabajo locales (no se publican) ---
 /CONTEXTO-N8.md
 /notas/
+
+# paquetes de release (release/make_release.py)
+/release/out/

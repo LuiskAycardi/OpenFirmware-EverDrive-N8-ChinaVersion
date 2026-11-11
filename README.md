@@ -22,6 +22,13 @@ Mesen2. Documentation is in Spanish.*
   mutación y cientos de juegos reales (fotogramas comparados uno a uno). Las diferencias conocidas
   están en `docs/fase4-mappers.md`. **Aún sin validar en la consola real.**
 
+## Probar en tu cartucho
+
+En [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases) hay un
+paquete listo para la microSD (los RBF y un `MAPROUT.BIN`, con instrucciones en `LEEME.md`). Los
+resultados, buenos o malos, se agradecen como *issues*. El paquete se genera con
+`make -C hdl build` y `python3 -I release/make_release.py vX.Y.Z`.
+
 ## Cómo se ha hecho (clean room)
 
 - Los registros y el comportamiento de cada mapper salen de la descripción pública (NESdev Wiki) y se
