@@ -28,7 +28,11 @@ testbenches and real games.
   da exactamente las mismas muestras que emu2413.
 - Validación: todos contra Mesen2 con el fuzz de ROMs sintéticas, bancos directos con pruebas de
   mutación y cientos de juegos reales (fotogramas comparados uno a uno). Las diferencias conocidas
-  están en `docs/fase4-mappers.md`. **Aún sin validar en la consola real.**
+  están en `docs/fase4-mappers.md`.
+- **Hardware real**: hasta ahora **solo se han probado algunos juegos en una NES real**; el resto de
+  mappers solo se ha validado en el emulador. **Pronto se creará un banco de pruebas real con una NES**
+  (mando emulado con Arduino y captura de vídeo, ver `tools/consola/`) para probar en el cartucho los
+  juegos de forma automática.
 
 **EN**
 - **194 mappers**: the 177 of the official 1.26 firmware (all but the FDS) plus 17 more (46, 59, 83,
@@ -39,7 +43,34 @@ testbenches and real games.
   produces exactly the same samples as emu2413.
 - Validation: every mapper against Mesen2 with synthetic-ROM fuzzing, direct testbenches with mutation
   testing and hundreds of real games (frames compared one by one). Known differences are listed in
-  `docs/fase4-mappers.md`. **Not yet validated on real hardware.**
+  `docs/fase4-mappers.md`.
+- **Real hardware**: so far **only some games have been tested on a real NES**; the remaining mappers
+  have only been validated in the emulator. **A real-hardware test bench with a NES will be set up
+  soon** (Arduino-emulated controller and video capture, see `tools/consola/`) to test games on the
+  cartridge automatically.
+
+## Cartucho compatible / Supported cartridge
+
+**ES** — Estos mappers están hechos para la versión **NO-PRO** del cartucho chino: el **EverDrive N8
+China Version** con FPGA **Altera Cyclone II EP2C5T144C8** y CPLD Altera MAX II. **No sirven para el
+EverDrive N8 PRO**, que usa otro hardware. Placas en las que se ha desarrollado
+(etiquetas serigrafiadas en el circuito impreso):
+
+**EN** — These mappers are made for the **NON-PRO** version of the Chinese cartridge: the **EverDrive N8
+China Version** with an **Altera Cyclone II EP2C5T144C8** FPGA and an Altera MAX II CPLD. **They do not
+work on the EverDrive N8 PRO**, which uses different hardware. Boards used during
+development (labels printed on the circuit board):
+
+| Cartucho / Cartridge | Conector / Connector | Etiqueta de la placa / Board label |
+|---|---|---|
+| NES | 72 pines / 72 pins | `V2.0 2025-1`, `WB211982` |
+| Famicom | 60 pines / 60 pins | `V3.1 2024.07` |
+
+**ES** — Otras revisiones de placa con la misma FPGA EP2C5 probablemente funcionen; si tienes una
+distinta, cuéntanos en un *issue* la etiqueta de tu placa y el resultado.
+
+**EN** — Other board revisions with the same EP2C5 FPGA will probably work; if yours is different,
+please tell us its board label and your results in an *issue*.
 
 ## Probar en tu cartucho / Test it on your cartridge
 

@@ -30,14 +30,20 @@ on your SD card are used.
 ## Requisitos / Requirements
 
 **ES**
-- **EverDrive N8 China Version** (clon chino con EP2C5, el que se vende con la SD «de fábrica» de un pack
-  vietnamita/chino), de Famicom o de NES.
+- **EverDrive N8 China Version, versión NO-PRO** (clon chino con FPGA Cyclone II EP2C5, el que se vende
+  con la SD «de fábrica» de un pack vietnamita/chino), de Famicom o de NES. **No sirve para el EverDrive
+  N8 PRO.** Placas usadas en el desarrollo (etiqueta serigrafiada en el circuito impreso):
+  - NES (72 pines): `V2.0 2025-1`, `WB211982`.
+  - Famicom (60 pines): `V3.1 2024.07`.
 - Su **OS de fábrica**. ⚠️ **No instales los OS oficiales 1.24–1.26 de Krikzz en el clon**: llevan un
   bloqueo contra clones.
 
 **EN**
-- **EverDrive N8 China Version** (Chinese EP2C5 clone, the one sold with a "factory" SD card from a
-  Vietnamese/Chinese pack), Famicom or NES.
+- **EverDrive N8 China Version, NON-PRO version** (Chinese clone with a Cyclone II EP2C5 FPGA, the one
+  sold with a "factory" SD card from a Vietnamese/Chinese pack), Famicom or NES. **It does not work on
+  the EverDrive N8 PRO.** Boards used during development (label printed on the circuit board):
+  - NES (72 pins): `V2.0 2025-1`, `WB211982`.
+  - Famicom (60 pins): `V3.1 2024.07`.
 - Its **factory OS**. ⚠️ **Do not install Krikzz's official OS 1.24–1.26 on the clone**: they include a
   lock against clones.
 
@@ -81,8 +87,9 @@ not use them).
   - Kart Fighter (116): en Mesen2 recibe una IRQ que aquí no llega; puede comportarse distinto.
   - Famicom Jump II (153): se cuelga si su partida empieza a cero (también en el emulador).
   - Varios juegos con efectos de pantalla partida pueden diferir unos pocos píxeles en la línea del corte.
-- RBF que **ya se han cargado en la consola real**: 100, 101 y 102 (versiones anteriores). **Nunca
-  probados en consola**: 103 (MMC5), 104, 105 y 106 (VRC7 con sonido FM).
+- **Hardware real**: hasta ahora solo se han probado **algunos juegos en una NES real** (RBF 100, 101 y
+  102, versiones anteriores). **Nunca probados en consola**: 103 (MMC5), 104, 105 y 106 (VRC7 con sonido
+  FM). Pronto se creará un banco de pruebas real con una NES para probarlos de forma automática.
 
 **EN**
 - **Save states**: not implemented in this package (the save state table is empty). Battery saves
@@ -98,8 +105,9 @@ not use them).
     differently.
   - Famicom Jump II (153): hangs if its save starts zeroed (also in the emulator).
   - Several games with split-screen effects may differ by a few pixels on the split line.
-- RBF files **already loaded on real hardware**: 100, 101 and 102 (earlier versions). **Never tested on
-  hardware**: 103 (MMC5), 104, 105 and 106 (VRC7 with FM audio).
+- **Real hardware**: so far only **some games have been tested on a real NES** (RBF 100, 101 and 102,
+  earlier versions). **Never tested on hardware**: 103 (MMC5), 104, 105 and 106 (VRC7 with FM audio). A
+  real-hardware test bench with a NES will be set up soon to test them automatically.
 
 ## Cómo informar / How to report
 
