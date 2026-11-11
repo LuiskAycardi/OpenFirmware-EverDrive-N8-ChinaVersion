@@ -45,7 +45,7 @@ def main():
                            capture_output=True, text=True, check=True).stdout
     (stage / "MAPPERS.txt").write_text(
         f"OpenFirmware-EverDrive-N8-ChinaVersion {ver} (commit {commit})\n"
-        "Mapper -> RBF (254 = FDS: usa el 254.RBF que ya tiene tu SD)\n\n"
+        "Mapper -> RBF. 254 = FDS: usa el 254.RBF que ya tiene tu SD / uses the 254.RBF already on your SD.\n\n"
         + "\n".join(l.strip() for l in lista.splitlines()[1:]) + "\n")
     leeme = (ROOT / "release/LEEME.md").read_text().replace("{VERSION}", ver).replace("{COMMIT}", commit)
     (stage / "LEEME.md").write_text(leeme)
