@@ -316,8 +316,11 @@ class Menu:
         self.raiz = pathlib.Path(raiz_sd)
         self.fuente = fuente
         self.cursor = cursor          # modelo aprendido: {"sel": {...}, "nosel": {...}}
-        self.teclas = {"abajo": "down", "arriba": "up", "entrar": "a", "volver": "b", "lanzar": ["a"],
-                       "pulso_ms": 60, "pausa_ms": 120, **(teclas or {})}
+        # Menú del OS v13 del N8 (comprobado en la consola el 2026-11-11 con la ROM de calibración, que confirma que el
+        # Nano envía cada botón bien): B entra en carpetas y abre el "File Menu" de una ROM, A vuelve atrás; para lanzar
+        # hay que pulsar B (abre el menú) y B otra vez ("Sel. And Start", la opción marcada).
+        self.teclas = {"abajo": "down", "arriba": "up", "entrar": "b", "volver": "a", "lanzar": ["b", "b"],
+                       "pulso_ms": 100, "pausa_ms": 150, **(teclas or {})}  # el OS v13 ignora pulsos de ~50 ms (medido 2026-11-11)
         self.log = log or (lambda *_: None)
         self.fase = (0, 0)
         self._carpetas = None
@@ -359,6 +362,15 @@ class Menu:
             lst = self.carpetas()[rel]
             reales = {i: next(r for vv, r, _ in lst if vv == v) for i, v in asign.items()}
             puntos = len(set(reales.values()))
+            # Los nombres de la lista comparten columna (la flecha puede añadir
+            # una celda). Coincidencias dispersas en gráficos del juego no son
+            # una lista, aunque encajen con dos nombres de la SD.
+            if puntos >= 2 and not any(
+                reales[a] != reales[b] and filas[a].y != filas[b].y
+                and abs(filas[a].ini - filas[b].ini) <= 1
+                for a in reales for b in reales if a < b
+            ):
+                continue
             if mejor is None or puntos > mejor[2]:
                 segundo = mejor[2] if mejor else 0
                 mejor = (rel, reales, puntos, asign, saltos)
@@ -531,8 +543,8 @@ class Menu:
         carpeta, nombre = os.path.split(rom_rel)
         lec = self.ir_a_carpeta(mando, captura, carpeta)
         self.elegir(mando, captura, nombre, lec)
-        for b in self.teclas["lanzar"]:
-            self._tocar(mando, b)
+        for i, b in enumerate(self.teclas["lanzar"]):
+            mando.tocar(b, self.teclas["pulso_ms"], 800 if i + 1 < len(self.teclas["lanzar"]) else 50)
 
     def es_menu(self, img):
         lec = self.leer(img)

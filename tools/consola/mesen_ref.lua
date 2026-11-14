@@ -18,20 +18,66 @@ for a, b, btns in string.gmatch(os.getenv("N8_SCRIPT") or "", "(%d+)-(%d+):([%a%
     for name in string.gmatch(btns, "%a+") do set[string.lower(name)] = true end
     script[#script + 1] = { tonumber(a), tonumber(b), set }
 end
+-- N8_INPUT_FILE: un byte por fotograma (máscara del Nano: bit 0 = A ... bit 7 = Derecha), por ejemplo una
+-- película TAS convertida con tas.py; el byte k es la entrada del fotograma k. Se suma al guion N8_SCRIPT.
+local NOMBRES = { "a", "b", "select", "start", "up", "down", "left", "right" }
+local entrada = nil
+local rutaEntrada = os.getenv("N8_INPUT_FILE")
+local desfaseEntrada = tonumber(os.getenv("N8_INPUT_OFFSET") or "0")   -- byte de la entrada = fotograma + desfase
+if rutaEntrada and rutaEntrada ~= "" then
+    local f = io.open(rutaEntrada, "rb")
+    entrada = f:read("a")
+    f:close()
+end
+
 local function scriptInput(n)
+    local set = {}
     for _, t in ipairs(script) do
-        if n >= t[1] and n <= t[2] then return t[3] end
+        if n >= t[1] and n <= t[2] then
+            for k, v in pairs(t[3]) do set[k] = v end
+            break
+        end
     end
-    return {}
+    local k = n + desfaseEntrada
+    if entrada and k >= 0 and k < #entrada then
+        local b = string.byte(entrada, k + 1)
+        for i = 0, 7 do
+            if (b >> i) & 1 == 1 then set[NOMBRES[i + 1]] = true end
+        end
+    end
+    return set
 end
 
 local frame = 0
-local polls = {}       -- fotograma -> número de lecturas
+local polls = {}       -- fotograma -> número de pulsos de LATCH
 
+-- Mesen2 lanza inputPolled una vez por fotograma en una línea fija de la PPU, lea o no el juego el mando: sirve para
+-- dar la entrada del guion, pero no para saber cuándo lee. Eso lo dice el pulso de LATCH (escritura en $4016 con el
+-- bit 0 de 0 a 1), que es justo lo que cuenta el Nano en la consola. (Punch-Out!! no hace LATCH en su intro: con
+-- inputPolled salía p0 = 1 y la consola iba ~9 s desfasada; 2026-11-11.)
 emu.addEventCallback(function()
-    polls[frame] = (polls[frame] or 0) + 1
     emu.setInput(scriptInput(frame), 0, 0)
 end, emu.eventType.inputPolled)
+
+local latch = 0
+emu.addMemoryCallback(function(addr, value)
+    local b = value & 1
+    if b == 1 and latch == 0 then polls[frame] = (polls[frame] or 0) + 1 end
+    latch = b
+end, emu.callbackType.write, 0x4016)
+
+-- N8_PEEK: direcciones de la CPU separadas por comas; al terminar se escriben sus valores en peek.txt (para
+-- comprobar si una película TAS sincroniza: mundo y nivel de SMB1, etc.).
+local function writePeek()
+    local lista = os.getenv("N8_PEEK") or ""
+    if lista == "" then return end
+    local f = io.open(shotDir .. "/peek.txt", "w")
+    for a in string.gmatch(lista, "[^,]+") do
+        local addr = tonumber(a)
+        f:write(string.format("%04X %d\n", addr, emu.read(addr, emu.memType.nesDebug, false)))
+    end
+    f:close()
+end
 
 local function writePolls()
     local f = io.open(shotDir .. "/polls.txt", "w")
@@ -59,6 +105,7 @@ emu.addEventCallback(function()
         f:close()
     end
     if frame >= frames then
+        writePeek()
         writePolls()
         emu.stop(0)
     end

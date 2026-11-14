@@ -19,9 +19,15 @@
  *   B hh | P bot | S [bot]   botones fijos: máscara hex | pulsar | soltar (sin nada: todos)
  *   T bot ms            pulsar durante ms y soltar           -> !T
  *   R [ms]              Select+B (reset del kit Lava) hasta ms (5000) o hasta ver el reset -> !R reset= lat=
+ *   H [ms]              botón RESET de la consola (D2 + PC817) pulsado ms (1000, máx. 5000; con pulsos cortos el OS del N8 carga mal) -> !BOTON lat=
+ *                       (lat = lecturas del mando en los 2 primeros segundos tras soltarlo, para saber si arrancó)
  *   GB | GA tramos      borrar el guion | añadir "ini-fin:bot+bot;..." (formato de N8_SCRIPT)
  *   A p0 [ms]           armar: en el primer LATCH tras ms (250) de silencio, fotograma = p0 -> !INICIO fc=
  *   L 0|1               aviso "!L fc" en cada fotograma nuevo
+ *   QB | QX             cola de entrada por fotograma: vaciar y activar | desactivar
+ *   Q f hhhh...         botones de los fotogramas f, f+1... (un byte hex por fotograma; películas TAS). La cola
+ *                       guarda 256 fotogramas (f % 256): el PC la llena por delante del juego. Si llega un fotograma
+ *                       sin dato, cuenta un hueco (qf= en E) y no pulsa nada.
  * Botones: a b select start up down left right, unidos con '+'.
  */
 #include "nucleo.h"
@@ -58,6 +64,15 @@ static uint32_t arm_p0, arm_sil;
 static uint8_t pulso;        /* 0, 'T' o 'R' */
 static uint8_t pulso_m, pulso_reset;
 static uint32_t pulso_t0, pulso_fin, pulso_lat0;
+
+#define NQ 256                      /* cola de entrada por fotograma (potencia de 2) */
+static uint8_t qbuf[NQ];
+static uint8_t q_activa;
+static uint32_t q_hasta;            /* primer fotograma sin dato */
+static uint16_t q_huecos;           /* fotogramas que llegaron sin dato */
+
+static uint8_t boton;        /* 1 = botón RESET pulsado, 2 = soltado y contando lecturas */
+static uint32_t boton_fin, boton_lat0;
 
 static char linea[LINEA_MAX + 1];
 static uint8_t n_linea, desborde;
@@ -104,16 +119,23 @@ static uint8_t guion(uint32_t f) {               /* el primer tramo que contiene
     return 0;
 }
 
+static uint8_t cola(uint32_t f) {                 /* byte de la cola para el fotograma f (0 si no hay) */
+    return (q_activa && f < q_hasta && q_hasta - f <= NQ) ? qbuf[f & (NQ - 1)] : 0;
+}
+
 static uint8_t botones(uint32_t f) {
     uint8_t m = manual | pulso_m;
-    if (fc_valido) m |= guion(f);
+    if (fc_valido) {
+        m |= guion(f);
+        m |= cola(f);
+    }
     return m;
 }
 
 static uint8_t arm_esperando(void) { return armado && arm_cargado; }
 
 static void recargar(void) {                      /* byte para la próxima lectura */
-    if (arm_esperando()) hw_cargar((uint8_t)~(manual | pulso_m | guion(arm_p0)));
+    if (arm_esperando()) hw_cargar((uint8_t)~(manual | pulso_m | guion(arm_p0) | cola(arm_p0)));
     else hw_cargar((uint8_t)~botones(fc + k_pend));
 }
 
@@ -165,6 +187,7 @@ void nucleo_latch(uint32_t t) {
         if (e > -lim && e < lim) per16 = (uint32_t)((int32_t)per16 + (e >> 5));
     }
     fc += k_pend;
+    if (q_activa && fc_valido && fc >= q_hasta && q_huecos < 0xFFFF) q_huecos++;
     nuevo_inicio(t);
     recargar();
     if (eventos) { tx_s("!L "); tx_u(fc); hw_tx('\n'); }
@@ -177,6 +200,17 @@ void nucleo_latch(uint32_t t) {
 }
 
 void nucleo_tick(uint32_t t) {
+    if (boton == 1 && (int32_t)(t - boton_fin) >= 0) {
+        hw_boton_reset(0);
+        boton = 2;
+        boton_fin = t + ms_ticks(2000);
+        boton_lat0 = n_latch;
+    } else if (boton == 2 && (int32_t)(t - boton_fin) >= 0) {
+        boton = 0;
+        tx_s("!BOTON");
+        tx_kv("lat", n_latch - boton_lat0);
+        hw_tx('\n');
+    }
     if (armado && !arm_cargado && (t - t_ult) >= arm_sil) {
         arm_cargado = 1;
         recargar();
@@ -308,6 +342,9 @@ static void estado(uint32_t t) {
     tx_kv("v5", hw_v5());
     tx_kv("miso", miso);
     tx_kv("perd", hw_perdidos());
+    tx_kv("rst", boton == 1);
+    tx_kv("q", q_activa ? q_hasta : 0);
+    tx_kv("qf", q_huecos);
     hw_tx('\n');
 }
 
@@ -350,6 +387,42 @@ static void ejecutar(const char *s, uint32_t t) {
         pulso = 'R'; pulso_m = BSEL | BB; pulso_reset = 0; pulso_t0 = t; pulso_fin = t + ms_ticks(v);
         pulso_lat0 = n_latch;
         recargar(); ok();
+        break;
+    case 'H':
+        if (!numero(&p, &v)) v = 1000;
+        if (v == 0 || v > 5000) { error("ms"); break; }
+        if (boton) { error("ocupado"); break; }
+        boton = 1; boton_fin = t + ms_ticks(v);
+        hw_boton_reset(1); ok();
+        break;
+    case 'Q':
+        if (s[1] == 'B') { q_activa = 1; q_hasta = 0; q_huecos = 0; recargar(); ok(); break; }
+        if (s[1] == 'X') { q_activa = 0; recargar(); ok(); break; }
+        if (!numero(&p, &v)) { error("formato"); break; }
+        saltar(&p);
+        {
+            uint32_t f = v;
+            uint8_t malo = 0;
+            while (*p) {
+                uint8_t b = 0;
+                for (uint8_t i = 0; i < 2; i++) {
+                    char c = *p++;
+                    uint8_t d;
+                    if (c >= '0' && c <= '9') d = (uint8_t)(c - '0');
+                    else if (c >= 'a' && c <= 'f') d = (uint8_t)(c - 'a' + 10);
+                    else if (c >= 'A' && c <= 'F') d = (uint8_t)(c - 'A' + 10);
+                    else { malo = 1; break; }
+                    b = (uint8_t)((b << 4) | d);
+                }
+                if (malo) break;
+                qbuf[f & (NQ - 1)] = b;
+                f++;
+            }
+            if (malo) { error("formato"); break; }
+            if (f > q_hasta) q_hasta = f;
+            recargar();
+            ok();
+        }
         break;
     case 'G':
         if (s[1] == 'B') { n_tramos = 0; fin_guion = 0; recargar(); ok(); }

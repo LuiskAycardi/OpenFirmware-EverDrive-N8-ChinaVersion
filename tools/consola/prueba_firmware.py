@@ -123,7 +123,60 @@ def main():
     s = n.salida.decode() + n.leer()
     bien &= comprobar("!R reset=0 lat=0" in s, "juego colgado: el reset no puede llegar (lat=0)")
 
-    # 5. errores de formato
+    # 5. botón RESET (D2): pulsado 300 ms, suelto y, 2 s después, aviso con las lecturas del menú
+    n = Nano()
+    r = n.orden("H 300")
+    bien &= comprobar("ok" in r.splitlines() and n.l.sim_boton_reset() == 1, "H 300: D2 alto")
+    bien &= comprobar("error" in n.orden("H 300"), "H mientras otro: rechazado")
+    n.avanzar(0.29)
+    bien &= comprobar(n.l.sim_boton_reset() == 1, "sigue pulsado a los 290 ms")
+    n.avanzar(0.02)
+    bien &= comprobar(n.l.sim_boton_reset() == 0, "suelto a los 300 ms")
+    for _ in range(60):                              # el menú del N8 lee el mando 1 s
+        n.t += int(PER)
+        n.l.nucleo_tick(n.t)
+        n.latch()
+    n.avanzar(1.1)
+    s = n.salida.decode() + n.leer()
+    bien &= comprobar("!BOTON lat=60" in s, "aviso !BOTON con las lecturas tras soltar")
+    bien &= comprobar("error" in n.orden("H 0") and "error" in n.orden("H 6000"), "H fuera de 1-5000 ms")
+    bien &= comprobar(n.l.sim_boton_reset() == 0, "D2 en bajo tras los errores")
+
+    # 6. cola de entrada por fotograma (películas TAS): cada fotograma su byte, también con lecturas dobles y
+    #    fotogramas sin lectura; un fotograma sin dato cuenta un hueco
+    n = Nano()
+    peli = {f: (f * 37 + 11) & 0xFF for f in range(5, 40)}
+    n.orden("GB")                                    # sin guion: la biblioteca conserva el de la prueba 1
+    bien &= comprobar("ok" in n.orden("QB"), "QB: cola vacía y activa")
+    for f0 in range(5, 40, 20):
+        trozo = "".join(f"{peli[f]:02x}" for f in range(f0, min(40, f0 + 20)))
+        bien &= comprobar("ok" in n.orden(f"Q {f0} {trozo}"), f"Q {f0}: 20 fotogramas")
+    bien &= comprobar("error" in n.orden("Q 3 0g"), "Q con hex malo: rechazado")
+    n.orden("A 5 250")
+    n.avanzar(1.0)
+    t0 = n.t
+    malos = []
+    for f in range(5, 42):
+        n.t = t0 + int((f - 5) * PER)
+        n.l.nucleo_tick(n.t)
+        if f in (12, 13):
+            continue
+        v = n.latch()
+        if f % 5 == 0:
+            n.t += 250
+            n.l.nucleo_tick(n.t)
+            if n.latch() != v:
+                malos.append((f, "segunda lectura"))
+        if f < 40 and v != peli[f]:
+            malos.append((f, v, peli[f]))
+        n.avanzar(0.004)
+    bien &= comprobar(not malos, f"cola: cada fotograma con su byte {malos[:3]}")
+    e = n.orden("E")
+    bien &= comprobar(" q=40 " in e and " qf=2" in e, f"E: q=40 y 2 huecos (fotogramas 40 y 41) ({e.strip()})")
+    n.orden("QX")
+    bien &= comprobar(n.latch() == 0, "QX: cola desactivada, nada pulsado")
+
+    # 7. errores de formato
     n = Nano()
     bien &= comprobar("error" in n.orden("GA 10-5:a"), "tramo al revés rechazado")
     bien &= comprobar("error" in n.orden("P jump"), "botón desconocido rechazado")

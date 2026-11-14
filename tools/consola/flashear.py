@@ -102,6 +102,11 @@ def flashear(puerto, imagen, bauds=(115200, 57600), log=print):
         s = Serie(puerto, baud)
         try:
             s.reiniciar_dtr()           # el cargador solo escucha unos instantes tras el reinicio
+            # El cargador antiguo (ATmegaBOOT, 57600) cuenta como errores los bytes que llegan mientras arranca y,
+            # con unos pocos, salta al programa: contestaba a una sincronización y después callaba. Esperar a que
+            # arranque (0,2 s) antes de hablarle lo evita; con Optiboot no cambia nada.
+            time.sleep(0.2)
+            s.vaciar()
             st = Stk500(s)
             if not st.sincronizar():
                 log(f"{baud} baudios: sin respuesta del cargador")

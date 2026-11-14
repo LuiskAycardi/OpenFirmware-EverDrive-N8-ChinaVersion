@@ -55,10 +55,13 @@ DEF = {
     "rom_calibracion": "PRUEBAS/0 Calibracion/calibracion.nes",
     "sensor_5v": False,
     "teclas_menu": {},
-    "silencio_arranque_ms": 250,
+    "silencio_arranque_ms": 500,  # OS v13: pausas de hasta ~280 ms al lanzar; la carga del RBF calla ~770 ms (2026-11-11)
     "retraso_video_s": 0.08,
     "ventana_s": 0.35,
     "reset_ms": 5000,
+    "reset_boton": True,          # botón RESET con el PC817 en D2 (CONEXION.md); False = solo Select+B
+    "ventana": True,             # ventana en vivo con lo que captura la consola (ffplay); --sin-ventana la quita
+    "reset_boton_ms": 1000,      # pulsos cortos (300 ms) hacen fallar la carga del OS del N8 (aviso del usuario, 2026-11-11)
 }
 
 
@@ -201,7 +204,10 @@ def guion_de(j, guiones, fotogramas=None):
 
 
 def dir_ref(rom_rel, g):
-    h = hashlib.md5(json.dumps([g["guion"], sorted(g["shots"]), g["fotogramas"]]).encode()).hexdigest()[:8]
+    clave = [g["guion"], sorted(g["shots"]), g["fotogramas"]]
+    if g.get("entrada"):                                   # película TAS: su contenido y desfase forman parte
+        clave += [hashlib.md5(pathlib.Path(g["entrada"]).read_bytes()).hexdigest(), g.get("desfase", 0)]
+    h = hashlib.md5(json.dumps(clave).encode()).hexdigest()[:8]
     return AQUI / "refs" / f"{referencia.clave(rom_rel)}__{h}"
 
 
@@ -221,7 +227,7 @@ class Banco:
         else:
             import captura
             self.mando = Mando(cfg["puerto"], log=log)
-            self.cap = captura.Captura(cfg["video"], cfg["audio"], log=log)
+            self.cap = captura.Captura(cfg["video"], cfg["audio"], log=log, ventana=cfg["ventana"])
         self.fuente = menu_mod.Fuente(self.datos / "fuente.json")
         cursor = None
         if (self.datos / "cursor.json").exists():
@@ -256,8 +262,15 @@ class Banco:
 
 # ---------------------------------------------------------------- volver al menú
 def en_menu(b, intentos=2):
+    """La lectura del menú, o None. Exige 2 entradas reconocidas y la elegida (salvo carpetas de una sola entrada):
+    con una sola coincidencia, el título de Punch-Out!! pasaba por el menú (2026-11-11)."""
     lec, _ = b.menu.ver(b.cap, intentos=intentos)
-    return lec if lec is not None and lec.carpeta is not None else None
+    if lec is None or lec.carpeta is None or lec.seleccion is None:
+        return None
+    unicas = {r for _, r, _ in b.menu.carpetas()[lec.carpeta] if r != ".."}
+    if lec.puntos < 2 and len(unicas) > 1:
+        return None
+    return lec
 
 
 def apagar_a_mano(b, motivo):
@@ -278,9 +291,26 @@ def apagar_a_mano(b, motivo):
     raise Abortar("la consola no ha vuelto al menú en 30 minutos")
 
 
+def reset_boton(b, res=None):
+    """Botón RESET por el PC817. Devuelve la lectura del menú si vuelve a él (o None)."""
+    if not b.cfg["reset_boton"]:
+        return None
+    r = b.mando.reset_boton(b.cfg["reset_boton_ms"])
+    if res is not None:
+        res["reset"] = dict(r, boton=1)
+    lec = en_menu(b, 4)
+    if not lec and res is not None:
+        res.setdefault("notas", []).append("tras el botón RESET no apareció el menú")
+    return lec
+
+
 def asegurar_menu(b):
     lec = en_menu(b)
     if lec:
+        return lec
+    lec = reset_boton(b)
+    if lec:
+        log("menú de nuevo tras el botón RESET")
         return lec
     log("no veo el menú: reset con Select+B")
     r = b.mando.reset(b.cfg["reset_ms"])
@@ -294,6 +324,8 @@ def asegurar_menu(b):
 
 
 def volver_al_menu(b, res):
+    if reset_boton(b, res):
+        return
     r = b.mando.reset(b.cfg["reset_ms"])
     res["reset"] = r
     if not r.get("lat"):
@@ -307,17 +339,19 @@ def volver_al_menu(b, res):
 
 
 def lanzar(b, rom_rel, p0, guion_txt):
-    """Navega hasta la ROM, carga y arma el guion y pulsa A. Devuelve la hora del pulso."""
+    """Navega hasta la ROM, carga y arma el guion y la lanza (B, B en el OS v13). Devuelve la hora del pulso."""
     asegurar_menu(b)
     carpeta, nombre = os.path.split(rom_rel)
     lec = b.menu.ir_a_carpeta(b.mando, b.cap, carpeta)
     b.menu.elegir(b.mando, b.cap, nombre, lec)
     b.mando.guion(guion_txt)
     b.mando.eventos(True)
+    teclas = b.menu.teclas["lanzar"]
+    for k in teclas[:-1]:            # B abre el File Menu del N8 (con 400 ms la 2.ª B a veces se perdía: 800); al
+        b.mando.tocar(k, b.menu.teclas["pulso_ms"], 800)    # abrirlo el OS calla un momento: se arma después
     b.mando.armar(p0, b.cfg["silencio_arranque_ms"])
     t = time.monotonic()
-    for k in b.menu.teclas["lanzar"]:
-        b.mando.tocar(k, b.menu.teclas["pulso_ms"], 50)
+    b.mando.tocar(teclas[-1], b.menu.teclas["pulso_ms"], 50)
     return t
 
 
@@ -351,8 +385,8 @@ def calibrar_todo(b, salida):
                 break
             b.cap.parar()
             # quizá estamos en la raíz con dos líneas: entrar en una carpeta con más texto
-            for k in (["down", "a"], ["b"], ["a"], ["b", "b"])[intento]:
-                b.mando.tocar(k, 60, 300)
+            for k in (["down", "b"], ["a"], ["b"], ["a", "a"])[intento]:   # OS v13: B entra, A vuelve
+                b.mando.tocar(k, 100, 300)
         else:
             raise Abortar("no consigo leer el menú del N8 con la calibración provisional")
         _, img = b.cap.estable(3)
@@ -464,8 +498,22 @@ def probar(b, j, g, ref, dir_juego):
     p0 = ref["p0"] if ref["p0"] is not None else 0
     if ref["p0"] is None:
         res["notas"].append("el juego no lee el mando en la referencia: sin guion")
+    # Película TAS (g["entrada"], un byte por fotograma): el Nano toma los botones de su cola, que se llena antes de
+    # lanzar (desde p0) y se rellena mientras se juega, siempre unos 200 fotogramas por delante.
+    datos, q_hasta = None, 0
+    if g.get("entrada"):
+        datos, desfase = pathlib.Path(g["entrada"]).read_bytes(), g.get("desfase", 0)
+
+        def byte_de(f):
+            return datos[f + desfase] if 0 <= f + desfase < len(datos) else 0
+        b.mando.orden("X")                        # sin guion activo mientras se navega por el menú
+        b.mando.cola_vaciar()
+        q_hasta = p0 + 200
+        b.mando.cola_escribir(p0, [byte_de(f) for f in range(p0, q_hasta)])
     b.cap.grabar_clip(dir_juego / "clip.mp4")
     audio = b.cap.grabar_audio(dir_juego / "audio.wav")
+    rotulo = getattr(b.cap, "rotulo", lambda s: None)
+    rotulo(f"{j['n'][:40]}\nnavegando por el menú del N8")
     t_lanzar = lanzar(b, j["rom_rel"], p0, g["guion"])
     ini = b.mando.esperar_aviso("!INICIO", 30, t_lanzar)
     if not ini:
@@ -484,12 +532,42 @@ def probar(b, j, g, ref, dir_juego):
     t_limite = t_ini + (fin - p0) / FPS * 1.6 + 20
     mascara = b.mascara()
     cuelgue = None
+    polls_ref = sorted(p[0] for p in ref.get("polls", []))
+    rearmes = 0
     while True:
         time.sleep(0.05)
         ahora = time.monotonic()
         fotos = [x for x in list(b.mando.fotos) if x[0] >= t_ini]
         fc = fotos[-1][1] if fotos else p0
         t_ult = fotos[-1][0] if fotos else t_ini
+        if int(ahora * 4) != int((ahora - 0.05) * 4):          # el rótulo, 4 veces por segundo
+            ok_ = sum(1 for e in res["escenas"] if e.get("veredicto") == "ok")
+            ult = res["escenas"][-1] if res["escenas"] else None
+            rotulo(f"{j['n'][:40]}\nfotograma {fc} / {fin}   escenas iguales {ok_}/{len(res['escenas'])}"
+                   + (f"\núltima: {ult['f']} {ult['veredicto']}" if ult else ""))
+        # La cola (256 fotogramas) va siempre ~250 por delante; se rellena de una vez lo que falte, en trozos de 48.
+        # (Con un umbral de 150 y un trozo por vuelta, en el TAS de SMB llegaron 10 fotogramas sin dato.)
+        if datos is not None and q_hasta - fc < 210 and q_hasta <= fin + 300:   # más allá del final: ceros
+            n = fc + 250 - q_hasta
+            if n > 0:
+                b.mando.cola_escribir(q_hasta, [byte_de(f) for f in range(q_hasta, q_hasta + n)])
+                q_hasta += n
+        # Con ROMs grandes el OS v13 carga por partes y lee el mando entre medias ("loading..." y segundos en negro):
+        # el !INICIO puede llegar con una lectura del OS. Si al principio las lecturas se cortan más de 0,5 s donde
+        # Mesen2 sigue leyendo, era una pausa del OS: se rearma el Nano y se espera el arranque de verdad.
+        sig_ref = next((p for p in polls_ref if p > fc), None)
+        if (rearmes < 8 and fc - p0 < 300 and ahora - t_ult > 0.5 and sig_ref is not None and sig_ref <= fc + 30
+                and not any(e.get("f", 0) <= fc for e in res["escenas"])):
+            b.mando.armar(p0, b.cfg["silencio_arranque_ms"])
+            ini = b.mando.esperar_aviso("!INICIO", 30, ahora)
+            if not ini:
+                res["notas"].append("tras una pausa del arranque no volvió a leer el mando en 30 s")
+                break
+            t_ini = next(t for t, a in reversed(b.mando.avisos) if a.startswith("!INICIO"))
+            t_limite = t_ini + (fin - p0) / FPS * 1.6 + 20
+            rearmes += 1
+            log(f"  pausa del OS al cargar: nuevo arranque ({rearmes})")
+            continue
         for s in list(pendientes):
             ts = hora_de(fotos, s, t_ini, p0) + L
             if ahora > ts + V + 0.15:
@@ -509,7 +587,11 @@ def probar(b, j, g, ref, dir_juego):
                 pendientes.remove(s)
                 log(f"  escena {s}: {e['veredicto']} {e.get('frac', '')}")
         sin_leer = ahora - t_ult
-        if sin_leer > 3:
+        # Hay juegos que pasan segundos sin leer el mando (la intro de Punch-Out!!, ~6 s en negro): solo es cuelgue si
+        # en Mesen2 el juego ya habría vuelto a leerlo. Siguiente lectura de la referencia tras el último fotograma visto:
+        sig_ref = next((p for p in polls_ref if p > fc), None)
+        espera_ref = sig_ref is None or (fc + sin_leer * FPS) < sig_ref + 3 * FPS
+        if sin_leer > 3 and not espera_ref:
             ult = b.cap.ventana(ahora - 3, ahora)
             if comparar.congelada(ult, mascara) or sin_leer > 12:
                 cuelgue = {"fc": fc, "segundos_sin_leer": round(sin_leer, 1),
@@ -523,6 +605,11 @@ def probar(b, j, g, ref, dir_juego):
             break
     b.cap.parar_clip()
     b.cap.parar_audio()
+    if datos is not None:
+        res["huecos_cola"] = b.mando.estado().get("qf", 0)    # fotogramas que llegaron sin entrada de la película
+        b.mando.cola_quitar()
+        if res["huecos_cola"]:
+            res["notas"].append(f"{res['huecos_cola']} fotogramas sin entrada de la película (la cola no llegó a tiempo)")
     res["lecturas"] = len([x for x in b.mando.fotos if x[0] >= t_ini])
     res["fc_final"] = fc
     if cuelgue:
@@ -625,6 +712,26 @@ número = fracción de píxeles que no encajan con su color.</p><table>{''.join(
 
 
 # ---------------------------------------------------------------- órdenes
+def preparar_tas(a, cfg, salida):
+    """Un juego que reproduce una película TAS .fm2 (tas.py) con capturas cada --cada fotogramas."""
+    import tas
+    if not a.rom or len(a.rom) != 1:
+        raise SystemExit("tas: indica la ROM con --rom (ruta relativa a la raíz de la SD)")
+    rom_rel = a.rom[0]
+    cab, mandos, _ = tas.leer_fm2(a.pelicula)
+    if tas.md5_rom(pathlib.Path(cfg["sd"]) / rom_rel) != cab.get("romChecksum"):
+        raise SystemExit(f"tas: la ROM {rom_rel} no es la de la película ({cab.get('romFilename')})")
+    entrada = salida / "pelicula.bin"
+    entrada.write_bytes(bytes(mandos))
+    fin = len(mandos) + a.extra
+    g = {"guion": "", "fotogramas": fin, "shots": list(range(a.cada, fin + 1, a.cada)), "entrada": str(entrada),
+         "desfase": a.desfase}
+    nombre = f"TAS {pathlib.Path(a.pelicula).stem}"
+    log(f"{nombre}: {len(mandos)} fotogramas de película, {len(g['shots'])} escenas, ROM {rom_rel}")
+    return [{"id": None, "n": nombre, "m": "", "tipo": "t", "pila": False, "seccion": "TAS", "rom_rel": rom_rel,
+             "motivo": None, "g": g}]
+
+
 def preparar_lista(a, cfg, guiones):
     if a.carpeta:
         lista = lista_carpeta(cfg, a.carpeta)
@@ -655,7 +762,8 @@ def generar_refs(validos, cfg):
         rom = pathlib.Path(cfg["sd"]) / j["rom_rel"]
         d = dir_ref(j["rom_rel"], j["g"])
         try:
-            refs[j["rom_rel"]] = referencia.generar(rom, j["g"]["guion"], j["g"]["shots"], j["g"]["fotogramas"], d)
+            refs[j["rom_rel"]] = referencia.generar(rom, j["g"]["guion"], j["g"]["shots"], j["g"]["fotogramas"], d,
+                                                    entrada=j["g"].get("entrada"), desfase=j["g"].get("desfase", 0))
         except Exception as e:  # noqa: BLE001
             log(f"[{k}/{len(validos)}] sin referencia para {j['n']}: {e}")
             continue
@@ -665,7 +773,11 @@ def generar_refs(validos, cfg):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("accion", choices=["dispositivos", "calibrar", "referencias", "ejecutar", "informe"])
+    ap.add_argument("accion", choices=["dispositivos", "calibrar", "referencias", "ejecutar", "informe", "tas"])
+    ap.add_argument("--pelicula", help="tas: película .fm2 de FCEUX (TASVideos)")
+    ap.add_argument("--desfase", type=int, default=1, help="tas: fotograma de la película = fotograma + desfase (FCEUX: 1)")
+    ap.add_argument("--cada", type=int, default=600, help="tas: una escena cada tantos fotogramas")
+    ap.add_argument("--extra", type=int, default=600, help="tas: fotogramas tras el final de la película")
     ap.add_argument("carpeta_informe", nargs="?")
     ap.add_argument("--config", default=str(AQUI / "config.json"))
     ap.add_argument("--consola", choices=["nes", "famicom"])
@@ -679,8 +791,11 @@ def main():
     ap.add_argument("--sim-fallos", default=None,
                     help='en seco: "archivo.nes=negra,otro.nes=cuelgue:300" (por defecto, el 2.º juego negra y el 3.º se cuelga)')
     ap.add_argument("--recalibrar", action="store_true")
+    ap.add_argument("--sin-ventana", action="store_true", help="sin la ventana en vivo de la capturadora")
     a = ap.parse_args()
     cfg = cargar_config(a.config)
+    if a.sin_ventana:
+        cfg["ventana"] = False
     a.consola = a.consola or cfg["consola"]
 
     if a.accion == "dispositivos":
@@ -700,9 +815,12 @@ def main():
     guiones = cargar_guiones()
     salida = AQUI / "informes" / (datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ("-seco" if a.seco else ""))
     salida.mkdir(parents=True, exist_ok=True)
-    validos, lista = preparar_lista(a, cfg, guiones)
+    if a.accion == "tas":
+        validos = lista = preparar_tas(a, cfg, salida)
+    else:
+        validos, lista = preparar_lista(a, cfg, guiones)
     log(f"{len(validos)} juegos para la {a.consola.upper()} -> {salida}")
-    if a.accion in ("referencias", "ejecutar"):
+    if a.accion in ("referencias", "ejecutar", "tas"):
         refs = generar_refs(validos, cfg)
         if a.banco:
             por_guion = {}

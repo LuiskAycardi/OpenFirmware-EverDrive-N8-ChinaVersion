@@ -41,13 +41,30 @@ def main():
     ap.add_argument("salida")
     ap.add_argument("--fds", action="store_true", help="mapper 254 (FDS) -> 254.RBF del cartucho")
     ap.add_argument("--lista", action="store_true", help="escribir también la lista de mappers por RBF")
+    ap.add_argument("--base", metavar="MAPROUT", help="partir de este MAPROUT (el de fábrica): los mappers que no "
+                    "implementamos siguen en sus RBF, y su tabla de save state se conserva")
+    ap.add_argument("--maps", metavar="DIR", help="con --base: carpeta MAPS de la SD; los mappers de la base cuyo "
+                    "RBF no esté ahí pasan a $FF (no soportado)")
     a = ap.parse_args()
     r = routing((ROOT / "hdl/rtl/n8_top.v").read_text())
     if any(v is None for v in r.values()):
         sys.exit("mapper fuera de un bloque N8_RBF_nnn: " + str(sorted(k for k, v in r.items() if v is None)))
     data = bytearray([0xFF] * 512)
+    de_base = {}
+    if a.base:
+        base = pathlib.Path(a.base).read_bytes()
+        if len(base) not in (256, 512):
+            sys.exit(f"{a.base}: {len(base)} bytes; un MAPROUT mide 256 o 512")
+        data[:len(base)] = base
+        if a.maps:                                   # rutas de la base a RBF que no existen -> no soportado
+            for i in range(512):
+                if data[i] != 0xFF and not (pathlib.Path(a.maps) / f"{data[i]:03d}.RBF").exists():
+                    data[i] = 0xFF
     for m, v in r.items():
         data[m] = v
+        data[256 + m] = 0xFF                         # nuestros RBF no tienen save states
+    if a.base:
+        de_base = {m: data[m] for m in range(256) if data[m] != 0xFF and m not in r}
     if a.fds:
         data[254] = 254
     out = pathlib.Path(a.salida)
@@ -55,10 +72,13 @@ def main():
     por_rbf = {}
     for m, v in sorted(r.items()):
         por_rbf.setdefault(v, []).append(m)
-    print(f"{out}: {len(r)} mappers en {len(por_rbf)} RBF" + (" + FDS (254)" if a.fds else ""))
+    print(f"{out}: {len(r)} mappers en {len(por_rbf)} RBF" + (" + FDS (254)" if a.fds else "")
+          + (f" + {len(de_base)} de la base ({a.base})" if a.base else ""))
     if a.lista:
         for v in sorted(por_rbf):
             print(f"  {v:03d}.RBF ({len(por_rbf[v])}): " + ", ".join(map(str, por_rbf[v])))
+        if de_base:
+            print("  de la base: " + ", ".join(f"{m}->{v:03d}" for m, v in sorted(de_base.items())))
     return 0
 
 

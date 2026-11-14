@@ -94,12 +94,29 @@ class Mando:
         self.hola = False
         self.hilo = threading.Thread(target=self._lector, daemon=True)
         self.hilo.start()
-        # El Nano se reinicia al abrir el puerto (DTR): esperar su saludo; si no llega, preguntar.
-        fin = time.monotonic() + esperar_hola
+        # Serie no baja DTR al cerrar (sin HUPCL), así que el Nano solo se reinicia la primera vez que se abre el puerto
+        # tras enchufarlo. Preguntar primero; si no contesta (está arrancando), esperar su saludo y volver a preguntar.
+        # Como el Nano no se reinicia, pueden quedar en el puerto restos de la conexión anterior (un trozo de línea):
+        # se manda un salto de línea para cerrar la que el Nano tuviera a medias y se descarta lo que llegue.
+        self._escribir(b"\n")
+        time.sleep(0.15)
         with self.cv:
-            while not self.hola and time.monotonic() < fin:
-                self.cv.wait(0.05)
-        r = self.orden("?", 1.5)
+            self.resp.clear()
+        r = ""
+        for _ in range(3):
+            try:
+                r = self.orden("?", 0.4)
+            except ErrorMando:
+                fin = time.monotonic() + esperar_hola
+                with self.cv:
+                    while not self.hola and time.monotonic() < fin:
+                        self.cv.wait(0.05)
+                try:
+                    r = self.orden("?", 1.5)
+                except ErrorMando:
+                    continue
+            if "N8MANDO" in r:
+                break
         if "N8MANDO" not in r:
             raise ErrorMando(f"{puerto} no es el mando N8 (respuesta {r!r}). ¿Está flasheado?")
         self.log(f"mando en {puerto} ({describir(puerto) or 'USB'}): {r}")
@@ -130,10 +147,19 @@ class Mando:
         self.s.cerrar()
 
     # ------------------------------------------------------------ órdenes
-    def orden(self, texto, espera=1.0):
+    def _escribir(self, datos):
+        """Byte a byte con 1,2 ms entre ellos. El firmware atiende la UART por sondeo (para no retrasar la
+        interrupción de LATCH) y su recepción guarda solo 2 bytes: con los avisos !L activos, una vuelta larga del
+        bucle (pasar fc a texto) pisaba bytes de una orden enviada de golpe. Medido en la consola el 2026-11-11:
+        de golpe se perdían 10 de 200 órdenes; byte a byte, 0 de 200."""
+        for b in bytes(datos):              # 1,2 ms: cada byte en su propio paquete USB (con 0,4 ms, el chip USB-serie
+            self.s.escribir(bytes([b]))     # juntaba varios y una línea de guion larga llegaba corrupta)
+            time.sleep(0.0012)
+
+    def orden(self, texto, espera=2.5):            # margen: al arrancar la captura el lector puede tardar en recibir
         with self.cv:
             self.resp.clear()
-        self.s.escribir((texto + "\n").encode("ascii"))
+        self._escribir((texto + "\n").encode("ascii"))
         fin = time.monotonic() + espera
         with self.cv:
             while not self.resp:
@@ -145,6 +171,19 @@ class Mando:
         if r.startswith("error"):
             raise ErrorMando(f"{texto!r}: {r}")
         return r
+
+    # ------------------------------------------------------------ cola de entrada por fotograma (películas TAS)
+    def cola_vaciar(self):
+        """Vacía y activa la cola: a partir de aquí el Nano toma los botones de cada fotograma de la cola."""
+        self.orden("QB")
+
+    def cola_escribir(self, f0, datos, trozo=48):
+        """Botones de los fotogramas f0, f0+1... (un byte por fotograma). La cola guarda 256 fotogramas."""
+        for i in range(0, len(datos), trozo):
+            self.orden(f"Q {f0 + i} {bytes(datos[i:i + trozo]).hex()}")
+
+    def cola_quitar(self):
+        self.orden("QX")
 
     def estado(self):
         r = self.orden("E")
@@ -186,7 +225,7 @@ class Mando:
         """Pulsa 'ms' milisegundos, espera a que suelte y deja 'pausa_ms' sin nada (navegar por el menú)."""
         t0 = time.monotonic()
         self.orden(f"T {botones} {int(ms)}")
-        if not self.esperar_aviso("!T", ms / 1000 + 1.0, t0):
+        if not self.esperar_aviso("!T", ms / 1000 + 2.5, t0):
             raise ErrorMando("el pulso no terminó")
         time.sleep(pausa_ms / 1000)
 
@@ -198,6 +237,16 @@ class Mando:
         a = self.esperar_aviso("!R", ms / 1000 + 2.0, t0)
         if not a:
             raise ErrorMando("el reset no terminó")
+        return {k: int(v) for k, v in re.findall(r"(\w+)=(\d+)", a)}
+
+    def reset_boton(self, ms=1000):
+        """Pulsa el botón RESET de la consola (D2 + PC817) 'ms' milisegundos. Vuelve 2 s después de soltarlo con
+        {'lat': lecturas del mando en esos 2 s} (el menú del N8 lee el mando: lat > 0 = arrancó)."""
+        t0 = time.monotonic()
+        self.orden(f"H {int(ms)}")
+        a = self.esperar_aviso("!BOTON", ms / 1000 + 3.5, t0)
+        if not a:
+            raise ErrorMando("el pulso del botón RESET no terminó")
         return {k: int(v) for k, v in re.findall(r"(\w+)=(\d+)", a)}
 
     def guion(self, texto):
@@ -225,7 +274,7 @@ class Mando:
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--puerto")
-    ap.add_argument("accion", choices=["estado", "monitor", "toca", "pulsa", "suelta", "reset", "guion"])
+    ap.add_argument("accion", choices=["estado", "monitor", "toca", "pulsa", "suelta", "reset", "boton", "guion"])
     ap.add_argument("args", nargs="*")
     ap.add_argument("--desde", type=int, default=0, help="guion: fotograma actual (Z)")
     a = ap.parse_args()
@@ -256,6 +305,8 @@ def main():
             m.soltar(a.args[0] if a.args else "")
         elif a.accion == "reset":
             print(m.reset(int(a.args[0]) if a.args else 5000))
+        elif a.accion == "boton":
+            print(m.reset_boton(int(a.args[0]) if a.args else 1000))
         elif a.accion == "guion":
             m.guion(a.args[0])
             m.fijar_fotograma(a.desde)

@@ -2,6 +2,10 @@
 #include "n8model.h"
 #include "verilated.h"
 #include "Vn8_sim_top.h"
+#if VM_COVERAGE
+#include <cstdlib>
+#include "verilated_cov.h"
+#endif
 
 namespace {
 struct Model {
@@ -45,6 +49,19 @@ inline void PullOutputs(const Vn8_sim_top& t, N8Pins* p)
 }
 }
 
+#if VM_COVERAGE
+// Modelo con cobertura (make cov): al terminar, los contadores de cada rama del RTL van al archivo de N8_COV
+// (formato de verilator_coverage). Se escriben en n8_destroy y, por si Mesen2 sale sin destruir el modelo, al salir.
+static Model* g_cov_model = nullptr;
+static void EscribirCobertura()
+{
+	const char* ruta = getenv("N8_COV");
+	if(g_cov_model && ruta && *ruta) {
+		g_cov_model->ctx.coveragep()->write(ruta);
+	}
+}
+#endif
+
 extern "C" {
 
 int n8_api_version(void) { return N8MODEL_API_VERSION; }
@@ -52,6 +69,12 @@ int n8_api_version(void) { return N8MODEL_API_VERSION; }
 void* n8_create(void)
 {
 	Model* m = new Model();
+#if VM_COVERAGE
+	if(!g_cov_model) {
+		g_cov_model = m;
+		atexit(EscribirCobertura);
+	}
+#endif
 	m->top.clk = 0;
 	m->top.eval();
 	return m;
@@ -61,6 +84,12 @@ void n8_destroy(void* p)
 {
 	Model* m = (Model*)p;
 	m->top.final();
+#if VM_COVERAGE
+	if(m == g_cov_model) {
+		EscribirCobertura();
+		g_cov_model = nullptr;
+	}
+#endif
 	delete m;
 }
 

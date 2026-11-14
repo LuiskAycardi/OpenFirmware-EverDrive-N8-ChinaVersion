@@ -10,6 +10,7 @@ guarda los últimos segundos en memoria. Mientras dura una prueba, también los 
 import argparse
 import collections
 import glob
+import os
 import pathlib
 import re
 import shutil
@@ -77,12 +78,97 @@ def audio_de_capturadora():
     return None
 
 
+# ---------------------------------------------------------------- barras de la capturadora
+# Colores saturados de las barras que pinta la capturadora (MS2109) mientras no tiene señal HDMI. Al abrir el
+# dispositivo en frío las saca durante ~1 s (53 fotogramas medidos) antes de enganchar la imagen del GBS-Control.
+_COLORES_BARRAS = np.array([[255, 255, 0], [0, 255, 255], [0, 255, 0], [255, 0, 255], [255, 0, 0], [0, 0, 255]],
+                           np.int16)
+
+
+def es_barras(img):
+    """¿Es el patrón de barras verticales de la capturadora (sin señal)? Vale para 1280x720 y para el recorte
+    de 256x240: todas las filas iguales y al menos tres colores saturados de las barras en la fila central."""
+    img = np.asarray(img)
+    h = img.shape[0]
+    filas = img[[h // 10, h // 2, 9 * h // 10]].astype(np.int16)
+    if np.abs(filas[0] - filas[1]).max() > 24 or np.abs(filas[2] - filas[1]).max() > 24:
+        return False
+    d = np.abs(filas[1][:, None, :] - _COLORES_BARRAS[None, :, :]).max(-1)    # ancho x 6
+    cerca = d < 48
+    return int(cerca.any(0).sum()) >= 3
+
+
+# ---------------------------------------------------------------- ventana en vivo
+class Visor:
+    """Ventana (ffplay) con lo que se captura de la consola mientras corren las pruebas, ampliada x3 y con un rótulo
+    (juego, fotograma, última escena). La capturadora solo la puede abrir un programa, así que la ventana no la lee:
+    Captura le pasa los fotogramas que ya recibe. Un hilo aparte envía siempre el último, para que una ventana lenta
+    (o cerrada) no retrase nunca la captura. Cerrarla no afecta a las pruebas."""
+
+    def __init__(self, titulo="N8: consola en vivo", escala=3):
+        import tempfile
+        self.texto_ruta = pathlib.Path(tempfile.mkdtemp(prefix="n8visor-")) / "rotulo.txt"
+        self.texto_ruta.write_text(" ")
+        fuente = subprocess.run(["fc-match", "-f", "%{file}", "monospace"], capture_output=True, text=True).stdout
+        filtro = f"scale={NES_W * escala}:{NES_H * escala}:flags=neighbor"
+        if fuente:
+            ruta = str(self.texto_ruta).replace(":", r"\:")
+            filtro += (f",drawtext=fontfile={fuente}:textfile={ruta}:reload=1:fontsize=18:fontcolor=yellow"
+                       ":box=1:boxcolor=black@0.6:boxborderw=4:x=6:y=6")
+        cmd = ["ffplay", "-hide_banner", "-loglevel", "error", "-fflags", "nobuffer", "-framedrop",
+               "-window_title", titulo, "-f", "rawvideo", "-pixel_format", "rgb24",
+               "-video_size", f"{NES_W}x{NES_H}", "-framerate", str(FPS), "-vf", filtro, "-i", "pipe:0"]
+        self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                                     stderr=subprocess.DEVNULL)
+        self.cv = threading.Condition()
+        self.ultimo = None
+        self.vivo = True
+        threading.Thread(target=self._enviar, daemon=True).start()
+
+    def poner(self, datos):
+        with self.cv:
+            self.ultimo = datos
+            self.cv.notify()
+
+    def texto(self, s):
+        """Cambia el rótulo (ffplay lo relee en cada fotograma; se escribe de golpe para que no lea uno a medias)."""
+        tmp = self.texto_ruta.with_suffix(".tmp")
+        tmp.write_text(s or " ")
+        os.replace(tmp, self.texto_ruta)
+
+    def _enviar(self):
+        while self.vivo:
+            with self.cv:
+                while self.ultimo is None and self.vivo:
+                    self.cv.wait(0.5)
+                d, self.ultimo = self.ultimo, None
+            if d is None:
+                continue
+            try:
+                self.proc.stdin.write(d)
+                self.proc.stdin.flush()
+            except (BrokenPipeError, ValueError, OSError):
+                self.vivo = False                      # el usuario cerró la ventana: se sigue sin ella
+
+    def cerrar(self):
+        self.vivo = False
+        try:
+            self.proc.stdin.close()
+        except OSError:
+            pass
+        try:
+            self.proc.wait(2)
+        except subprocess.TimeoutExpired:
+            self.proc.kill()
+
+
 # ---------------------------------------------------------------- captura real
 class Captura:
     """Interfaz común con CapturaSimulada (simulador.py)."""
 
-    def __init__(self, dispositivo=None, audio="auto", segundos=6, log=None):
+    def __init__(self, dispositivo=None, audio="auto", segundos=6, log=None, ventana=False):
         self.log = log or (lambda *_: None)
+        self.visor = Visor() if ventana and shutil.which("ffplay") else None
         if not dispositivo:
             vs = listar_video()
             if not vs:
@@ -98,6 +184,7 @@ class Captura:
         self.clip = None
         self.audio_proc = None
         self.n = 0
+        self.errores = collections.deque(maxlen=20)
         self.log(f"vídeo {self.dev} ({self.formato}), audio {self.audio or 'ninguno'}")
 
     def _entrada(self):
@@ -105,17 +192,39 @@ class Captura:
                 "-framerate", str(FPS), "-thread_queue_size", "64", "-i", self.dev]
 
     def foto_completa(self, n=8):
-        """Media de n fotogramas completos (1280x720, RGB). Con el flujo parado: el dispositivo es de uno solo."""
+        """Media de n fotogramas completos (1280x720, RGB). Con el flujo parado: el dispositivo es de uno solo.
+        Descarta los primeros 10 y las barras de la capturadora mientras engancha la señal (hasta 4 s)."""
         cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin"] + self._entrada() + [
-            "-vf", "select=gte(n\\,10)", "-fps_mode", "passthrough", "-frames:v", str(n),
+            "-vf", "select=gte(n\\,10)", "-fps_mode", "passthrough", "-t", "6",
             "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"]
-        r = subprocess.run(cmd, capture_output=True, timeout=30)
         tam = ANCHO * ALTO * 3
-        if r.returncode or len(r.stdout) < tam:
-            raise RuntimeError(f"ffmpeg no dio imagen: {r.stderr.decode(errors='replace')[-500:]}")
-        k = len(r.stdout) // tam
-        fr = np.frombuffer(r.stdout[:k * tam], np.uint8).reshape(k, ALTO, ANCHO, 3)
-        return fr.astype(np.float32).mean(0).round().astype(np.uint8)
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        buenos, barras = [], 0
+        try:
+            while len(buenos) < n:
+                d = p.stdout.read(tam)
+                if not d or len(d) < tam:
+                    break
+                img = np.frombuffer(d, np.uint8).reshape(ALTO, ANCHO, 3)
+                if es_barras(img):
+                    barras += 1
+                    buenos.clear()             # solo fotogramas seguidos tras la última barra
+                    continue
+                buenos.append(img)
+        finally:
+            p.terminate()
+            try:
+                p.wait(3)
+            except subprocess.TimeoutExpired:
+                p.kill()
+        if len(buenos) < n:
+            if barras:
+                raise RuntimeError(f"la capturadora solo da sus barras de color ({barras} fotogramas): "
+                                   "no le llega señal HDMI del GBS-Control")
+            raise RuntimeError(f"ffmpeg no dio imagen: {p.stderr.read().decode(errors='replace')[-500:]}")
+        if barras:
+            self.log(f"descartados {barras} fotogramas de barras de la capturadora")
+        return np.stack(buenos).astype(np.float32).mean(0).round().astype(np.uint8)
 
     def iniciar(self, geometria):
         """Flujo continuo a 256x240 con el filtro de la calibración (geometria["ffmpeg"])."""
@@ -123,26 +232,41 @@ class Captura:
         cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin"] + self._entrada() + [
             "-vf", geometria["ffmpeg"], "-fps_mode", "passthrough", "-f", "rawvideo", "-pix_fmt", "rgb24", "pipe:1"]
         self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # ffmpeg puede emitir errores MJPEG durante minutos. Sin drenar stderr,
+        # su tubería acaba llena y se detiene también el vídeo.
+        self.errores.clear()
+        proc = self.proc
+        def leer_errores():
+            for line in proc.stderr:
+                self.errores.append(line.decode(errors="replace").strip())
+        threading.Thread(target=leer_errores, daemon=True).start()
         self.hilo = threading.Thread(target=self._lector, daemon=True)
         self.hilo.start()
         if not self.esperar_nuevo(5.0):
-            err = self.proc.stderr.read(2000).decode(errors="replace") if self.proc.poll() is not None else ""
+            err = "\n".join(self.errores)
             raise RuntimeError(f"la capturadora no da imagen. {err}")
 
     def _lector(self):
         tam = NES_W * NES_H * 3
         f = self.proc.stdout
+        calentando = True                      # barras de la capturadora al abrirla: no son imagen del NES
         while True:
             d = f.read(tam)
             if not d or len(d) < tam:
                 break
             t = time.monotonic()
             img = np.frombuffer(d, np.uint8).reshape(NES_H, NES_W, 3)
+            if calentando:
+                if es_barras(img):
+                    continue
+                calentando = False
             with self.cv:
                 self.buf.append((t, img))
                 self.n += 1
                 clip = self.clip
                 self.cv.notify_all()
+            if self.visor:
+                self.visor.poner(d)
             if clip:
                 try:
                     clip.stdin.write(d)
@@ -224,15 +348,22 @@ class Captura:
             except subprocess.TimeoutExpired:
                 p.kill()
 
+    def rotulo(self, s):
+        if self.visor:
+            self.visor.texto(s)
+
     def cerrar(self):
         self.parar_audio()
         self.parar()
+        if self.visor:
+            self.visor.cerrar()
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dispositivo")
     ap.add_argument("--foto", help="guardar una imagen completa (PNG)")
+    ap.add_argument("--ver", action="store_true", help="ventana en vivo de la capturadora (sin pruebas en marcha)")
     a = ap.parse_args()
     vs = listar_video()
     print("Capturadoras:", vs or "ninguna")
@@ -244,6 +375,13 @@ def main():
         c = Captura(a.dispositivo, audio=None, log=print)
         Image.fromarray(c.foto_completa()).save(a.foto)
         print("guardada", a.foto)
+    if a.ver:                                   # imagen completa de 720p, directa de la capturadora
+        ruta = a.dispositivo or (vs[0][0] if vs else None)
+        if not ruta:
+            raise SystemExit("no hay capturadora")
+        subprocess.run(["ffplay", "-hide_banner", "-loglevel", "error", "-fflags", "nobuffer", "-framedrop",
+                        "-window_title", "N8: capturadora en vivo", "-f", "v4l2", "-input_format", "mjpeg",
+                        "-video_size", f"{ANCHO}x{ALTO}", "-framerate", str(FPS), ruta])
 
 
 if __name__ == "__main__":

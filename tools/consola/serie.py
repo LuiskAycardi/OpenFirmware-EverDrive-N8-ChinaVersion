@@ -52,7 +52,10 @@ class Serie:
         a = termios.tcgetattr(self.fd)
         a[0] = 0                                                     # iflag: crudo
         a[1] = 0                                                     # oflag
-        a[2] = termios.CS8 | termios.CREAD | termios.CLOCAL | termios.HUPCL
+        # Sin HUPCL: al cerrar no se baja DTR, así que al volver a abrir el puerto el Arduino no se reinicia. Con el
+        # LGT8F, ese reinicio movía las líneas del mando y el menú del N8 dejaba de leerlo (2026-11-11). Para grabar,
+        # flashear.py lo reinicia a propósito con reiniciar_dtr().
+        a[2] = termios.CS8 | termios.CREAD | termios.CLOCAL
         a[3] = 0                                                     # lflag: sin eco ni líneas
         a[4] = a[5] = BAUDS[baud]
         a[6][termios.VMIN] = 0

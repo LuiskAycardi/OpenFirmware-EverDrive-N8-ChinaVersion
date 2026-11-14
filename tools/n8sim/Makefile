@@ -17,19 +17,26 @@ CXXM   ?= clang++
 OBJ    ?= obj_dir
 LIB    ?= libn8model.so
 
-.PHONY: all model mesen clean
+.PHONY: all model mesen clean cov
+
+# Modelo con cobertura de líneas (ramas if/case de cada módulo) para elegir juegos por mapper (cobertura.py):
+#   make cov -> libn8model_cov.so; con N8_COV=archivo.dat escribe los contadores al terminar
+cov:
+	$(MAKE) OBJ=obj_cov LIB=libn8model_cov.so VFLAGS="$(VFLAGS) --coverage-line" \
+	    VDEFS="$(subst -DVM_COVERAGE=0,-DVM_COVERAGE=1,$(VDEFS))" COVLIB="$(VINC)/verilated_cov.cpp" libn8model_cov.so
+
 
 all: model mesen
 
 model: $(LIB)
 
-$(LIB): n8_sim_top.v n8model.cpp n8model.h $(RTL)
+$(LIB) libn8model_cov.so: n8_sim_top.v n8model.cpp n8model.h $(RTL)
 	rm -rf $(OBJ)
 	verilator $(VFLAGS) -Mdir $(OBJ) n8_sim_top.v $(RTL)
 	# Una sola unidad de compilación con clang (2026-11-05): ~25 % más rápido que la librería por partes con g++.
 	for f in $(OBJ)/Vn8_sim_top*.cpp; do echo "#include \"$$f\""; done > $(OBJ)/todo.cpp
-	$(CXXM) $(CXXOPT) -shared -o $@.tmp -I$(OBJ) -I$(VINC) -I$(VINC)/vltstd n8model.cpp \
-	    $(OBJ)/todo.cpp $(VINC)/verilated.cpp $(VINC)/verilated_threads.cpp -latomic -lpthread
+	$(CXXM) $(CXXOPT) -shared -o $@.tmp -I. -I$(OBJ) -I$(VINC) -I$(VINC)/vltstd n8model.cpp \
+	    $(OBJ)/todo.cpp $(VINC)/verilated.cpp $(VINC)/verilated_threads.cpp $(COVLIB) -latomic -lpthread
 	mv -f $@.tmp $@
 
 mesen:

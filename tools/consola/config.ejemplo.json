@@ -7,8 +7,8 @@
  "consola": "nes",
  "rom_calibracion": "PRUEBAS/0 Calibracion/calibracion.nes",
  "sensor_5v": false,
- "teclas_menu": {"abajo": "down", "arriba": "up", "entrar": "a", "volver": "b", "lanzar": ["a"], "pulso_ms": 60, "pausa_ms": 120},
- "silencio_arranque_ms": 250,
+ "teclas_menu": {"abajo": "down", "arriba": "up", "entrar": "b", "volver": "a", "lanzar": ["b", "b"], "pulso_ms": 100, "pausa_ms": 150},
+ "silencio_arranque_ms": 500,
  "retraso_video_s": 0.08,
  "ventana_s": 0.35,
  "reset_ms": 5000

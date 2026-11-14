@@ -2,11 +2,24 @@
 
 El Nano hace de **mando 1**. Con el ATmega328P a 5 V no hace falta adaptador de niveles: el puerto del mando
 también es de 5 V. El mismo montaje sirve para el **Arduino Uno**, con los mismos números de pin (D10-D13, A0, GND).
-Solo cambia el puerto serie: el Uno sale como `/dev/ttyACM0` y el Nano con CH340 como `/dev/ttyUSB0`.
+Solo cambia el puerto serie: el Uno sale como `/dev/ttyACM0` y el Nano con CH340 como `/dev/ttyUSB0`. Los clones con
+un CH340 "CDC" (USB 1a86:8040) también salen como `/dev/ttyACM0`.
+
+![Esquema de conexión del Nano: mando y reset con PC817](conexion.png)
+
+Fuente editable: [conexion.svg](conexion.svg) (`rsvg-convert -w 1800 conexion.svg -o conexion.png`).
 
 ## Material
 - Arduino Nano clásico (ATmega328P, 16 MHz). **No sirven** el Nano 33, el Nano RP2040 Connect ni el Nano ESP32,
   que funcionan a 3,3 V. El Nano Every (ATmega4809) tampoco: su SPI es otro y el firmware no vale.
+- **Clones con LGT8F328P** (por ejemplo, la placa "BTE21-15A" con chip LQFP32): sirven. El cargador se presenta como
+  un ATmega328P (firma 1e950f, 57600 baudios), pero el chip corre con su oscilador interno de 32 MHz y arranca a
+  4 MHz. El firmware lo detecta (registro PMCR en 0xF2) y pone el reloj a 16 MHz; sin eso el PC solo recibía
+  basura. Probado el 2026-11-11: 300 órdenes sin errores y reloj medido de 15,93 MHz.
+  Su SPI, además, tiene colas (FIFO) de envío que el ATmega no tiene: la interrupción de LATCH las vacía antes de
+  escribir el byte (registro SPFR); sin eso la consola leía siempre bytes viejos y los botones no llegaban.
+  El PC tampoco debe reiniciar el Nano al abrir el puerto: durante el reinicio el cargador mueve las líneas del mando
+  y el menú del N8 deja de leerlo. `serie.py` no baja DTR al cerrar (sin HUPCL), así que solo se reinicia al grabarlo.
 - Alargador de mando de NES cortado: se usa **la mitad con el conector macho** (la que entra en la consola).
 - 1 resistencia de **1 kΩ** (en DATA; obligatoria).
 - Opcional: 1 resistencia de **47-100 kΩ** para que el PC sepa si la consola está encendida (ver abajo).
@@ -50,7 +63,7 @@ Solo cambia el puerto serie: el Uno sale como `/dev/ttyACM0` y el Nano con CH340
            A4    │●         ●│ D5
            A5    │●         ●│ D4
            A6    │●         ●│ D3
-           A7    │●         ●│ D2
+           A7    │●         ●│ D2 ──[330 Ω]── PC817 pin 1 (reset)
   NO usar  5V    │●         ●│ GND ── GND del puerto (y el puente de D11)
            RST   │●         ●│ RST
   GND ──── GND   │●         ●│ RX0
@@ -80,6 +93,32 @@ Vista de frente del **puerto de la consola**. El lado redondeado queda arriba a 
      +5V ≈ 5,0 V · LATCH ≈ 0 V (pulsos muy cortos hacia arriba) · CLK ≈ 5 V (pulsos cortos hacia abajo) ·
      DATA ≈ 5 V (pull-up de la consola).
   3. Apaga la consola antes de soldar o conectar el Nano.
+
+## Reset de la consola con optoacoplador (PC817)
+El reset del kit Lava (Select+B) solo funciona si el juego lee el mando. Para resetear también un juego colgado, el
+Nano "pulsa" el botón RESET del NES a través de un PC817: el LED del opto lo enciende D2 por una resistencia de
+330 Ω (≈ 11 mA) y el transistor del opto pone en corto las dos patas del botón, igual que el dedo.
+```
+       Arduino Nano                     PC817 (DIP-4, vista de arriba)        Botón RESET del NES
+       ────────────                     ┌─────────────┐                       (placa frontal)
+                                        │ ●           │
+  D2  ───[ 330 Ω ]───────────────── 1 ──┤ ánodo  colec├── 4 ──────────────── pata "caliente" (≈ 5 V)
+                                        │   ▶|    ⟋   │                         │
+  GND ───────────────────────────── 2 ──┤ cátodo emis.├── 3 ──────────────── pata de GND (0 V)
+                                        └─────────────┘                         │
+                                                                             [botón]  (queda en paralelo)
+```
+- **Pines del PC817:** el punto marca el pin 1. 1 = ánodo, 2 = cátodo (lado del LED, va al Nano); 3 = emisor,
+  4 = colector (lado del transistor, va al botón).
+- **Cuál pata del botón es cuál:** consola encendida, polímetro en tensión con la punta negra en GND (el blindaje o
+  el pin 1 del puerto de mando). La pata con ≈ 5 V va al **colector (4)**; la de 0 V, al **emisor (3)**. Si las dos
+  marcan 0 V, mira la otra pareja de patas del pulsador (los de 4 patas van unidos de dos en dos). Al revés no se
+  rompe nada, pero el reset no funciona.
+- Suelda dos cables finos a las patas del botón, sin quitarlo: el botón sigue funcionando a mano.
+- El Nano y la consola ya comparten GND por el cable del mando; el opto no hace falta para aislar, pero evita que
+  un fallo del Nano o el arranque de su cargador (todos los pines en entrada) toquen la línea de reset.
+- **Firmware:** el pin D2 aún no lo maneja el firmware de `firmware/`; hasta que se añada, el reset sigue siendo
+  el del kit Lava.
 
 ## Sensor de encendido (opcional, recomendado)
 Une el +5V del puerto con **A0** a través de una resistencia de 47-100 kΩ. No es una alimentación: la resistencia

@@ -22,6 +22,7 @@ void hw_tx(uint8_t c);           /* cola de salida hacia el PC (sin bloquear) */
 void hw_miso(uint8_t activo);    /* 1 = conducir DATA, 0 = alta impedancia */
 uint8_t hw_v5(void);             /* sensor de +5V de la consola (A0): 1 = encendida */
 uint16_t hw_perdidos(void);      /* bytes de salida descartados por cola llena */
+void hw_boton_reset(uint8_t on); /* D2 -> PC817 en paralelo con el botón RESET de la consola: 1 = pulsado */
 
 /* Lo llama el hardware */
 void nucleo_inicio(uint32_t t);

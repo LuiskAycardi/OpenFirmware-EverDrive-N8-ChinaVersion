@@ -9,6 +9,7 @@ Dos fuentes:
   - del_banco(): las capturas ref/ (Mesen2) y n8/ (nuestro Verilog) de un informe de tools/n8sim/difftest.py
     lanzado con el mismo --script y --shots (lanzar_banco() hace esa llamada).
 """
+import hashlib
 import json
 import os
 import pathlib
@@ -52,13 +53,18 @@ def preparar_casa():
     return exe
 
 
-def generar(rom, guion, shots, fotogramas, destino, log=None):
+def generar(rom, guion, shots, fotogramas, destino, log=None, entrada=None, desfase=0):
     """Ejecuta Mesen2 (mapper de Mesen) y deja en 'destino': f%05d.png, polls.txt y ref.json."""
     log = log or (lambda *_: None)
     rom = pathlib.Path(rom).resolve()
     destino = pathlib.Path(destino).resolve()
     meta_ruta = destino / "ref.json"
-    meta = {"rom": str(rom), "guion": guion, "shots": sorted(shots), "fotogramas": fotogramas}
+    # "polls": "latch" = polls.txt cuenta pulsos de LATCH ($4016 bit 0 de 0 a 1), lo que ve el Nano; las referencias
+    # antiguas contaban el evento inputPolled de Mesen2, que sale en todos los fotogramas, y se regeneran.
+    meta = {"rom": str(rom), "guion": guion, "shots": sorted(shots), "fotogramas": fotogramas, "polls": "latch"}
+    if entrada:                      # entrada fotograma a fotograma (película TAS, tas.py): forma parte de la clave
+        meta["entrada"] = hashlib.md5(pathlib.Path(entrada).read_bytes()).hexdigest()
+        meta["desfase"] = desfase    # byte de la entrada que usa el fotograma f: f + desfase (FCEUX .fm2: +1)
     if meta_ruta.exists():
         viejo = json.loads(meta_ruta.read_text())
         if all(viejo.get(k) == v for k, v in meta.items()) and (destino / "polls.txt").exists():
@@ -73,7 +79,9 @@ def generar(rom, guion, shots, fotogramas, destino, log=None):
     for k in ("N8_FPGA", "N8_MODEL"):
         env.pop(k, None)
     env.update({"N8_FRAMES": str(fotogramas), "N8_SCRIPT": guion or "", "N8_SHOT_DIR": str(destino),
-                "N8_SHOTS": ",".join(str(s) for s in sorted(shots))})
+                "N8_SHOTS": ",".join(str(s) for s in sorted(shots)),
+                "N8_INPUT_FILE": str(pathlib.Path(entrada).resolve()) if entrada else "",
+                "N8_INPUT_OFFSET": str(desfase)})
     timeout = int(fotogramas / 60 * 4) + 60
     with open(destino / "mesen.log", "w") as salida:
         r = subprocess.run([str(exe), "--testrunner", f"--timeout={timeout}", str(LUA), str(rom)], cwd=CASA,

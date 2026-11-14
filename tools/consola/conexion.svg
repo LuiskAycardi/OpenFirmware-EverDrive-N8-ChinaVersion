@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900" font-family="Noto Sans, DejaVu Sans, sans-serif">
+  <!-- Esquema de conexión: mando de NES + reset por PC817 en un Arduino Nano (ver CONEXION.md) -->
+  <defs>
+    <style>
+      .t { font-size: 15px; fill: #222; }
+      .s { font-size: 12px; fill: #444; }
+      .pin { font-size: 12px; fill: #fff; }
+      .pinu { font-size: 12px; fill: #fff; font-weight: bold; }
+      .w { fill: none; stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; }
+      .k { fill: none; stroke: #222; stroke-width: 2; }
+    </style>
+  </defs>
+  <rect width="1200" height="900" fill="#fbfaf7"/>
+  <text x="600" y="22" text-anchor="middle" font-size="20" font-weight="bold" fill="#222">Mando de NES emulado + reset por optoacoplador — Arduino Nano (ATmega328P, CH340)</text>
+
+  <!-- ===== Conector del mando ===== -->
+  <rect x="40" y="110" width="150" height="180" rx="10" fill="#e6e1d6" stroke="#555" stroke-width="2"/>
+  <text x="115" y="95" text-anchor="middle" class="t" font-weight="bold">Cable del mando</text>
+  <text x="115" y="310" text-anchor="middle" class="s">mitad con el conector</text>
+  <text x="115" y="326" text-anchor="middle" class="s">que entra en la NES</text>
+  <text x="50" y="145" class="s">naranja  LATCH</text>
+  <text x="50" y="175" class="s">amarillo DATA</text>
+  <text x="50" y="205" class="s">rojo     CLK</text>
+  <text x="50" y="235" class="s">blanco   +5V</text>
+  <text x="50" y="265" class="s">marrón   GND</text>
+
+  <!-- ===== Arduino Nano ===== -->
+  <rect x="420" y="120" width="200" height="580" rx="8" fill="#1f5fa8" stroke="#123" stroke-width="2"/>
+  <rect x="485" y="98" width="70" height="34" rx="4" fill="#c8c8c8" stroke="#555"/>
+  <text x="520" y="120" text-anchor="middle" font-size="12" fill="#333">USB</text>
+  <text x="520" y="420" text-anchor="middle" font-size="16" fill="#fff" font-weight="bold" transform="rotate(-90 520 420)">Arduino Nano (BTE21-15A)</text>
+  <g>
+    <!-- columna izquierda -->
+    <circle cx="440" cy="170" r="6" fill="#ffd54a"/><text x="454" y="174" class="pinu">D13</text>
+    <circle cx="440" cy="206" r="5" fill="#ccc"/><text x="454" y="210" class="pin">3V3</text>
+    <circle cx="440" cy="242" r="5" fill="#ccc"/><text x="454" y="246" class="pin">REF</text>
+    <circle cx="440" cy="278" r="6" fill="#ffd54a"/><text x="454" y="282" class="pinu">A0</text>
+    <circle cx="440" cy="314" r="5" fill="#ccc"/><text x="454" y="318" class="pin">A1</text>
+    <circle cx="440" cy="350" r="5" fill="#ccc"/><text x="454" y="354" class="pin">A2</text>
+    <circle cx="440" cy="386" r="5" fill="#ccc"/><text x="454" y="390" class="pin">A3</text>
+    <circle cx="440" cy="422" r="5" fill="#ccc"/><text x="454" y="426" class="pin">A4</text>
+    <circle cx="440" cy="458" r="5" fill="#ccc"/><text x="454" y="462" class="pin">A5</text>
+    <circle cx="440" cy="494" r="5" fill="#ccc"/><text x="454" y="498" class="pin">A6</text>
+    <circle cx="440" cy="530" r="5" fill="#ccc"/><text x="454" y="534" class="pin">A7</text>
+    <circle cx="440" cy="566" r="5" fill="#ff6b6b"/><text x="454" y="570" class="pinu">5V ✗</text>
+    <circle cx="440" cy="602" r="5" fill="#ccc"/><text x="454" y="606" class="pin">RST</text>
+    <circle cx="440" cy="638" r="6" fill="#ffd54a"/><text x="454" y="642" class="pinu">GND</text>
+    <circle cx="440" cy="674" r="5" fill="#ccc"/><text x="454" y="678" class="pin">VIN</text>
+    <!-- columna derecha -->
+    <circle cx="600" cy="170" r="6" fill="#ffd54a"/><text x="586" y="174" class="pinu" text-anchor="end">D12</text>
+    <circle cx="600" cy="206" r="6" fill="#ffd54a"/><text x="586" y="210" class="pinu" text-anchor="end">D11</text>
+    <circle cx="600" cy="242" r="6" fill="#ffd54a"/><text x="586" y="246" class="pinu" text-anchor="end">D10</text>
+    <circle cx="600" cy="278" r="5" fill="#ccc"/><text x="586" y="282" class="pin" text-anchor="end">D9</text>
+    <circle cx="600" cy="314" r="5" fill="#ccc"/><text x="586" y="318" class="pin" text-anchor="end">D8</text>
+    <circle cx="600" cy="350" r="5" fill="#ccc"/><text x="586" y="354" class="pin" text-anchor="end">D7</text>
+    <circle cx="600" cy="386" r="5" fill="#ccc"/><text x="586" y="390" class="pin" text-anchor="end">D6</text>
+    <circle cx="600" cy="422" r="5" fill="#ccc"/><text x="586" y="426" class="pin" text-anchor="end">D5</text>
+    <circle cx="600" cy="458" r="5" fill="#ccc"/><text x="586" y="462" class="pin" text-anchor="end">D4</text>
+    <circle cx="600" cy="494" r="5" fill="#ccc"/><text x="586" y="498" class="pin" text-anchor="end">D3</text>
+    <circle cx="600" cy="530" r="6" fill="#ffd54a"/><text x="586" y="534" class="pinu" text-anchor="end">D2</text>
+    <circle cx="600" cy="566" r="6" fill="#ffd54a"/><text x="586" y="570" class="pinu" text-anchor="end">GND</text>
+    <circle cx="600" cy="602" r="5" fill="#ccc"/><text x="586" y="606" class="pin" text-anchor="end">RST</text>
+    <circle cx="600" cy="638" r="5" fill="#ccc"/><text x="586" y="642" class="pin" text-anchor="end">RX0</text>
+    <circle cx="600" cy="674" r="5" fill="#ccc"/><text x="586" y="678" class="pin" text-anchor="end">TX1</text>
+  </g>
+
+  <!-- ===== Cables del mando ===== -->
+  <!-- LATCH: por arriba hasta D10 -->
+  <path class="w" stroke="#f08a00" d="M190,140 H300 V40 H730 V242 H600"/>
+  <text x="742" y="215" class="t" fill="#b86400">LATCH → D10</text>
+  <!-- DATA: por arriba, con 1 kΩ, hasta D12 -->
+  <path class="w" stroke="#d4a800" d="M190,170 H320 V60 H470"/>
+  <path class="w" stroke="#d4a800" d="M550,60 H700 V170 H600"/>
+  <rect x="470" y="50" width="80" height="20" rx="3" fill="#f3e3c3" stroke="#222" stroke-width="2"/>
+  <text x="510" y="65" text-anchor="middle" font-size="13" font-weight="bold" fill="#222">1 kΩ</text>
+  <text x="510" y="88" text-anchor="middle" class="s">obligatoria</text>
+  <text x="742" y="130" class="t" fill="#8a6d00">DATA → D12 (por 1 kΩ)</text>
+  <!-- CLK: directo a D13 -->
+  <path class="w" stroke="#d62828" d="M190,200 H380 V170 H440"/>
+  <text x="290" y="194" class="s" fill="#d62828" font-weight="bold">CLK → D13</text>
+  <!-- +5V: solo al sensor opcional (A0) por 47-100 kΩ -->
+  <path class="w" stroke="#9a9a9a" stroke-dasharray="8 6" d="M190,230 H340 V278 H355"/>
+  <path class="w" stroke="#9a9a9a" stroke-dasharray="8 6" d="M415,278 H440"/>
+  <rect x="355" y="269" width="60" height="18" rx="3" fill="#eee" stroke="#666" stroke-width="2" stroke-dasharray="4 3"/>
+  <text x="385" y="283" text-anchor="middle" font-size="11" fill="#222">47-100k</text>
+  <text x="228" y="318" class="s">+5V → 47-100 kΩ → A0</text>
+  <text x="228" y="334" class="s">(opcional: sensor de</text><text x="228" y="350" class="s">consola encendida)</text>
+  <text x="228" y="370" class="s" style="fill:#c00" font-weight="bold">nunca al pin 5V del Nano</text>
+  <!-- GND: al GND izquierdo -->
+  <path class="w" stroke="#7b4a12" d="M190,260 H215 V638 H440"/>
+  <text x="228" y="628" class="t" fill="#7b4a12">GND (común)</text>
+
+  <!-- ===== Puente D11 a GND (salta sobre LATCH) ===== -->
+  <path class="w" stroke="#2b2b2b" stroke-width="3" d="M600,206 H640 V232 a10,10 0 0 1 0,20 V566 H600"/>
+  <text x="648" y="300" class="s">puente D11 → GND</text>
+
+  <!-- ===== Reset: D2 → 330 Ω → PC817 ===== -->
+  <path class="w" stroke="#6a3fb5" d="M600,530 H660"/>
+  <rect x="660" y="520" width="70" height="20" rx="3" fill="#f3e3c3" stroke="#222" stroke-width="2"/>
+  <text x="695" y="535" text-anchor="middle" font-size="13" font-weight="bold" fill="#222">330 Ω</text>
+  <path class="w" stroke="#6a3fb5" d="M730,530 H790"/>
+  <!-- cátodo del PC817 a GND -->
+  <path class="w" stroke="#2b2b2b" stroke-width="3" d="M640,566 H690 V590 H790"/>
+  <circle cx="640" cy="566" r="5" fill="#2b2b2b"/>
+
+  <!-- PC817 -->
+  <rect x="790" y="500" width="130" height="120" rx="6" fill="#2d2d2d" stroke="#000"/>
+  <circle cx="806" cy="514" r="5" fill="#bbb"/>
+  <text x="855" y="642" text-anchor="middle" class="t" font-weight="bold">PC817</text>
+  <text x="855" y="660" text-anchor="middle" class="s">el punto marca el pin 1</text>
+  <text x="798" y="547" font-size="12" fill="#fff">1</text>
+  <text x="798" y="604" font-size="12" fill="#fff">2</text>
+  <text x="905" y="547" font-size="12" fill="#fff">4</text>
+  <text x="905" y="604" font-size="12" fill="#fff">3</text>
+  <!-- LED interno -->
+  <path d="M818,530 H835 V548" stroke="#fff" stroke-width="2" fill="none"/>
+  <path d="M826,548 h18 l-9,14 z" fill="#fff"/>
+  <path d="M826,562 h18" stroke="#fff" stroke-width="2"/>
+  <path d="M835,562 V590 H818" stroke="#fff" stroke-width="2" fill="none"/>
+  <path d="M850,552 l12,0 m-4,-4 l4,4 l-4,4 M850,562 l12,0 m-4,-4 l4,4 l-4,4" stroke="#ffd54a" stroke-width="1.6" fill="none"/>
+  <!-- fototransistor interno -->
+  <path d="M870,545 V570" stroke="#fff" stroke-width="3"/>
+  <path d="M870,551 L890,538 V530 H905 M870,564 L890,577 V590 H905" stroke="#fff" stroke-width="2" fill="none"/>
+  <path d="M883,568 l7,9 l-10,-1 z" fill="#fff"/>
+  <text x="760" y="518" class="s" text-anchor="end">ánodo</text>
+  <text x="760" y="612" class="s" text-anchor="end">cátodo</text>
+
+  <!-- PC817 → botón RESET -->
+  <path class="w" stroke="#c2185b" d="M920,530 H1060 V552"/>
+  <path class="w" stroke="#2b2b2b" d="M920,590 H1060 V568"/>
+  <text x="930" y="520" class="s">4 colector</text>
+  <text x="930" y="608" class="s">3 emisor</text>
+  <!-- botón -->
+  <circle cx="1060" cy="552" r="4" fill="#222"/>
+  <circle cx="1060" cy="568" r="4" fill="#222"/>
+  <path d="M1075,546 V574 M1075,560 H1092" stroke="#222" stroke-width="3"/>
+  <rect x="1000" y="470" width="170" height="160" rx="8" fill="none" stroke="#888" stroke-dasharray="6 4"/>
+  <text x="1085" y="490" text-anchor="middle" class="t" font-weight="bold">Botón RESET</text>
+  <text x="1085" y="507" text-anchor="middle" class="s">placa frontal del NES</text>
+  <text x="1085" y="545" text-anchor="start" class="s" dx="15">≈ 5 V</text>
+  <text x="1085" y="590" text-anchor="start" class="s" dx="15">0 V (GND)</text>
+  <text x="1085" y="618" text-anchor="middle" class="s">sigue funcionando a mano</text>
+
+  <!-- ===== Notas ===== -->
+  <rect x="660" y="690" width="510" height="200" rx="8" fill="#fff" stroke="#bbb"/>
+  <text x="675" y="715" class="t" font-weight="bold">Antes de conectar</text>
+  <text x="675" y="740" class="s">• Apaga la consola para soldar. Solo se comparte GND:</text><text x="675" y="756" class="s">  el +5V del mando NO va al 5V del Nano.</text>
+  <text x="675" y="776" class="s">• Comprueba los colores con el polímetro (continuidad pin ↔ cable); los de un mando</text>
+  <text x="675" y="792" class="s">  original de Nintendo suelen ser estos, los de clones no.</text>
+  <text x="675" y="812" class="s">• Pata del botón con ≈ 5 V (consola encendida) → colector (4);</text><text x="675" y="828" class="s">  la de 0 V → emisor (3).</text>
+  <text x="675" y="844" class="s">• No dejes el Nano enchufado a la NES sin USB (tiraría de DATA hacia abajo).</text>
+  <text x="675" y="860" class="s">• D2 (reset) todavía no lo maneja el firmware de tools/consola/firmware.</text>
+  <text x="675" y="876" class="s">• Si tu placa tiene otro orden, busca los pines por su nombre.</text>
+
+  <text x="40" y="885" class="s">tools/consola/conexion.svg — ver CONEXION.md</text>
+</svg>

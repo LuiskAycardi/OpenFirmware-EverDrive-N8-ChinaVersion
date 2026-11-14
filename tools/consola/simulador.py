@@ -53,6 +53,7 @@ def lib_firmware():
     lib.sim_tx.restype = ctypes.c_uint32
     lib.sim_tx.argtypes = [ctypes.c_char_p, ctypes.c_uint32]
     lib.sim_v5.argtypes = [ctypes.c_uint8]
+    lib.sim_boton_reset.restype = ctypes.c_uint8
     return lib
 
 
@@ -111,20 +112,30 @@ class OsSimulado:
             self.arriba = self.cursor
         if self.cursor >= self.arriba + self.FILAS_LISTA:
             self.arriba = self.cursor - self.FILAS_LISTA + 1
-        if nuevos & 0x02 and self.ruta:                 # B: volver
+        # Como el OS v13 real (comprobado en la consola el 2026-11-11): B entra en una carpeta o, sobre una ROM, abre el
+        # "File Menu"; B otra vez la lanza ("Sel. And Start"); A cierra ese menú o vuelve a la carpeta de arriba.
+        archivo = getattr(self, "menu_archivo", None)
+        if archivo:
+            if nuevos & 0x02:
+                self.menu_archivo = None
+                return archivo
+            if nuevos & 0x01:
+                self.menu_archivo = None
+            return None
+        if nuevos & 0x01 and self.ruta:                 # A: volver
             antes = os.path.basename(self.ruta)
             self.ruta = os.path.dirname(self.ruta)
             es = self.lista()
             self.cursor = es.index(antes) if antes in es else 0
             self.arriba = max(0, self.cursor - 5)
-        if nuevos & 0x01 and es:                        # A: entrar o lanzar
+        if nuevos & 0x02 and es:                        # B: entrar, o abrir el File Menu de la ROM
             e = es[self.cursor]
             p = self.raiz / self.ruta / e
             if p.is_dir():
                 self.ruta = os.path.join(self.ruta, e) if self.ruta else e
                 self.cursor = self.arriba = 0
             elif e.lower().endswith(".nes"):
-                return os.path.join(self.ruta, e) if self.ruta else e
+                self.menu_archivo = os.path.join(self.ruta, e) if self.ruta else e
         return None
 
     def texto(self, img, fila, col, s, color, fondo=None):
@@ -258,7 +269,16 @@ class ConsolaSimulada:
     def _fotograma(self, dibujar=True):
         ahora = time.monotonic()
         self.dibujar = dibujar
-        if self.estado == "apagada":
+        if self.lib.sim_boton_reset():                 # botón RESET pulsado (PC817): la consola espera
+            if self.estado != "apagada":
+                if self.estado != "reset":
+                    self.log("[sim] botón RESET")
+                self.estado = "reset"
+        elif self.estado == "reset":                  # al soltarlo, el N8 vuelve a su menú
+            self.estado, self.espera_hasta = "carga_os", ahora + 0.6
+        if self.estado == "reset":
+            img = np.zeros((240, 256, 3), np.uint8)
+        elif self.estado == "apagada":
             if ahora >= self.espera_hasta:
                 self.estado, self.espera_hasta = "carga_os", ahora + 0.8
                 self.lib.sim_v5(1)

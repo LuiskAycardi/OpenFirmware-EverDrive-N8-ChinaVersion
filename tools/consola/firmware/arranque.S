@@ -12,6 +12,7 @@
         .equ GPIOR0_IO, 0x1E
         .equ GPIOR1_IO, 0x2A
         .equ SPDR_IO,   0x2E
+        .equ SPFR_IO,   0x19    ; solo LGT8F328P: estado y vaciado de las colas (FIFO) del SPI
         .equ SPL_IO,    0x3D
         .equ SPH_IO,    0x3E
         .equ SREG_IO,   0x3F
@@ -36,6 +37,9 @@ isr_latch:
         sbis PINB_IO, 2         ; LATCH alto: subida
         reti                    ; bajada: nada
         push r24
+        ldi  r24, 0x44          ; SPFR del LGT8F: WREMPT | RDEMPT = vaciar las colas del SPI
+        sbic GPIOR0_IO, 1       ; solo en el LGT8F (main_avr.c pone el bit 1 de GPIOR0)
+        out  SPFR_IO, r24       ; sin esto el byte nuevo queda detrás de los viejos y la consola lee basura
         in   r24, GPIOR1_IO
         out  SPDR_IO, r24       ; el SPI saca este byte cuando LATCH baje
         sbi  DDRB_IO, 4         ; MISO como salida (en reposo queda en alta impedancia)

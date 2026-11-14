@@ -41,8 +41,12 @@ que apagues y enciendas, y sigue solo con el siguiente juego en cuanto vuelve a 
    ```bash
    python3 -I tools/consola/prueba.py dispositivos
    ```
-   Tiene que salir el Nano (CH340 → `/dev/ttyUSB0`, o `/dev/ttyACM0` con el Uno), la capturadora con
+   Tiene que salir el Nano (CH340 → `/dev/ttyUSB0`; `/dev/ttyACM0` con el Uno o con un CH340 CDC), la capturadora con
    "MJPG 1280x720 a 60 fps: sí" y su tarjeta de sonido.
+   La capturadora (MS2109) pinta barras de color cuando no tiene señal HDMI y también durante ~1 s cada vez
+   que se abre en frío; `captura.py` las reconoce y las descarta. Si `--foto` solo da barras, el GBS-Control no
+   está sacando imagen. Cierra la app de cámara antes de las pruebas: el dispositivo es de un solo programa.
+   Con el GBS-Control a 720p, el NES ocupa x ≈ 38-1255 y toda la altura (escala ≈ 4,76 x 3,01).
 6. **Primera prueba del mando** con la consola encendida en el menú:
    ```bash
    python3 -I tools/consola/mando.py estado
