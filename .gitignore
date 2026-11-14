@@ -52,6 +52,18 @@ __pycache__/
 # firmware del mando (Arduino): salida de compilación
 /tools/consola/firmware/build/
 
+# banco de consola: lo aprendido en cada equipo (calibración, fuente del menú, latencia, planes)
+/tools/consola/datos/
+# plantillas sacadas de los gráficos de un juego (cifras de SMB): se regeneran desde la pantalla
+/tools/consola/perfiles/smb-digitos.json
+# catálogo TAS: solo los scripts y los informes; películas, descargas de terceros, capturas y cachés, no
+/tools/consola/tas_catalogo/*
+!/tools/consola/tas_catalogo/*.py
+!/tools/consola/tas_catalogo/reporte_*.md
+# cobertura del RTL (cobertura.py): resultados y registros de las tandas
+/tools/n8sim/cobertura/
+/tools/n8sim/*.log
+
 # --- Notas de trabajo locales (no se publican) ---
 /CONTEXTO-N8.md
 /notas/

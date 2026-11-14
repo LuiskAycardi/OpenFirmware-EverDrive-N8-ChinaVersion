@@ -37,14 +37,34 @@ PREFER = ("(USA", "(World", "(Japan, USA", "(USA, Europe", "(Europe")
 
 
 def ines(path):
-    h = open(path, "rb").read(16)
-    if h[:4] != b"NES\x1a":
+    with open(path, "rb") as f:
+        h = f.read(16)
+    if len(h) != 16 or h[:4] != b"NES\x1a":
         return None
     mapper = (h[6] >> 4) | (h[7] & 0xF0)
     nes2 = (h[7] & 0x0C) == 0x08
     if nes2:
         mapper |= (h[8] & 0x0F) << 8
-    return {"mapper": mapper, "prg_kb": h[4] * 16, "chr_kb": h[5] * 8,
+    def rom_size(low, upper, unit):
+        if nes2 and upper == 15:
+            return (1 << (low >> 2)) * (2 * (low & 3) + 1)
+        return ((upper << 8) | low) * unit
+    def ram_size(n):
+        return (64 << n) if n else 0
+    prg = rom_size(h[4], h[9] & 15 if nes2 else 0, 16384)
+    chr_ = rom_size(h[5], h[9] >> 4 if nes2 else 0, 8192)
+    if not nes2 and h[4] == 0:
+        prg = 4 * 1024 * 1024  # convención iNES que aplica el emulador del banco
+    return {"mapper": mapper, "prg_kb": prg / 1024, "chr_kb": chr_ / 1024,
+            "prg_bytes": prg, "chr_bytes": chr_, "nes2": nes2,
+            "submapper": h[8] >> 4 if nes2 else None,
+            "prg_ram_bytes": ram_size(h[10] & 15) if nes2 else None,
+            "prg_nvram_bytes": ram_size(h[10] >> 4) if nes2 else None,
+            "chr_ram_bytes": ram_size(h[11] & 15) if nes2 else None,
+            "chr_nvram_bytes": ram_size(h[11] >> 4) if nes2 else None,
+            "extended_rom_encoding": bool(nes2 and h[9]),
+            "file_bytes": pathlib.Path(path).stat().st_size,
+            "trainer": bool(h[6] & 4), "console_type": h[7] & 3,
             "byte6": h[6], "four_screen": bool(h[6] & 8), "battery": bool(h[6] & 2)}
 
 

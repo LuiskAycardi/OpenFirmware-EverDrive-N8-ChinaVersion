@@ -58,6 +58,45 @@ que apagues y enciendas, y sigue solo con el siguiente juego en cuanto vuelve a 
 Las opciones (puerto, capturadora, carpeta de la SD, teclas del menú, retrasos) van en `config.json`. Copia
 `config.ejemplo.json` y cambia solo lo necesario; sin él, todo se busca solo.
 
+### Control visual local (experimental, Super Mario Bros.)
+
+`controlador.py` analiza el vídeo continuamente y manda pulsos cortos al Nano; no espera una revisión humana
+de cada captura. El perfil inicial reconoce la ropa de Mario, el marcador, suelo, huecos y obstáculos.
+Solo cuenta un nivel terminado al observar el siguiente marcador de nivel; un arranque correcto no cuenta.
+La primera prueba física de 90 s avanzó y saltó, pero **no completó 1-1**: el perfil necesita ajustes de juego.
+Todavía no es un jugador general ni una validación de tres niveles para todos los mappers.
+
+```bash
+python3 -I tools/consola/latencia.py --repeticiones 32
+python3 -I tools/consola/controlador.py --segundos 180
+python3 -I tools/consola/prueba_controlador.py
+python3 -I tools/consola/evaluar_controlador.py RUTA_DEL_INFORME/video.mp4
+```
+
+Ejecutar desde la raíz del proyecto. El controlador carga SMB de la SD y pulsa Start; `--en-juego` omite ese
+paso cuando ya está en una partida **sin pausa**. Guarda MP4, decisiones JSONL, marcadores y resultado en
+`informes/control-smb-*`. Los pulsos vencen en 250 ms aunque se interrumpa el proceso; ante vídeo ausente o
+antiguo deja de renovarlos. Cada juego futuro necesita un perfil propio.
+
+`latencia.py` carga la ROM de calibración y mide 32 pulsaciones y 32 liberaciones repartidas entre los ocho
+botones. `--en-rom` evita navegar si esa ROM ya está cargada; se verifica su estructura antes de medir.
+Guarda muestras y percentiles en `datos/latencia_input.json` y un informe con vídeo. El retardo medido es
+**orden del PC → indicador visible**, incluyendo USB, lectura del mando, actualización de la ROM y vídeo;
+no es la latencia exclusiva de la capturadora ni se debe confundir con `calibracion.json.retraso_s`.
+El controlador predictivo v2 carga las medianas de pulsación y liberación por separado, más la variación
+hasta el percentil 90. Mide velocidad a partir del sprite y del scroll del escenario, y velocidad relativa
+de los peligros. Proyecta sus distancias durante el retardo medido y el tiempo transcurrido desde recibir
+la imagen; usa la variación como margen adicional. El retardo host→imagen se aplica una sola vez: no se
+suma de nuevo como si se hubiera medido por separado vídeo y mando. También confirma apoyo estable,
+salto pendiente, vuelo y liberación efectiva de A antes de repetir el salto. La pérdida de visión cancela
+el pulso mediante la misma orden de liberación calibrada; el vencimiento de 250 ms cubre un fallo del host.
+Los JSONL guardan velocidad, horizonte y distancias predichas para poder revisar cada decisión.
+`evaluar_controlador.py` compara, a 100 ms, la posición sin actualizar, la antigua velocidad fija de
+160 px/s y la nueva predicción visual. Usa pares compatibles del mismo peligro detectado; es una
+comprobación del seguimiento, no una medida de éxito del juego ni coordenadas externas de referencia.
+Sigue siendo un perfil experimental: compensar latencia no sustituye la estrategia de cada nivel.
+Repetir la medición tras cambiar GBS, capturadora o configuración de vídeo.
+
 ```bash
 cd tools/consola
 python3 -I prueba.py calibrar          # la primera vez, o si cambias algo en el GBS-Control
@@ -111,6 +150,15 @@ python3 -I prueba.py ejecutar --solo "Mega Man" --max 2
   ejecutan igual: el juego se prueba, pero no la partida guardada.
 
 ### Guiones
+
+Para generar recorridos propios sin depender de un TAS publicado, está el bot v2
+[`explorador.py`](explorador.py): conserva rutas por celdas visuales, explora con
+acciones por género y penaliza bucles. Exporta FM2 y puede repetirlas desde encendido
+antes de llevarlas al Nano. Incluye objetivos visuales vinculados a la ROM, varias
+rutas y un plan orientativo de las 204 ROMs. **No se ha validado todavía con juegos
+reales y no certifica superar niveles.** Uso, fuentes, presupuestos y límites en
+[`EXPLORADOR.md`](EXPLORADOR.md).
+
 `guiones.json`: uno por defecto (Start para pasar los títulos y un poco de movimiento), otro sin botones para las
 ROM de blargg, y los que quieras por ROM en `por_rom`, con `guion`, `shots` y `fotogramas`. El formato es el de
 `N8_SCRIPT` y admite 64 tramos como máximo. Con el mismo guion se pueden sacar las capturas de nuestro Verilog en

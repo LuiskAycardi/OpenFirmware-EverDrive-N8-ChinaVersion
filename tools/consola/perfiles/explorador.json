@@ -1,0 +1,3311 @@
+{
+ "generico": {
+  "arranque_fotogramas": 240,
+  "arranque": [
+   {
+    "desde": 120,
+    "hasta": 128,
+    "botones": "start"
+   }
+  ],
+  "variantes_arranque": [
+   {
+    "nombre": "inicio_a",
+    "fotogramas": 240,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 132,
+      "botones": "a"
+     }
+    ]
+   },
+   {
+    "nombre": "inicio_start_a",
+    "fotogramas": 360,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 128,
+      "botones": "start"
+     },
+     {
+      "desde": 250,
+      "hasta": 262,
+      "botones": "a"
+     }
+    ]
+   }
+  ],
+  "escalas_duracion": [
+   0.5,
+   1,
+   2
+  ],
+  "vision": {
+   "roi": [
+    0,
+    40,
+    256,
+    240
+   ],
+   "ventana_temporal": 3,
+   "tolerancia_celda": 0.12
+  },
+  "objetivos": [],
+  "acciones": {
+   "derecha": {
+    "mantener": "right",
+    "fase": "juego"
+   },
+   "izquierda": {
+    "mantener": "left",
+    "fase": "juego"
+   },
+   "arriba": {
+    "mantener": "up",
+    "fase": "juego"
+   },
+   "abajo": {
+    "mantener": "down",
+    "fase": "juego"
+   },
+   "a": {
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "juego"
+   },
+   "b": {
+    "pulsar": "b",
+    "duracion_pulso": 12,
+    "fase": "juego"
+   },
+   "derecha_a": {
+    "mantener": "right",
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "juego"
+   },
+   "menu_confirmar": {
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_volver": {
+    "pulsar": "b",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_abajo_confirmar": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_arriba_confirmar": {
+    "secuencia": [
+     {
+      "botones": "up",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_empezar": {
+    "pulsar": "start",
+    "duracion_pulso": 8,
+    "fase": "menu"
+   },
+   "recuperar_esperar": {
+    "fase": "recuperacion"
+   },
+   "recuperar_retroceder": {
+    "secuencia": [
+     {
+      "botones": "left",
+      "fotogramas": 24
+     },
+     {
+      "botones": "",
+      "fotogramas": 10
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   },
+   "recuperar_confirmar": {
+    "secuencia": [
+     {
+      "botones": "",
+      "fotogramas": 30
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     },
+     {
+      "botones": "",
+      "fotogramas": 20
+     },
+     {
+      "botones": "b",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   }
+  }
+ },
+ "plataformas": {
+  "arranque_fotogramas": 240,
+  "arranque": [
+   {
+    "desde": 120,
+    "hasta": 128,
+    "botones": "start"
+   }
+  ],
+  "variantes_arranque": [
+   {
+    "nombre": "inicio_a",
+    "fotogramas": 240,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 132,
+      "botones": "a"
+     }
+    ]
+   },
+   {
+    "nombre": "inicio_start_a",
+    "fotogramas": 360,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 128,
+      "botones": "start"
+     },
+     {
+      "desde": 250,
+      "hasta": 262,
+      "botones": "a"
+     }
+    ]
+   }
+  ],
+  "escalas_duracion": [
+   0.5,
+   1,
+   2
+  ],
+  "vision": {
+   "roi": [
+    0,
+    40,
+    256,
+    240
+   ],
+   "ventana_temporal": 3,
+   "tolerancia_celda": 0.12
+  },
+  "objetivos": [],
+  "acciones": {
+   "caminar": {
+    "mantener": "right",
+    "fase": "juego"
+   },
+   "correr": {
+    "mantener": "right+b",
+    "fase": "juego"
+   },
+   "salto_corto": {
+    "mantener": "right",
+    "pulsar": "a",
+    "duracion_pulso": 8,
+    "fase": "juego"
+   },
+   "salto_largo": {
+    "mantener": "right+b",
+    "pulsar": "a",
+    "duracion_pulso": 30,
+    "fase": "juego"
+   },
+   "dos_saltos": {
+    "secuencia": [
+     {
+      "botones": "right+a",
+      "fotogramas": 12
+     },
+     {
+      "botones": "right",
+      "fotogramas": 18
+     },
+     {
+      "botones": "right+a",
+      "fotogramas": 12
+     },
+     {
+      "botones": "right",
+      "fotogramas": 18
+     }
+    ],
+    "repetir": true,
+    "fase": "juego"
+   },
+   "escalera": {
+    "mantener": "up",
+    "fase": "juego"
+   },
+   "agacharse": {
+    "mantener": "down",
+    "fase": "juego"
+   },
+   "saltar_atras": {
+    "mantener": "left",
+    "pulsar": "a",
+    "duracion_pulso": 16,
+    "fase": "juego"
+   },
+   "menu_confirmar": {
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_volver": {
+    "pulsar": "b",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_abajo_confirmar": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_arriba_confirmar": {
+    "secuencia": [
+     {
+      "botones": "up",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_empezar": {
+    "pulsar": "start",
+    "duracion_pulso": 8,
+    "fase": "menu"
+   },
+   "recuperar_esperar": {
+    "fase": "recuperacion"
+   },
+   "recuperar_retroceder": {
+    "secuencia": [
+     {
+      "botones": "left",
+      "fotogramas": 24
+     },
+     {
+      "botones": "",
+      "fotogramas": 10
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   },
+   "recuperar_confirmar": {
+    "secuencia": [
+     {
+      "botones": "",
+      "fotogramas": 30
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     },
+     {
+      "botones": "",
+      "fotogramas": 20
+     },
+     {
+      "botones": "b",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   }
+  }
+ },
+ "accion_cenital": {
+  "arranque_fotogramas": 240,
+  "arranque": [
+   {
+    "desde": 120,
+    "hasta": 128,
+    "botones": "start"
+   }
+  ],
+  "variantes_arranque": [
+   {
+    "nombre": "inicio_a",
+    "fotogramas": 240,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 132,
+      "botones": "a"
+     }
+    ]
+   },
+   {
+    "nombre": "inicio_start_a",
+    "fotogramas": 360,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 128,
+      "botones": "start"
+     },
+     {
+      "desde": 250,
+      "hasta": 262,
+      "botones": "a"
+     }
+    ]
+   }
+  ],
+  "escalas_duracion": [
+   0.5,
+   1,
+   2
+  ],
+  "vision": {
+   "roi": [
+    0,
+    40,
+    256,
+    240
+   ],
+   "ventana_temporal": 3,
+   "tolerancia_celda": 0.12
+  },
+  "objetivos": [],
+  "acciones": {
+   "norte": {
+    "mantener": "up",
+    "fase": "juego"
+   },
+   "sur": {
+    "mantener": "down",
+    "fase": "juego"
+   },
+   "este": {
+    "mantener": "right",
+    "fase": "juego"
+   },
+   "oeste": {
+    "mantener": "left",
+    "fase": "juego"
+   },
+   "avanzar_atacar": {
+    "mantener": "up",
+    "pulsar": "b",
+    "duracion_pulso": 12,
+    "fase": "juego"
+   },
+   "rodear_atacar": {
+    "secuencia": [
+     {
+      "botones": "right",
+      "fotogramas": 20
+     },
+     {
+      "botones": "up",
+      "fotogramas": 20
+     },
+     {
+      "botones": "b",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "interactuar": {
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "juego"
+   },
+   "menu_confirmar": {
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_volver": {
+    "pulsar": "b",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_abajo_confirmar": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_arriba_confirmar": {
+    "secuencia": [
+     {
+      "botones": "up",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_empezar": {
+    "pulsar": "start",
+    "duracion_pulso": 8,
+    "fase": "menu"
+   },
+   "recuperar_esperar": {
+    "fase": "recuperacion"
+   },
+   "recuperar_retroceder": {
+    "secuencia": [
+     {
+      "botones": "left",
+      "fotogramas": 24
+     },
+     {
+      "botones": "",
+      "fotogramas": 10
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   },
+   "recuperar_confirmar": {
+    "secuencia": [
+     {
+      "botones": "",
+      "fotogramas": 30
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     },
+     {
+      "botones": "",
+      "fotogramas": 20
+     },
+     {
+      "botones": "b",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   }
+  }
+ },
+ "lucha": {
+  "arranque_fotogramas": 240,
+  "arranque": [
+   {
+    "desde": 120,
+    "hasta": 128,
+    "botones": "start"
+   }
+  ],
+  "variantes_arranque": [
+   {
+    "nombre": "inicio_a",
+    "fotogramas": 240,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 132,
+      "botones": "a"
+     }
+    ]
+   },
+   {
+    "nombre": "inicio_start_a",
+    "fotogramas": 360,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 128,
+      "botones": "start"
+     },
+     {
+      "desde": 250,
+      "hasta": 262,
+      "botones": "a"
+     }
+    ]
+   }
+  ],
+  "escalas_duracion": [
+   0.5,
+   1,
+   2
+  ],
+  "vision": {
+   "roi": [
+    0,
+    40,
+    256,
+    240
+   ],
+   "ventana_temporal": 3,
+   "tolerancia_celda": 0.12
+  },
+  "objetivos": [],
+  "acciones": {
+   "acercarse": {
+    "mantener": "right",
+    "fase": "juego"
+   },
+   "alejarse": {
+    "mantener": "left",
+    "fase": "juego"
+   },
+   "agacharse": {
+    "mantener": "down",
+    "fase": "juego"
+   },
+   "golpe_a": {
+    "pulsar": "a",
+    "duracion_pulso": 5,
+    "fase": "juego"
+   },
+   "golpe_b": {
+    "pulsar": "b",
+    "duracion_pulso": 5,
+    "fase": "juego"
+   },
+   "combo_ab": {
+    "secuencia": [
+     {
+      "botones": "a",
+      "fotogramas": 5
+     },
+     {
+      "botones": "",
+      "fotogramas": 7
+     },
+     {
+      "botones": "b",
+      "fotogramas": 5
+     },
+     {
+      "botones": "",
+      "fotogramas": 7
+     }
+    ],
+    "repetir": true,
+    "fase": "juego"
+   },
+   "diagonal_golpe": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 6
+     },
+     {
+      "botones": "down+right",
+      "fotogramas": 6
+     },
+     {
+      "botones": "right+a",
+      "fotogramas": 6
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "salto_golpe": {
+    "secuencia": [
+     {
+      "botones": "up",
+      "fotogramas": 8
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 16
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "menu_confirmar": {
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_volver": {
+    "pulsar": "b",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_abajo_confirmar": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_arriba_confirmar": {
+    "secuencia": [
+     {
+      "botones": "up",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_empezar": {
+    "pulsar": "start",
+    "duracion_pulso": 8,
+    "fase": "menu"
+   },
+   "recuperar_esperar": {
+    "fase": "recuperacion"
+   },
+   "recuperar_retroceder": {
+    "secuencia": [
+     {
+      "botones": "left",
+      "fotogramas": 24
+     },
+     {
+      "botones": "",
+      "fotogramas": 10
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   },
+   "recuperar_confirmar": {
+    "secuencia": [
+     {
+      "botones": "",
+      "fotogramas": 30
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     },
+     {
+      "botones": "",
+      "fotogramas": 20
+     },
+     {
+      "botones": "b",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   }
+  }
+ },
+ "beat_em_up": {
+  "arranque_fotogramas": 240,
+  "arranque": [
+   {
+    "desde": 120,
+    "hasta": 128,
+    "botones": "start"
+   }
+  ],
+  "variantes_arranque": [
+   {
+    "nombre": "inicio_a",
+    "fotogramas": 240,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 132,
+      "botones": "a"
+     }
+    ]
+   },
+   {
+    "nombre": "inicio_start_a",
+    "fotogramas": 360,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 128,
+      "botones": "start"
+     },
+     {
+      "desde": 250,
+      "hasta": 262,
+      "botones": "a"
+     }
+    ]
+   }
+  ],
+  "escalas_duracion": [
+   0.5,
+   1,
+   2
+  ],
+  "vision": {
+   "roi": [
+    0,
+    40,
+    256,
+    240
+   ],
+   "ventana_temporal": 3,
+   "tolerancia_celda": 0.12
+  },
+  "objetivos": [],
+  "acciones": {
+   "avanzar": {
+    "mantener": "right",
+    "fase": "juego"
+   },
+   "retroceder": {
+    "mantener": "left",
+    "fase": "juego"
+   },
+   "cambiar_fila_arriba": {
+    "mantener": "up",
+    "fase": "juego"
+   },
+   "cambiar_fila_abajo": {
+    "mantener": "down",
+    "fase": "juego"
+   },
+   "combo": {
+    "secuencia": [
+     {
+      "botones": "b",
+      "fotogramas": 6
+     },
+     {
+      "botones": "",
+      "fotogramas": 6
+     },
+     {
+      "botones": "b",
+      "fotogramas": 6
+     },
+     {
+      "botones": "",
+      "fotogramas": 6
+     }
+    ],
+    "repetir": true,
+    "fase": "juego"
+   },
+   "salto_ataque": {
+    "secuencia": [
+     {
+      "botones": "a",
+      "fotogramas": 8
+     },
+     {
+      "botones": "a+b",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 16
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "avanzar_golpear": {
+    "secuencia": [
+     {
+      "botones": "right",
+      "fotogramas": 20
+     },
+     {
+      "botones": "b",
+      "fotogramas": 6
+     },
+     {
+      "botones": "",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "buscar_enemigo": {
+    "secuencia": [
+     {
+      "botones": "up+right",
+      "fotogramas": 16
+     },
+     {
+      "botones": "down+right",
+      "fotogramas": 16
+     },
+     {
+      "botones": "b",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "menu_confirmar": {
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_volver": {
+    "pulsar": "b",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_abajo_confirmar": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_arriba_confirmar": {
+    "secuencia": [
+     {
+      "botones": "up",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_empezar": {
+    "pulsar": "start",
+    "duracion_pulso": 8,
+    "fase": "menu"
+   },
+   "recuperar_esperar": {
+    "fase": "recuperacion"
+   },
+   "recuperar_retroceder": {
+    "secuencia": [
+     {
+      "botones": "left",
+      "fotogramas": 24
+     },
+     {
+      "botones": "",
+      "fotogramas": 10
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   },
+   "recuperar_confirmar": {
+    "secuencia": [
+     {
+      "botones": "",
+      "fotogramas": 30
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     },
+     {
+      "botones": "",
+      "fotogramas": 20
+     },
+     {
+      "botones": "b",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   }
+  }
+ },
+ "carreras": {
+  "arranque_fotogramas": 240,
+  "arranque": [
+   {
+    "desde": 120,
+    "hasta": 128,
+    "botones": "start"
+   }
+  ],
+  "variantes_arranque": [
+   {
+    "nombre": "inicio_a",
+    "fotogramas": 240,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 132,
+      "botones": "a"
+     }
+    ]
+   },
+   {
+    "nombre": "inicio_start_a",
+    "fotogramas": 360,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 128,
+      "botones": "start"
+     },
+     {
+      "desde": 250,
+      "hasta": 262,
+      "botones": "a"
+     }
+    ]
+   }
+  ],
+  "escalas_duracion": [
+   0.5,
+   1,
+   2
+  ],
+  "vision": {
+   "roi": [
+    0,
+    40,
+    256,
+    240
+   ],
+   "ventana_temporal": 3,
+   "tolerancia_celda": 0.12
+  },
+  "objetivos": [],
+  "acciones": {
+   "acelerar": {
+    "mantener": "a",
+    "fase": "juego"
+   },
+   "acelerar_b": {
+    "mantener": "b",
+    "fase": "juego"
+   },
+   "curva_izquierda": {
+    "mantener": "left+a",
+    "fase": "juego"
+   },
+   "curva_derecha": {
+    "mantener": "right+a",
+    "fase": "juego"
+   },
+   "frenar_y_girar": {
+    "secuencia": [
+     {
+      "botones": "b",
+      "fotogramas": 12
+     },
+     {
+      "botones": "right",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 36
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "marcha": {
+    "mantener": "up",
+    "fase": "juego"
+   },
+   "menu_confirmar": {
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_volver": {
+    "pulsar": "b",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_abajo_confirmar": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_arriba_confirmar": {
+    "secuencia": [
+     {
+      "botones": "up",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_empezar": {
+    "pulsar": "start",
+    "duracion_pulso": 8,
+    "fase": "menu"
+   },
+   "recuperar_esperar": {
+    "fase": "recuperacion"
+   },
+   "recuperar_retroceder": {
+    "secuencia": [
+     {
+      "botones": "left",
+      "fotogramas": 24
+     },
+     {
+      "botones": "",
+      "fotogramas": 10
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   },
+   "recuperar_confirmar": {
+    "secuencia": [
+     {
+      "botones": "",
+      "fotogramas": 30
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     },
+     {
+      "botones": "",
+      "fotogramas": 20
+     },
+     {
+      "botones": "b",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   }
+  }
+ },
+ "deportes": {
+  "arranque_fotogramas": 240,
+  "arranque": [
+   {
+    "desde": 120,
+    "hasta": 128,
+    "botones": "start"
+   }
+  ],
+  "variantes_arranque": [
+   {
+    "nombre": "inicio_a",
+    "fotogramas": 240,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 132,
+      "botones": "a"
+     }
+    ]
+   },
+   {
+    "nombre": "inicio_start_a",
+    "fotogramas": 360,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 128,
+      "botones": "start"
+     },
+     {
+      "desde": 250,
+      "hasta": 262,
+      "botones": "a"
+     }
+    ]
+   }
+  ],
+  "escalas_duracion": [
+   0.5,
+   1,
+   2
+  ],
+  "vision": {
+   "roi": [
+    0,
+    40,
+    256,
+    240
+   ],
+   "ventana_temporal": 3,
+   "tolerancia_celda": 0.12
+  },
+  "objetivos": [],
+  "acciones": {
+   "correr_derecha": {
+    "mantener": "right",
+    "fase": "juego"
+   },
+   "correr_izquierda": {
+    "mantener": "left",
+    "fase": "juego"
+   },
+   "correr_arriba": {
+    "mantener": "up",
+    "fase": "juego"
+   },
+   "correr_abajo": {
+    "mantener": "down",
+    "fase": "juego"
+   },
+   "pase": {
+    "pulsar": "a",
+    "duracion_pulso": 6,
+    "fase": "juego"
+   },
+   "tiro": {
+    "pulsar": "b",
+    "duracion_pulso": 12,
+    "fase": "juego"
+   },
+   "carrera_tiro": {
+    "secuencia": [
+     {
+      "botones": "right",
+      "fotogramas": 24
+     },
+     {
+      "botones": "right+b",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "alternar": {
+    "secuencia": [
+     {
+      "botones": "a",
+      "fotogramas": 4
+     },
+     {
+      "botones": "",
+      "fotogramas": 4
+     },
+     {
+      "botones": "b",
+      "fotogramas": 4
+     },
+     {
+      "botones": "",
+      "fotogramas": 4
+     }
+    ],
+    "repetir": true,
+    "fase": "juego"
+   },
+   "menu_confirmar": {
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_volver": {
+    "pulsar": "b",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_abajo_confirmar": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_arriba_confirmar": {
+    "secuencia": [
+     {
+      "botones": "up",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_empezar": {
+    "pulsar": "start",
+    "duracion_pulso": 8,
+    "fase": "menu"
+   },
+   "recuperar_esperar": {
+    "fase": "recuperacion"
+   },
+   "recuperar_retroceder": {
+    "secuencia": [
+     {
+      "botones": "left",
+      "fotogramas": 24
+     },
+     {
+      "botones": "",
+      "fotogramas": 10
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   },
+   "recuperar_confirmar": {
+    "secuencia": [
+     {
+      "botones": "",
+      "fotogramas": 30
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     },
+     {
+      "botones": "",
+      "fotogramas": 20
+     },
+     {
+      "botones": "b",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   }
+  }
+ },
+ "puzle": {
+  "arranque_fotogramas": 240,
+  "arranque": [
+   {
+    "desde": 120,
+    "hasta": 128,
+    "botones": "start"
+   }
+  ],
+  "variantes_arranque": [
+   {
+    "nombre": "inicio_a",
+    "fotogramas": 240,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 132,
+      "botones": "a"
+     }
+    ]
+   },
+   {
+    "nombre": "inicio_start_a",
+    "fotogramas": 360,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 128,
+      "botones": "start"
+     },
+     {
+      "desde": 250,
+      "hasta": 262,
+      "botones": "a"
+     }
+    ]
+   }
+  ],
+  "escalas_duracion": [
+   0.5,
+   1,
+   2
+  ],
+  "vision": {
+   "roi": [
+    0,
+    40,
+    256,
+    240
+   ],
+   "ventana_temporal": 3,
+   "tolerancia_celda": 0.12
+  },
+  "objetivos": [],
+  "acciones": {
+   "izquierda": {
+    "pulsar": "left",
+    "duracion_pulso": 6,
+    "fase": "juego"
+   },
+   "derecha": {
+    "pulsar": "right",
+    "duracion_pulso": 6,
+    "fase": "juego"
+   },
+   "rotar_a": {
+    "pulsar": "a",
+    "duracion_pulso": 6,
+    "fase": "juego"
+   },
+   "rotar_b": {
+    "pulsar": "b",
+    "duracion_pulso": 6,
+    "fase": "juego"
+   },
+   "bajar": {
+    "mantener": "down",
+    "fase": "juego"
+   },
+   "confirmar": {
+    "pulsar": "a",
+    "duracion_pulso": 8,
+    "fase": "juego"
+   },
+   "mover_rotar": {
+    "secuencia": [
+     {
+      "botones": "left",
+      "fotogramas": 6
+     },
+     {
+      "botones": "",
+      "fotogramas": 6
+     },
+     {
+      "botones": "a",
+      "fotogramas": 6
+     },
+     {
+      "botones": "",
+      "fotogramas": 6
+     },
+     {
+      "botones": "down",
+      "fotogramas": 24
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "menu_confirmar": {
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_volver": {
+    "pulsar": "b",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_abajo_confirmar": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_arriba_confirmar": {
+    "secuencia": [
+     {
+      "botones": "up",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_empezar": {
+    "pulsar": "start",
+    "duracion_pulso": 8,
+    "fase": "menu"
+   },
+   "recuperar_esperar": {
+    "fase": "recuperacion"
+   },
+   "recuperar_retroceder": {
+    "secuencia": [
+     {
+      "botones": "left",
+      "fotogramas": 24
+     },
+     {
+      "botones": "",
+      "fotogramas": 10
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   },
+   "recuperar_confirmar": {
+    "secuencia": [
+     {
+      "botones": "",
+      "fotogramas": 30
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     },
+     {
+      "botones": "",
+      "fotogramas": 20
+     },
+     {
+      "botones": "b",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   }
+  }
+ },
+ "rol": {
+  "arranque_fotogramas": 240,
+  "arranque": [
+   {
+    "desde": 120,
+    "hasta": 128,
+    "botones": "start"
+   }
+  ],
+  "variantes_arranque": [
+   {
+    "nombre": "inicio_a",
+    "fotogramas": 240,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 132,
+      "botones": "a"
+     }
+    ]
+   },
+   {
+    "nombre": "inicio_start_a",
+    "fotogramas": 360,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 128,
+      "botones": "start"
+     },
+     {
+      "desde": 250,
+      "hasta": 262,
+      "botones": "a"
+     }
+    ]
+   }
+  ],
+  "escalas_duracion": [
+   0.5,
+   1,
+   2
+  ],
+  "vision": {
+   "roi": [
+    0,
+    8,
+    256,
+    240
+   ],
+   "ventana_temporal": 3,
+   "tolerancia_celda": 0.12
+  },
+  "objetivos": [],
+  "acciones": {
+   "explorar_norte": {
+    "mantener": "up",
+    "fase": "juego"
+   },
+   "explorar_este": {
+    "mantener": "right",
+    "fase": "juego"
+   },
+   "explorar_sur": {
+    "mantener": "down",
+    "fase": "juego"
+   },
+   "explorar_oeste": {
+    "mantener": "left",
+    "fase": "juego"
+   },
+   "hablar": {
+    "pulsar": "a",
+    "duracion_pulso": 8,
+    "fase": "juego"
+   },
+   "dialogo": {
+    "secuencia": [
+     {
+      "botones": "a",
+      "fotogramas": 6
+     },
+     {
+      "botones": "",
+      "fotogramas": 24
+     }
+    ],
+    "repetir": true,
+    "fase": "juego"
+   },
+   "cancelar": {
+    "pulsar": "b",
+    "duracion_pulso": 8,
+    "fase": "juego"
+   },
+   "elegir_opcion": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 6
+     },
+     {
+      "botones": "",
+      "fotogramas": 10
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "menu_confirmar": {
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_volver": {
+    "pulsar": "b",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_abajo_confirmar": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_arriba_confirmar": {
+    "secuencia": [
+     {
+      "botones": "up",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_empezar": {
+    "pulsar": "start",
+    "duracion_pulso": 8,
+    "fase": "menu"
+   },
+   "recuperar_esperar": {
+    "fase": "recuperacion"
+   },
+   "recuperar_retroceder": {
+    "secuencia": [
+     {
+      "botones": "left",
+      "fotogramas": 24
+     },
+     {
+      "botones": "",
+      "fotogramas": 10
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   },
+   "recuperar_confirmar": {
+    "secuencia": [
+     {
+      "botones": "",
+      "fotogramas": 30
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     },
+     {
+      "botones": "",
+      "fotogramas": 20
+     },
+     {
+      "botones": "b",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   }
+  }
+ },
+ "estrategia": {
+  "arranque_fotogramas": 240,
+  "arranque": [
+   {
+    "desde": 120,
+    "hasta": 128,
+    "botones": "start"
+   }
+  ],
+  "variantes_arranque": [
+   {
+    "nombre": "inicio_a",
+    "fotogramas": 240,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 132,
+      "botones": "a"
+     }
+    ]
+   },
+   {
+    "nombre": "inicio_start_a",
+    "fotogramas": 360,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 128,
+      "botones": "start"
+     },
+     {
+      "desde": 250,
+      "hasta": 262,
+      "botones": "a"
+     }
+    ]
+   }
+  ],
+  "escalas_duracion": [
+   0.5,
+   1,
+   2
+  ],
+  "vision": {
+   "roi": [
+    0,
+    8,
+    256,
+    240
+   ],
+   "ventana_temporal": 3,
+   "tolerancia_celda": 0.12
+  },
+  "objetivos": [],
+  "acciones": {
+   "cursor_arriba": {
+    "pulsar": "up",
+    "duracion_pulso": 6,
+    "fase": "juego"
+   },
+   "cursor_abajo": {
+    "pulsar": "down",
+    "duracion_pulso": 6,
+    "fase": "juego"
+   },
+   "cursor_izquierda": {
+    "pulsar": "left",
+    "duracion_pulso": 6,
+    "fase": "juego"
+   },
+   "cursor_derecha": {
+    "pulsar": "right",
+    "duracion_pulso": 6,
+    "fase": "juego"
+   },
+   "seleccionar": {
+    "pulsar": "a",
+    "duracion_pulso": 8,
+    "fase": "juego"
+   },
+   "seleccionar_mover": {
+    "secuencia": [
+     {
+      "botones": "a",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "right",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "cancelar": {
+    "pulsar": "b",
+    "duracion_pulso": 8,
+    "fase": "juego"
+   },
+   "menu_confirmar": {
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_volver": {
+    "pulsar": "b",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_abajo_confirmar": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_arriba_confirmar": {
+    "secuencia": [
+     {
+      "botones": "up",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_empezar": {
+    "pulsar": "start",
+    "duracion_pulso": 8,
+    "fase": "menu"
+   },
+   "recuperar_esperar": {
+    "fase": "recuperacion"
+   },
+   "recuperar_retroceder": {
+    "secuencia": [
+     {
+      "botones": "left",
+      "fotogramas": 24
+     },
+     {
+      "botones": "",
+      "fotogramas": 10
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   },
+   "recuperar_confirmar": {
+    "secuencia": [
+     {
+      "botones": "",
+      "fotogramas": 30
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     },
+     {
+      "botones": "",
+      "fotogramas": 20
+     },
+     {
+      "botones": "b",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   }
+  }
+ },
+ "pinball": {
+  "arranque_fotogramas": 240,
+  "arranque": [
+   {
+    "desde": 120,
+    "hasta": 128,
+    "botones": "start"
+   }
+  ],
+  "variantes_arranque": [
+   {
+    "nombre": "inicio_a",
+    "fotogramas": 240,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 132,
+      "botones": "a"
+     }
+    ]
+   },
+   {
+    "nombre": "inicio_start_a",
+    "fotogramas": 360,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 128,
+      "botones": "start"
+     },
+     {
+      "desde": 250,
+      "hasta": 262,
+      "botones": "a"
+     }
+    ]
+   }
+  ],
+  "escalas_duracion": [
+   0.5,
+   1,
+   2
+  ],
+  "vision": {
+   "roi": [
+    0,
+    40,
+    256,
+    240
+   ],
+   "ventana_temporal": 3,
+   "tolerancia_celda": 0.12
+  },
+  "objetivos": [],
+  "acciones": {
+   "lanzar": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 40
+     },
+     {
+      "botones": "",
+      "fotogramas": 20
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "lanzar_a": {
+    "secuencia": [
+     {
+      "botones": "a",
+      "fotogramas": 40
+     },
+     {
+      "botones": "",
+      "fotogramas": 20
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "paletas": {
+    "secuencia": [
+     {
+      "botones": "left+a",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 8
+     },
+     {
+      "botones": "right+b",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": true,
+    "fase": "juego"
+   },
+   "paleta_izquierda": {
+    "pulsar": "left",
+    "duracion_pulso": 12,
+    "fase": "juego"
+   },
+   "paleta_derecha": {
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "juego"
+   },
+   "menu_confirmar": {
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_volver": {
+    "pulsar": "b",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_abajo_confirmar": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_arriba_confirmar": {
+    "secuencia": [
+     {
+      "botones": "up",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_empezar": {
+    "pulsar": "start",
+    "duracion_pulso": 8,
+    "fase": "menu"
+   },
+   "recuperar_esperar": {
+    "fase": "recuperacion"
+   },
+   "recuperar_retroceder": {
+    "secuencia": [
+     {
+      "botones": "left",
+      "fotogramas": 24
+     },
+     {
+      "botones": "",
+      "fotogramas": 10
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   },
+   "recuperar_confirmar": {
+    "secuencia": [
+     {
+      "botones": "",
+      "fotogramas": 30
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     },
+     {
+      "botones": "",
+      "fotogramas": 20
+     },
+     {
+      "botones": "b",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   }
+  }
+ },
+ "multijuego": {
+  "arranque_fotogramas": 240,
+  "arranque": [
+   {
+    "desde": 120,
+    "hasta": 128,
+    "botones": "start"
+   }
+  ],
+  "variantes_arranque": [
+   {
+    "nombre": "inicio_a",
+    "fotogramas": 240,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 132,
+      "botones": "a"
+     }
+    ]
+   },
+   {
+    "nombre": "inicio_start_a",
+    "fotogramas": 360,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 128,
+      "botones": "start"
+     },
+     {
+      "desde": 250,
+      "hasta": 262,
+      "botones": "a"
+     }
+    ]
+   }
+  ],
+  "escalas_duracion": [
+   0.5,
+   1,
+   2
+  ],
+  "vision": {
+   "roi": [
+    0,
+    8,
+    256,
+    240
+   ],
+   "ventana_temporal": 3,
+   "tolerancia_celda": 0.12
+  },
+  "objetivos": [],
+  "acciones": {
+   "elegir_a": {
+    "pulsar": "a",
+    "duracion_pulso": 10,
+    "fase": "juego"
+   },
+   "elegir_b": {
+    "pulsar": "b",
+    "duracion_pulso": 10,
+    "fase": "juego"
+   },
+   "elegir_siguiente": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 16
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "elegir_pagina": {
+    "secuencia": [
+     {
+      "botones": "right",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 16
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "intentar_juego": {
+    "secuencia": [
+     {
+      "botones": "right",
+      "fotogramas": 30
+     },
+     {
+      "botones": "right+a",
+      "fotogramas": 20
+     },
+     {
+      "botones": "b",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "menu_confirmar": {
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_volver": {
+    "pulsar": "b",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_abajo_confirmar": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_arriba_confirmar": {
+    "secuencia": [
+     {
+      "botones": "up",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_empezar": {
+    "pulsar": "start",
+    "duracion_pulso": 8,
+    "fase": "menu"
+   },
+   "recuperar_esperar": {
+    "fase": "recuperacion"
+   },
+   "recuperar_retroceder": {
+    "secuencia": [
+     {
+      "botones": "left",
+      "fotogramas": 24
+     },
+     {
+      "botones": "",
+      "fotogramas": 10
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   },
+   "recuperar_confirmar": {
+    "secuencia": [
+     {
+      "botones": "",
+      "fotogramas": 30
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     },
+     {
+      "botones": "",
+      "fotogramas": 20
+     },
+     {
+      "botones": "b",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   }
+  }
+ },
+ "disparos_horizontal": {
+  "arranque_fotogramas": 240,
+  "arranque": [
+   {
+    "desde": 120,
+    "hasta": 128,
+    "botones": "start"
+   }
+  ],
+  "variantes_arranque": [
+   {
+    "nombre": "inicio_a",
+    "fotogramas": 240,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 132,
+      "botones": "a"
+     }
+    ]
+   },
+   {
+    "nombre": "inicio_start_a",
+    "fotogramas": 360,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 128,
+      "botones": "start"
+     },
+     {
+      "desde": 250,
+      "hasta": 262,
+      "botones": "a"
+     }
+    ]
+   }
+  ],
+  "escalas_duracion": [
+   0.5,
+   1,
+   2
+  ],
+  "vision": {
+   "roi": [
+    0,
+    40,
+    256,
+    240
+   ],
+   "ventana_temporal": 3,
+   "tolerancia_celda": 0.12
+  },
+  "objetivos": [],
+  "acciones": {
+   "quieto_a": {
+    "mantener": "",
+    "pulsar": "a",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "quieto_b": {
+    "mantener": "",
+    "pulsar": "b",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "up_a": {
+    "mantener": "up",
+    "pulsar": "a",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "up_b": {
+    "mantener": "up",
+    "pulsar": "b",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "down_a": {
+    "mantener": "down",
+    "pulsar": "a",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "down_b": {
+    "mantener": "down",
+    "pulsar": "b",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "left_a": {
+    "mantener": "left",
+    "pulsar": "a",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "left_b": {
+    "mantener": "left",
+    "pulsar": "b",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "right_a": {
+    "mantener": "right",
+    "pulsar": "a",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "right_b": {
+    "mantener": "right",
+    "pulsar": "b",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "barrido": {
+    "secuencia": [
+     {
+      "botones": "up+a",
+      "fotogramas": 15
+     },
+     {
+      "botones": "right+a",
+      "fotogramas": 15
+     },
+     {
+      "botones": "down+a",
+      "fotogramas": 15
+     },
+     {
+      "botones": "left+a",
+      "fotogramas": 15
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "menu_confirmar": {
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_volver": {
+    "pulsar": "b",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_abajo_confirmar": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_arriba_confirmar": {
+    "secuencia": [
+     {
+      "botones": "up",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_empezar": {
+    "pulsar": "start",
+    "duracion_pulso": 8,
+    "fase": "menu"
+   },
+   "recuperar_esperar": {
+    "fase": "recuperacion"
+   },
+   "recuperar_retroceder": {
+    "secuencia": [
+     {
+      "botones": "left",
+      "fotogramas": 24
+     },
+     {
+      "botones": "",
+      "fotogramas": 10
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   },
+   "recuperar_confirmar": {
+    "secuencia": [
+     {
+      "botones": "",
+      "fotogramas": 30
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     },
+     {
+      "botones": "",
+      "fotogramas": 20
+     },
+     {
+      "botones": "b",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   }
+  }
+ },
+ "disparos_vertical": {
+  "arranque_fotogramas": 240,
+  "arranque": [
+   {
+    "desde": 120,
+    "hasta": 128,
+    "botones": "start"
+   }
+  ],
+  "variantes_arranque": [
+   {
+    "nombre": "inicio_a",
+    "fotogramas": 240,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 132,
+      "botones": "a"
+     }
+    ]
+   },
+   {
+    "nombre": "inicio_start_a",
+    "fotogramas": 360,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 128,
+      "botones": "start"
+     },
+     {
+      "desde": 250,
+      "hasta": 262,
+      "botones": "a"
+     }
+    ]
+   }
+  ],
+  "escalas_duracion": [
+   0.5,
+   1,
+   2
+  ],
+  "vision": {
+   "roi": [
+    0,
+    40,
+    256,
+    240
+   ],
+   "ventana_temporal": 3,
+   "tolerancia_celda": 0.12
+  },
+  "objetivos": [],
+  "acciones": {
+   "quieto_a": {
+    "mantener": "",
+    "pulsar": "a",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "quieto_b": {
+    "mantener": "",
+    "pulsar": "b",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "up_a": {
+    "mantener": "up",
+    "pulsar": "a",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "up_b": {
+    "mantener": "up",
+    "pulsar": "b",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "down_a": {
+    "mantener": "down",
+    "pulsar": "a",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "down_b": {
+    "mantener": "down",
+    "pulsar": "b",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "left_a": {
+    "mantener": "left",
+    "pulsar": "a",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "left_b": {
+    "mantener": "left",
+    "pulsar": "b",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "right_a": {
+    "mantener": "right",
+    "pulsar": "a",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "right_b": {
+    "mantener": "right",
+    "pulsar": "b",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "barrido": {
+    "secuencia": [
+     {
+      "botones": "up+a",
+      "fotogramas": 15
+     },
+     {
+      "botones": "right+a",
+      "fotogramas": 15
+     },
+     {
+      "botones": "down+a",
+      "fotogramas": 15
+     },
+     {
+      "botones": "left+a",
+      "fotogramas": 15
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "menu_confirmar": {
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_volver": {
+    "pulsar": "b",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_abajo_confirmar": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_arriba_confirmar": {
+    "secuencia": [
+     {
+      "botones": "up",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_empezar": {
+    "pulsar": "start",
+    "duracion_pulso": 8,
+    "fase": "menu"
+   },
+   "recuperar_esperar": {
+    "fase": "recuperacion"
+   },
+   "recuperar_retroceder": {
+    "secuencia": [
+     {
+      "botones": "left",
+      "fotogramas": 24
+     },
+     {
+      "botones": "",
+      "fotogramas": 10
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   },
+   "recuperar_confirmar": {
+    "secuencia": [
+     {
+      "botones": "",
+      "fotogramas": 30
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     },
+     {
+      "botones": "",
+      "fotogramas": 20
+     },
+     {
+      "botones": "b",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   }
+  }
+ },
+ "disparos": {
+  "arranque_fotogramas": 240,
+  "arranque": [
+   {
+    "desde": 120,
+    "hasta": 128,
+    "botones": "start"
+   }
+  ],
+  "variantes_arranque": [
+   {
+    "nombre": "inicio_a",
+    "fotogramas": 240,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 132,
+      "botones": "a"
+     }
+    ]
+   },
+   {
+    "nombre": "inicio_start_a",
+    "fotogramas": 360,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 128,
+      "botones": "start"
+     },
+     {
+      "desde": 250,
+      "hasta": 262,
+      "botones": "a"
+     }
+    ]
+   }
+  ],
+  "escalas_duracion": [
+   0.5,
+   1,
+   2
+  ],
+  "vision": {
+   "roi": [
+    0,
+    40,
+    256,
+    240
+   ],
+   "ventana_temporal": 3,
+   "tolerancia_celda": 0.12
+  },
+  "objetivos": [],
+  "acciones": {
+   "quieto_a": {
+    "mantener": "",
+    "pulsar": "a",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "quieto_b": {
+    "mantener": "",
+    "pulsar": "b",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "up_a": {
+    "mantener": "up",
+    "pulsar": "a",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "up_b": {
+    "mantener": "up",
+    "pulsar": "b",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "down_a": {
+    "mantener": "down",
+    "pulsar": "a",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "down_b": {
+    "mantener": "down",
+    "pulsar": "b",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "left_a": {
+    "mantener": "left",
+    "pulsar": "a",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "left_b": {
+    "mantener": "left",
+    "pulsar": "b",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "right_a": {
+    "mantener": "right",
+    "pulsar": "a",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "right_b": {
+    "mantener": "right",
+    "pulsar": "b",
+    "duracion_pulso": 2,
+    "periodo": 4,
+    "fase": "juego"
+   },
+   "barrido": {
+    "secuencia": [
+     {
+      "botones": "up+a",
+      "fotogramas": 15
+     },
+     {
+      "botones": "right+a",
+      "fotogramas": 15
+     },
+     {
+      "botones": "down+a",
+      "fotogramas": 15
+     },
+     {
+      "botones": "left+a",
+      "fotogramas": 15
+     }
+    ],
+    "repetir": false,
+    "fase": "juego"
+   },
+   "menu_confirmar": {
+    "pulsar": "a",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_volver": {
+    "pulsar": "b",
+    "duracion_pulso": 12,
+    "fase": "menu"
+   },
+   "menu_abajo_confirmar": {
+    "secuencia": [
+     {
+      "botones": "down",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_arriba_confirmar": {
+    "secuencia": [
+     {
+      "botones": "up",
+      "fotogramas": 8
+     },
+     {
+      "botones": "",
+      "fotogramas": 12
+     },
+     {
+      "botones": "a",
+      "fotogramas": 8
+     }
+    ],
+    "repetir": false,
+    "fase": "menu"
+   },
+   "menu_empezar": {
+    "pulsar": "start",
+    "duracion_pulso": 8,
+    "fase": "menu"
+   },
+   "recuperar_esperar": {
+    "fase": "recuperacion"
+   },
+   "recuperar_retroceder": {
+    "secuencia": [
+     {
+      "botones": "left",
+      "fotogramas": 24
+     },
+     {
+      "botones": "",
+      "fotogramas": 10
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   },
+   "recuperar_confirmar": {
+    "secuencia": [
+     {
+      "botones": "",
+      "fotogramas": 30
+     },
+     {
+      "botones": "a",
+      "fotogramas": 10
+     },
+     {
+      "botones": "",
+      "fotogramas": 20
+     },
+     {
+      "botones": "b",
+      "fotogramas": 10
+     }
+    ],
+    "repetir": false,
+    "fase": "recuperacion"
+   }
+  }
+ },
+ "periferico": {
+  "arranque_fotogramas": 240,
+  "arranque": [
+   {
+    "desde": 120,
+    "hasta": 128,
+    "botones": "start"
+   }
+  ],
+  "variantes_arranque": [
+   {
+    "nombre": "inicio_a",
+    "fotogramas": 240,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 132,
+      "botones": "a"
+     }
+    ]
+   },
+   {
+    "nombre": "inicio_start_a",
+    "fotogramas": 360,
+    "arranque": [
+     {
+      "desde": 120,
+      "hasta": 128,
+      "botones": "start"
+     },
+     {
+      "desde": 250,
+      "hasta": 262,
+      "botones": "a"
+     }
+    ]
+   }
+  ],
+  "escalas_duracion": [
+   0.5,
+   1,
+   2
+  ],
+  "vision": {
+   "roi": [
+    0,
+    40,
+    256,
+    240
+   ],
+   "ventana_temporal": 3,
+   "tolerancia_celda": 0.12
+  },
+  "objetivos": [],
+  "acciones": {},
+  "requiere_periferico": true,
+  "descripcion": "No puede explorar con un único mando NES estándar"
+ }
+}
