@@ -215,7 +215,7 @@ def dir_ref(rom_rel, g):
 
 # ---------------------------------------------------------------- la sesión: hardware real o simulado
 class Banco:
-    def __init__(self, cfg, seco=False, salida=None, sim_fallos=None, refs=None):
+    def __init__(self, cfg, seco=False, salida=None, sim_fallos=None, refs=None, cap=None):
         self.cfg, self.seco, self.sim = cfg, seco, None
         self.datos = (salida / "datos_seco") if seco else (AQUI / "datos")
         self.datos.mkdir(parents=True, exist_ok=True)
@@ -229,7 +229,7 @@ class Banco:
         else:
             import captura
             self.mando = Mando(cfg["puerto"], log=log)
-            self.cap = captura.Captura(cfg["video"], cfg["audio"], log=log, ventana=cfg["ventana"])
+            self.cap = cap or captura.Captura(cfg["video"], cfg["audio"], log=log, ventana=cfg["ventana"])
         self.fuente = menu_mod.Fuente(self.datos / "fuente.json")
         cursor = None
         if (self.datos / "cursor.json").exists():
@@ -541,7 +541,7 @@ def probar(b, j, g, ref, dir_juego):
         b.cap.parar_audio()
         volver_al_menu(b, res)
         return res
-    t_ini = next(t for t, a in reversed(b.mando.avisos) if a.startswith("!INICIO"))
+    t_ini = next(t for t, a in reversed(list(b.mando.avisos)) if a.startswith("!INICIO"))
     L, V = b.retraso(), b.cfg["ventana_s"]
     pendientes = sorted(s for s in g["shots"] if s >= p0)
     fin = g["fotogramas"]
@@ -572,7 +572,7 @@ def probar(b, j, g, ref, dir_juego):
         # Con ROMs grandes el OS v13 carga por partes y lee el mando entre medias ("loading..." y segundos en negro):
         # el !INICIO puede llegar con una lectura del OS. Si al principio las lecturas se cortan más de 0,5 s donde
         # Mesen2 sigue leyendo, era una pausa del OS: se rearma el Nano y se espera el arranque de verdad.
-        sig_ref = next((p for p in polls_ref if p > fc), None)
+        sig_ref = sig_lectura_ref(polls_ref, fc, b.mando.lectura if datos is not None and lecturas else None)
         if (rearmes < 8 and fc - p0 < 300 and ahora - t_ult > 0.5 and sig_ref is not None and sig_ref <= fc + 30
                 and not any(e.get("f", 0) <= fc for e in res["escenas"])):
             if datos is not None:                  # el juego vuelve a empezar: la cola también
@@ -584,10 +584,11 @@ def probar(b, j, g, ref, dir_juego):
             if not ini:
                 res["notas"].append("tras una pausa del arranque no volvió a leer el mando en 30 s")
                 break
-            t_ini = next(t for t, a in reversed(b.mando.avisos) if a.startswith("!INICIO"))
+            t_ini = next(t for t, a in reversed(list(b.mando.avisos)) if a.startswith("!INICIO"))
             t_limite = t_ini + (fin - p0) / FPS * 1.6 + 20
             rearmes += 1
-            log(f"  pausa del OS al cargar: nuevo arranque ({rearmes})")
+            log(f"  pausa del OS al cargar: nuevo arranque ({rearmes}; fc {fc}, lectura {b.mando.lectura}, "
+                f"Mesen2 esperaba leer en {sig_ref})")
             continue
         for s in list(pendientes):
             ts = hora_de(fotos, s, t_ini, p0) + L
@@ -610,7 +611,10 @@ def probar(b, j, g, ref, dir_juego):
         sin_leer = ahora - t_ult
         # Hay juegos que pasan segundos sin leer el mando (la intro de Punch-Out!!, ~6 s en negro): solo es cuelgue si
         # en Mesen2 el juego ya habría vuelto a leerlo. Siguiente lectura de la referencia tras el último fotograma visto:
-        sig_ref = next((p for p in polls_ref if p > fc), None)
+        # Por lecturas, la consola y Mesen2 numeran los fotogramas con unos pocos de diferencia (Dragon Warrior II: 4):
+        # la lectura l de la consola es polls_ref[l], y la siguiente se espera desplazada lo mismo. Buscarla por
+        # fotograma tomaba una lectura que la consola ya había hecho y daba cuelgues falsos en pausas largas sin leer.
+        sig_ref = sig_lectura_ref(polls_ref, fc, b.mando.lectura if datos is not None and lecturas else None)
         espera_ref = sig_ref is None or (fc + sin_leer * FPS) < sig_ref + 3 * FPS
         if sin_leer > 3 and not espera_ref:
             ult = b.cap.ventana(ahora - 3, ahora)
@@ -633,7 +637,7 @@ def probar(b, j, g, ref, dir_juego):
         b.mando.cola_quitar()
         if res["huecos_cola"]:
             res["notas"].append(f"{res['huecos_cola']} fotogramas sin entrada de la película (la cola no llegó a tiempo)")
-    res["lecturas"] = len([x for x in b.mando.fotos if x[0] >= t_ini])
+    res["lecturas"] = len([x for x in list(b.mando.fotos) if x[0] >= t_ini])
     res["fc_final"] = fc
     if cuelgue:
         res["cuelgue"] = cuelgue
@@ -788,6 +792,35 @@ def preparar_lista(a, cfg, guiones):
     return validos, lista
 
 
+def sig_lectura_ref(polls_ref, fc, l=None):
+    """Fotograma (en la cuenta de la consola) en que Mesen2 haría la siguiente lectura del mando. Por lecturas (l =
+    índice de la última lectura de la consola), la lectura l es polls_ref[l] y la consola puede ir unos fotogramas
+    desplazada (Dragon Warrior II: 4); buscarla por fotograma tomaba una que la consola ya había hecho."""
+    if l is not None and 0 < l < len(polls_ref) - 1:
+        return polls_ref[l + 1] + (fc - polls_ref[l])
+    return next((p for p in polls_ref if p > fc), None)
+
+
+def abrir_ventana_previa(cfg):
+    """Abre ya la capturadora con su ventana en vivo, para ver la NES mientras Mesen2 genera las referencias
+    (con películas largas son varios minutos). Banco la reutiliza. Sin calibración o sin capturadora: nada."""
+    if not cfg.get("ventana") or not (AQUI / "datos" / "calibracion.json").exists():
+        return None
+    try:
+        import captura
+        cap = captura.Captura(cfg["video"], cfg["audio"], log=log, ventana=True)
+        cap.iniciar(calibrar.cargar(AQUI / "datos" / "calibracion.json"))
+        cap.rotulo("generando la referencia en Mesen2...")
+        return cap
+    except Exception as e:                       # la prueba sigue igual: Banco la abrirá después
+        log(f"ventana previa no disponible: {e}")
+        try:
+            cap.cerrar()
+        except Exception:
+            pass
+        return None
+
+
 def generar_refs(validos, cfg):
     refs = {}
     for k, j in enumerate(validos, 1):
@@ -857,8 +890,16 @@ def main():
     else:
         validos, lista = preparar_lista(a, cfg, guiones)
     log(f"{len(validos)} juegos para la {a.consola.upper()} -> {salida}")
+    cap_previa = None
+    if a.accion in ("ejecutar", "tas") and not a.seco:
+        cap_previa = abrir_ventana_previa(cfg)
     if a.accion in ("referencias", "ejecutar", "tas"):
-        refs = generar_refs(validos, cfg)
+        try:
+            refs = generar_refs(validos, cfg)
+        except BaseException:
+            if cap_previa:
+                cap_previa.cerrar()
+            raise
         if a.banco:
             por_guion = {}
             for j in validos:
@@ -882,7 +923,7 @@ def main():
         if fallos:
             log(f"fallos simulados a propósito: {fallos}")
     refs_sim = {j["rom_rel"]: str(refs[j["rom_rel"]]["dir"]) for j in validos if j["rom_rel"] in refs}
-    b = Banco(cfg, a.seco, salida, fallos, refs_sim)
+    b = Banco(cfg, a.seco, salida, fallos, refs_sim, cap=cap_previa)
     resultados = []
     try:
         if a.accion == "calibrar" or b.cal is None or a.recalibrar:

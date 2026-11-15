@@ -1,7 +1,7 @@
 """Reproduce en la NES real, una tras otra, las películas TAS de tanda_consola.json (las que sincronizan en Mesen2
 según preflight_fceux.py), de la más corta a la más larga, con prueba.py tas en modo por lecturas.
 
-  python3 -I tanda_consola.py [--max-fotogramas 70000] [--mappers 0,79] [--solo-pendientes]
+  python3 -I tanda_consola.py [--max-fotogramas 70000] [--mappers 0,79] [--solo-pendientes] [--solo-verificadas]
   -> resultados_consola.json (un registro por película) y un informe de prueba.py por película
 """
 import argparse
@@ -22,6 +22,8 @@ def main():
     ap.add_argument("--max-fotogramas", type=int, default=0, help="saltar las películas más largas que esto")
     ap.add_argument("--mappers", default="")
     ap.add_argument("--solo-pendientes", action="store_true", help="saltar las que ya tienen resultado")
+    ap.add_argument("--solo-verificadas", action="store_true",
+                    help="solo películas verificadas en consola por TASVideos (las demás pueden apoyarse en la emulación)")
     a = ap.parse_args()
     mappers = {int(x) for x in a.mappers.split(",") if x.strip()}
     tanda = sorted(json.loads((HERE / "tanda_consola.json").read_text()), key=lambda t: t["fotogramas"])
@@ -33,6 +35,8 @@ def main():
         if a.max_fotogramas and t["fotogramas"] > a.max_fotogramas:
             continue
         if a.solo_pendientes and clave in res:
+            continue
+        if a.solo_verificadas and not t.get("verificado"):
             continue
         d = HERE / "referencias_fceux" / clave
         fm2 = d / "pelicula.fm2"
