@@ -89,6 +89,8 @@ class Mando:
         self.resp = collections.deque()
         self.avisos = collections.deque(maxlen=20000)
         self.fotos = collections.deque(maxlen=200000)      # (hora, fc) de cada "!L"
+        self.lectura = 0                                     # último índice de lectura (cola QL)
+        self.lecturas_l = collections.deque(maxlen=400000)  # (fc, índice) de cada "!L fc l"
         self.cv = threading.Condition()
         self.vivo = True
         self.hola = False
@@ -131,9 +133,15 @@ class Mando:
                 if linea.startswith("!"):
                     if linea.startswith("!HOLA"):
                         self.hola = True
+                    elif linea.startswith("!INICIO"):     # el juego arranca: la cola por lecturas vuelve al índice 0
+                        self.lectura = 0
                     elif linea.startswith("!L "):
                         try:
-                            self.fotos.append((ahora, int(linea[3:])))
+                            campos = linea[3:].split()
+                            self.fotos.append((ahora, int(campos[0])))
+                            if len(campos) > 1:                  # cola por lecturas: "!L fc l"
+                                self.lectura = int(campos[1])
+                                self.lecturas_l.append((int(campos[0]), self.lectura))
                         except ValueError:
                             pass
                     self.avisos.append((ahora, linea))
@@ -173,9 +181,12 @@ class Mando:
         return r
 
     # ------------------------------------------------------------ cola de entrada por fotograma (películas TAS)
-    def cola_vaciar(self):
-        """Vacía y activa la cola: a partir de aquí el Nano toma los botones de cada fotograma de la cola."""
-        self.orden("QB")
+    def cola_vaciar(self, lecturas=False):
+        """Vacía y activa la cola: a partir de aquí el Nano toma los botones de cada fotograma de la cola. Con
+        lecturas=True el índice de la cola es el de lectura del mando (un byte por fotograma con lectura, sin lag)."""
+        self.lectura = 0
+        self.lecturas_l.clear()
+        self.orden("QL" if lecturas else "QB")
 
     def cola_escribir(self, f0, datos, trozo=48):
         """Botones de los fotogramas f0, f0+1... (un byte por fotograma). La cola guarda 256 fotogramas."""

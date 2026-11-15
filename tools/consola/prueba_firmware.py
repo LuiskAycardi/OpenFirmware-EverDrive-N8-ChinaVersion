@@ -176,6 +176,45 @@ def main():
     n.orden("QX")
     bien &= comprobar(n.latch() == 0, "QX: cola desactivada, nada pulsado")
 
+    # 6b. cola por lecturas (QL): un byte por fotograma con lectura; los fotogramas sin lectura (lag) no avanzan
+    n = Nano()
+    peli = [(i * 53 + 7) & 0xFF for i in range(60)]
+    n.orden("GB")
+    bien &= comprobar("ok" in n.orden("QL"), "QL: cola por lecturas vacía y activa")
+    n.orden("Q 0 " + "".join(f"{b:02x}" for b in peli[:30]))
+    n.orden("Q 30 " + "".join(f"{b:02x}" for b in peli[30:]))
+    n.orden("L 1")
+    n.orden("X")                                     # como prueba.py: sin guion mientras navega por el menú
+    for _ in range(10):                              # lecturas del menú del OS (sin guion activo): no cuentan
+        n.latch()
+        n.avanzar(1 / 60)
+    menu = n.salida.decode() + n.leer()
+    bien &= comprobar(" ql=0" in n.orden("E"), "QL: las lecturas del menú no avanzan el índice")
+    n.orden("A 5 250")
+    n.avanzar(1.0)
+    t0 = n.t
+    malos, idx = [], 0
+    for f in range(5, 50):
+        n.t = t0 + int((f - 5) * PER)
+        n.l.nucleo_tick(n.t)
+        if f in (12, 13, 30):                        # lag: el juego no lee el mando
+            continue
+        v = n.latch()
+        if f % 4 == 0:
+            n.t += 250
+            n.l.nucleo_tick(n.t)
+            if n.latch() != v:
+                malos.append((f, "segunda lectura"))
+        if v != peli[idx]:
+            malos.append((f, idx, v, peli[idx]))
+        idx += 1
+        n.avanzar(0.004)
+    bien &= comprobar(not malos, f"QL: cada lectura con su byte, el lag no avanza {malos[:3]}")
+    e = n.orden("E")
+    bien &= comprobar(f" ql={idx - 1} " in e.strip() + " " and " qf=0" in e, f"E: ql={idx - 1}, sin huecos ({e.strip()})")
+    bien &= comprobar(f"!L 49 {idx - 1}" in n.salida.decode() + n.leer(), "aviso !L con fotograma e índice")
+    n.orden("QX")
+
     # 7. errores de formato
     n = Nano()
     bien &= comprobar("error" in n.orden("GA 10-5:a"), "tramo al revés rechazado")

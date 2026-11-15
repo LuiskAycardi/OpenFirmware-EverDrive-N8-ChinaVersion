@@ -24,6 +24,12 @@ local NOMBRES = { "a", "b", "select", "start", "up", "down", "left", "right" }
 local entrada = nil
 local rutaEntrada = os.getenv("N8_INPUT_FILE")
 local desfaseEntrada = tonumber(os.getenv("N8_INPUT_OFFSET") or "0")   -- byte de la entrada = fotograma + desfase
+-- N8_INPUT_MODE=lecturas: el byte k de N8_INPUT_FILE es la entrada de la k-ésima lectura del mando (fotograma con pulso de
+-- LATCH), no del fotograma k. Así entregan las películas TAS los replay bots en una consola real, y así no importa
+-- cuántos fotogramas tarde cada sistema en arrancar ni dónde caiga el lag (tas.py convierte la película con el lag de
+-- FCEUX). En un fotograma sin lectura no se avanza: la entrada sigue siendo la de la lectura siguiente.
+local porLecturas = os.getenv("N8_INPUT_MODE") == "lecturas"
+local lecturas = 0     -- fotogramas terminados en los que el juego hizo LATCH
 if rutaEntrada and rutaEntrada ~= "" then
     local f = io.open(rutaEntrada, "rb")
     entrada = f:read("a")
@@ -38,7 +44,7 @@ local function scriptInput(n)
             break
         end
     end
-    local k = n + desfaseEntrada
+    local k = (porLecturas and lecturas or n) + desfaseEntrada
     if entrada and k >= 0 and k < #entrada then
         local b = string.byte(entrada, k + 1)
         for i = 0, 7 do
@@ -88,6 +94,7 @@ local function writePolls()
 end
 
 emu.addEventCallback(function()
+    if polls[frame] then lecturas = lecturas + 1 end
     frame = frame + 1
     if shots[frame] then
         local buf = emu.getScreenBuffer()

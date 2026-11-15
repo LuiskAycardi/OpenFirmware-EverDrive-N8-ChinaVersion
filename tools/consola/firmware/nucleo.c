@@ -28,6 +28,9 @@
  *   Q f hhhh...         botones de los fotogramas f, f+1... (un byte hex por fotograma; películas TAS). La cola
  *                       guarda 256 fotogramas (f % 256): el PC la llena por delante del juego. Si llega un fotograma
  *                       sin dato, cuenta un hueco (qf= en E) y no pulsa nada.
+ *   QL                  como QB, pero la cola va por lecturas: el índice avanza uno por cada fotograma en que el juego
+ *                       lee el mando (0 = el primero tras armar), sin contar los de lag. Es la numeración de FCEUX sin
+ *                       sus fotogramas de lag (tas.por_lecturas). Los avisos !L llevan entonces el índice: "!L fc l".
  * Botones: a b select start up down left right, unidos con '+'.
  */
 #include "nucleo.h"
@@ -70,6 +73,8 @@ static uint8_t qbuf[NQ];
 static uint8_t q_activa;
 static uint32_t q_hasta;            /* primer fotograma sin dato */
 static uint16_t q_huecos;           /* fotogramas que llegaron sin dato */
+static uint8_t q_lect;              /* 1 = la cola va por lecturas (QL), no por fotogramas */
+static uint32_t q_l;                /* índice de lectura del fotograma actual (QL) */
 
 static uint8_t boton;        /* 1 = botón RESET pulsado, 2 = soltado y contando lecturas */
 static uint32_t boton_fin, boton_lat0;
@@ -123,11 +128,11 @@ static uint8_t cola(uint32_t f) {                 /* byte de la cola para el fot
     return (q_activa && f < q_hasta && q_hasta - f <= NQ) ? qbuf[f & (NQ - 1)] : 0;
 }
 
-static uint8_t botones(uint32_t f) {
+static uint8_t botones(uint32_t k) {              /* botones del fotograma fc + k */
     uint8_t m = manual | pulso_m;
     if (fc_valido) {
-        m |= guion(f);
-        m |= cola(f);
+        m |= guion(fc + k);
+        m |= cola(q_lect ? q_l + (k ? 1 : 0) : fc + k);   /* por lecturas: los fotogramas de lag no avanzan */
     }
     return m;
 }
@@ -135,15 +140,15 @@ static uint8_t botones(uint32_t f) {
 static uint8_t arm_esperando(void) { return armado && arm_cargado; }
 
 static void recargar(void) {                      /* byte para la próxima lectura */
-    if (arm_esperando()) hw_cargar((uint8_t)~(manual | pulso_m | guion(arm_p0) | cola(arm_p0)));
-    else hw_cargar((uint8_t)~botones(fc + k_pend));
+    if (arm_esperando()) hw_cargar((uint8_t)~(manual | pulso_m | guion(arm_p0) | cola(q_lect ? 0 : arm_p0)));
+    else hw_cargar((uint8_t)~botones(k_pend));
 }
 
 static void fronteras(uint32_t t) {
     while ((int32_t)(t - t_sig) >= 0) {
         k_pend++;
         t_sig += per16 >> 4;
-        if (!arm_esperando()) hw_cargar((uint8_t)~botones(fc + k_pend));
+        if (!arm_esperando()) hw_cargar((uint8_t)~botones(k_pend));
     }
 }
 
@@ -169,6 +174,7 @@ void nucleo_latch(uint32_t t) {
     if (armado && sil >= arm_sil) {
         armado = arm_cargado = 0;
         fc = arm_p0;
+        q_l = 0;
         fc_valido = 1;
         fin_avisado = 0;
         nuevo_inicio(t);
@@ -187,10 +193,16 @@ void nucleo_latch(uint32_t t) {
         if (e > -lim && e < lim) per16 = (uint32_t)((int32_t)per16 + (e >> 5));
     }
     fc += k_pend;
-    if (q_activa && fc_valido && fc >= q_hasta && q_huecos < 0xFFFF) q_huecos++;
+    if (q_lect && fc_valido) q_l++;              /* las lecturas del menú (sin guion activo) no cuentan */
+    if (q_activa && fc_valido && (q_lect ? q_l : fc) >= q_hasta && q_huecos < 0xFFFF) q_huecos++;
     nuevo_inicio(t);
     recargar();
-    if (eventos) { tx_s("!L "); tx_u(fc); hw_tx('\n'); }
+    if (eventos) {
+        tx_s("!L ");
+        tx_u(fc);
+        if (q_lect) { hw_tx(' '); tx_u(q_l); }
+        hw_tx('\n');
+    }
     if (fc_valido && n_tramos && !fin_avisado && fc > fin_guion) {
         fin_avisado = 1;
         tx_s("!FIN");
@@ -345,6 +357,7 @@ static void estado(uint32_t t) {
     tx_kv("rst", boton == 1);
     tx_kv("q", q_activa ? q_hasta : 0);
     tx_kv("qf", q_huecos);
+    tx_kv("ql", q_lect ? q_l : 0);
     hw_tx('\n');
 }
 
@@ -357,7 +370,7 @@ static void ejecutar(const char *s, uint32_t t) {
     case 'E': estado(t); break;
     case 'Z':
         if (!numero(&p, &v)) { error("numero"); break; }
-        fc = v; fc_valido = 1; fin_avisado = 0; armado = arm_cargado = 0;
+        fc = v; q_l = 0; fc_valido = 1; fin_avisado = 0; armado = arm_cargado = 0;
         nuevo_inicio(t);
         recargar(); ok();
         break;
@@ -396,8 +409,11 @@ static void ejecutar(const char *s, uint32_t t) {
         hw_boton_reset(1); ok();
         break;
     case 'Q':
-        if (s[1] == 'B') { q_activa = 1; q_hasta = 0; q_huecos = 0; recargar(); ok(); break; }
-        if (s[1] == 'X') { q_activa = 0; recargar(); ok(); break; }
+        if (s[1] == 'B' || s[1] == 'L') {
+            q_activa = 1; q_lect = s[1] == 'L'; q_hasta = 0; q_huecos = 0; q_l = 0;
+            recargar(); ok(); break;
+        }
+        if (s[1] == 'X') { q_activa = 0; q_lect = 0; recargar(); ok(); break; }
         if (!numero(&p, &v)) { error("formato"); break; }
         saltar(&p);
         {

@@ -45,6 +45,33 @@ def md5_rom(ruta_rom):
     return "base64:" + base64.b64encode(hashlib.md5(datos[16:]).digest()).decode()
 
 
+LUA_FCEUX = pathlib.Path(__file__).resolve().parent / "tas_catalogo" / "lag_fceux.lua"
+
+
+def lag_fceux(pelicula, rom, salida, shots=(), extra=0, timeout=1800):
+    """Reproduce la película en FCEUX (su emulador de origen) y devuelve [lag del fotograma 0, 1, ...] (True = el juego
+    no leyó el mando). Si se piden, deja capturas f%05d.png en 'salida' (FCEUX recorta 8 líneas arriba y abajo: 256x224)."""
+    import os
+    import subprocess
+    salida = pathlib.Path(salida)
+    salida.mkdir(parents=True, exist_ok=True)
+    env = dict(os.environ, N8_LAG_OUT=str(salida / "lag.txt"), N8_SHOTS=",".join(str(x) for x in shots),
+               N8_SHOT_DIR=str(salida), N8_EXTRA=str(extra))
+    subprocess.run(["fceux", "--sound", "0", "--playmov", str(pelicula), "--loadlua", str(LUA_FCEUX), str(rom)],
+                   env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=timeout)
+    lag = {}
+    for linea in (salida / "lag.txt").read_text().split("\n"):
+        if linea.strip():
+            f, v = linea.split()
+            lag[int(f)] = v == "1"
+    return [lag.get(i, False) for i in range(max(lag) + 1)] if lag else []
+
+
+def por_lecturas(mandos, lag):
+    """Entrada por lectura del mando: los bytes de los fotogramas en que FCEUX vio leer el mando (sin los de lag)."""
+    return bytes(b for i, b in enumerate(mandos) if not (i < len(lag) and lag[i]))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("accion", choices=["info", "convertir"])

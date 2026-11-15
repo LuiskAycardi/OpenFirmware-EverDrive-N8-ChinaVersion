@@ -60,6 +60,7 @@ __pycache__/
 /tools/consola/tas_catalogo/*
 !/tools/consola/tas_catalogo/*.py
 !/tools/consola/tas_catalogo/reporte_*.md
+!/tools/consola/tas_catalogo/lag_fceux.lua
 # cobertura del RTL (cobertura.py): resultados y registros de las tandas
 /tools/n8sim/cobertura/
 /tools/n8sim/*.log

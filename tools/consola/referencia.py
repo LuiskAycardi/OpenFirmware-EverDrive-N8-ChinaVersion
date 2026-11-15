@@ -24,6 +24,7 @@ MESEN = N8SIM / "run" / "Mesen"
 AJUSTES = N8SIM / "run" / "settings.json"
 LUA = AQUI / "mesen_ref.lua"
 CASA = AQUI / ".mesen"
+RAM_INICIAL = None      # estado de la RAM al encender en Mesen2 (None = el de AJUSTES, "AllZeros")
 
 
 def clave(rom):
@@ -46,6 +47,10 @@ def preparar_casa():
         except OSError:
             shutil.copy2(MESEN, exe)
     shutil.copyfile(AJUSTES, CASA / "settings.json")
+    if RAM_INICIAL:                     # p. ej. "AllOnes": FCEUX llena la RAM con $FF al encender (películas TAS)
+        import re as _re
+        t = (CASA / "settings.json").read_text()
+        (CASA / "settings.json").write_text(_re.sub(r'"RamPowerOnState":\s*"[A-Za-z]+"', f'"RamPowerOnState": "{RAM_INICIAL}"', t))
     for sub in ("Saves", "SaveStates"):
         d = CASA / sub
         if d.is_dir():
@@ -53,7 +58,7 @@ def preparar_casa():
     return exe
 
 
-def generar(rom, guion, shots, fotogramas, destino, log=None, entrada=None, desfase=0):
+def generar(rom, guion, shots, fotogramas, destino, log=None, entrada=None, desfase=0, modo="fotogramas", fpga=None):
     """Ejecuta Mesen2 (mapper de Mesen) y deja en 'destino': f%05d.png, polls.txt y ref.json."""
     log = log or (lambda *_: None)
     rom = pathlib.Path(rom).resolve()
@@ -65,6 +70,7 @@ def generar(rom, guion, shots, fotogramas, destino, log=None, entrada=None, desf
     if entrada:                      # entrada fotograma a fotograma (película TAS, tas.py): forma parte de la clave
         meta["entrada"] = hashlib.md5(pathlib.Path(entrada).read_bytes()).hexdigest()
         meta["desfase"] = desfase    # byte de la entrada que usa el fotograma f: f + desfase (FCEUX .fm2: +1)
+        meta["modo"] = modo          # "lecturas": un byte por lectura del mando (TAS convertidas con el lag de FCEUX)
     if meta_ruta.exists():
         viejo = json.loads(meta_ruta.read_text())
         if all(viejo.get(k) == v for k, v in meta.items()) and (destino / "polls.txt").exists():
@@ -78,11 +84,13 @@ def generar(rom, guion, shots, fotogramas, destino, log=None, entrada=None, desf
     env = dict(os.environ)
     for k in ("N8_FPGA", "N8_MODEL"):
         env.pop(k, None)
+    if fpga:                     # nuestro Verilog como cartucho (tools/n8sim): {"modelo": lib.so, "clk": MHz}
+        env.update({"N8_FPGA": "1", "N8_MODEL": str(fpga["modelo"]), "N8_CLK_MHZ": str(fpga.get("clk", 25.0))})
     env.update({"N8_FRAMES": str(fotogramas), "N8_SCRIPT": guion or "", "N8_SHOT_DIR": str(destino),
                 "N8_SHOTS": ",".join(str(s) for s in sorted(shots)),
                 "N8_INPUT_FILE": str(pathlib.Path(entrada).resolve()) if entrada else "",
-                "N8_INPUT_OFFSET": str(desfase)})
-    timeout = int(fotogramas / 60 * 4) + 60
+                "N8_INPUT_OFFSET": str(desfase), "N8_INPUT_MODE": modo})
+    timeout = int(fotogramas / 60 * (4 if not fpga else 60 * max(1.0, fpga.get("clk", 25.0) / 25))) + 60
     with open(destino / "mesen.log", "w") as salida:
         r = subprocess.run([str(exe), "--testrunner", f"--timeout={timeout}", str(LUA), str(rom)], cwd=CASA,
                            env=env, stdout=salida, stderr=subprocess.STDOUT, timeout=timeout + 30)

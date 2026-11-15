@@ -386,6 +386,16 @@ class Menu:
             por_nombre.setdefault(r, []).append(i)
         lista = {r: min(ix, key=lambda i: filas[i].y) for r, ix in por_nombre.items()}
         orden = sorted(lista, key=lambda r: filas[lista[r]].y)
+        # Un nombre que solo se ve muy por debajo del resto es la barra de estado (su fila de la lista no se leyó, p. ej.
+        # la elegida con su barra de color y una fuente aún sin aprender): no indica su posición en la lista.
+        # En la consola la barra está a 2 filas de la lista llena (2026-11-15); si dentro de la lista queda justo un hueco,
+        # ese es el sitio del nombre.
+        ys = [filas[lista[r]].y for r in orden]
+        if len(orden) >= 3 and ys[-1] - ys[-2] >= 2:
+            ult = orden.pop()
+            huecos = [y for y in range(ys[0], ys[-2]) if y not in ys[:-1]]
+            if len(huecos) == 1:
+                orden.insert(sum(1 for y in ys[:-1] if y < huecos[0]), ult)
         fondo = np.median(np.asarray(img, np.float32).reshape(-1, 3), axis=0)
         unicas = {r for _, r, _ in self.carpetas()[rel] if r != ".."}
         if len(unicas) == 1 and len(lista) == 1:

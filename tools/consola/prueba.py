@@ -207,6 +207,8 @@ def dir_ref(rom_rel, g):
     clave = [g["guion"], sorted(g["shots"]), g["fotogramas"]]
     if g.get("entrada"):                                   # película TAS: su contenido y desfase forman parte
         clave += [hashlib.md5(pathlib.Path(g["entrada"]).read_bytes()).hexdigest(), g.get("desfase", 0)]
+        if g.get("modo", "fotogramas") != "fotogramas":
+            clave.append(g["modo"])
     h = hashlib.md5(json.dumps(clave).encode()).hexdigest()[:8]
     return AQUI / "refs" / f"{referencia.clave(rom_rel)}__{h}"
 
@@ -504,12 +506,26 @@ def probar(b, j, g, ref, dir_juego):
     if g.get("entrada"):
         datos, desfase = pathlib.Path(g["entrada"]).read_bytes(), g.get("desfase", 0)
 
+        lecturas = g.get("modo") == "lecturas"   # cola por lecturas: índice 0 = primera lectura tras armar
+        if lecturas and g.get("cola", "lecturas") == "fotogramas":
+            # Mesen2 va por lecturas (así sincroniza con FCEUX), pero la consola se alimenta por fotograma con el byte
+            # que Mesen2 usó en cada uno: si al acabar una carga la consola lee en otro fotograma o se salta una
+            # lectura (Atlantis no Nazo, 2026-11-15), la siguiente sigue recibiendo el byte de su fotograma.
+            ps = sorted(p[0] for p in ref.get("polls", []))
+            por_foto, k = [], 0
+            for f in range(g["fotogramas"] + 300):
+                while k < len(ps) and ps[k] < f:
+                    k += 1
+                por_foto.append(datos[k] if k < len(datos) else 0)   # índice = lecturas de Mesen2 antes de f
+            datos, desfase, lecturas = bytes(por_foto), 0, False
+
         def byte_de(f):
             return datos[f + desfase] if 0 <= f + desfase < len(datos) else 0
+        q0 = 0 if lecturas else p0
         b.mando.orden("X")                        # sin guion activo mientras se navega por el menú
-        b.mando.cola_vaciar()
-        q_hasta = p0 + 200
-        b.mando.cola_escribir(p0, [byte_de(f) for f in range(p0, q_hasta)])
+        b.mando.cola_vaciar(lecturas)
+        q_hasta = q0 + 200
+        b.mando.cola_escribir(q0, [byte_de(f) for f in range(q0, q_hasta)])
     b.cap.grabar_clip(dir_juego / "clip.mp4")
     audio = b.cap.grabar_audio(dir_juego / "audio.wav")
     rotulo = getattr(b.cap, "rotulo", lambda s: None)
@@ -547,8 +563,9 @@ def probar(b, j, g, ref, dir_juego):
                    + (f"\núltima: {ult['f']} {ult['veredicto']}" if ult else ""))
         # La cola (256 fotogramas) va siempre ~250 por delante; se rellena de una vez lo que falte, en trozos de 48.
         # (Con un umbral de 150 y un trozo por vuelta, en el TAS de SMB llegaron 10 fotogramas sin dato.)
-        if datos is not None and q_hasta - fc < 210 and q_hasta <= fin + 300:   # más allá del final: ceros
-            n = fc + 250 - q_hasta
+        qi = b.mando.lectura if datos is not None and lecturas else fc       # posición del juego en la cola
+        if datos is not None and q_hasta - qi < 210 and q_hasta <= fin + 300:   # más allá del final: ceros
+            n = qi + 250 - q_hasta
             if n > 0:
                 b.mando.cola_escribir(q_hasta, [byte_de(f) for f in range(q_hasta, q_hasta + n)])
                 q_hasta += n
@@ -558,6 +575,10 @@ def probar(b, j, g, ref, dir_juego):
         sig_ref = next((p for p in polls_ref if p > fc), None)
         if (rearmes < 8 and fc - p0 < 300 and ahora - t_ult > 0.5 and sig_ref is not None and sig_ref <= fc + 30
                 and not any(e.get("f", 0) <= fc for e in res["escenas"])):
+            if datos is not None:                  # el juego vuelve a empezar: la cola también
+                b.mando.cola_vaciar(lecturas)
+                q_hasta = q0 + 200
+                b.mando.cola_escribir(q0, [byte_de(f) for f in range(q0, q_hasta)])
             b.mando.armar(p0, b.cfg["silencio_arranque_ms"])
             ini = b.mando.esperar_aviso("!INICIO", 30, ahora)
             if not ini:
@@ -606,6 +627,8 @@ def probar(b, j, g, ref, dir_juego):
     b.cap.parar_clip()
     b.cap.parar_audio()
     if datos is not None:
+        if lecturas:                              # (fotograma, índice de lectura) que vio el Nano, para depurar desfases
+            (dir_juego / "lecturas_nano.txt").write_text("".join(f"{f} {l}\n" for f, l in list(b.mando.lecturas_l)))
         res["huecos_cola"] = b.mando.estado().get("qf", 0)    # fotogramas que llegaron sin entrada de la película
         b.mando.cola_quitar()
         if res["huecos_cola"]:
@@ -722,10 +745,19 @@ def preparar_tas(a, cfg, salida):
     if tas.md5_rom(pathlib.Path(cfg["sd"]) / rom_rel) != cab.get("romChecksum"):
         raise SystemExit(f"tas: la ROM {rom_rel} no es la de la película ({cab.get('romFilename')})")
     entrada = salida / "pelicula.bin"
-    entrada.write_bytes(bytes(mandos))
+    desfase = a.desfase
+    if a.modo == "lecturas":
+        # Un byte por fotograma en que FCEUX (el emulador de la película) vio leer el mando: así los fotogramas de lag,
+        # que cada emulador y la consola reparten distinto, no desfasan la película.
+        lag = tas.lag_fceux(a.pelicula, pathlib.Path(cfg["sd"]) / rom_rel, salida / "fceux")
+        entrada.write_bytes(tas.por_lecturas(mandos, lag))
+        desfase = 0
+        log(f"película por lecturas: {sum(lag)} fotogramas de lag en FCEUX")
+    else:
+        entrada.write_bytes(bytes(mandos))
     fin = len(mandos) + a.extra
     g = {"guion": "", "fotogramas": fin, "shots": list(range(a.cada, fin + 1, a.cada)), "entrada": str(entrada),
-         "desfase": a.desfase}
+         "desfase": desfase, "modo": a.modo, "cola": a.cola}
     nombre = f"TAS {pathlib.Path(a.pelicula).stem}"
     log(f"{nombre}: {len(mandos)} fotogramas de película, {len(g['shots'])} escenas, ROM {rom_rel}")
     return [{"id": None, "n": nombre, "m": "", "tipo": "t", "pila": False, "seccion": "TAS", "rom_rel": rom_rel,
@@ -763,7 +795,8 @@ def generar_refs(validos, cfg):
         d = dir_ref(j["rom_rel"], j["g"])
         try:
             refs[j["rom_rel"]] = referencia.generar(rom, j["g"]["guion"], j["g"]["shots"], j["g"]["fotogramas"], d,
-                                                    entrada=j["g"].get("entrada"), desfase=j["g"].get("desfase", 0))
+                                                    entrada=j["g"].get("entrada"), desfase=j["g"].get("desfase", 0),
+                                                    modo=j["g"].get("modo", "fotogramas"))
         except Exception as e:  # noqa: BLE001
             log(f"[{k}/{len(validos)}] sin referencia para {j['n']}: {e}")
             continue
@@ -776,6 +809,10 @@ def main():
     ap.add_argument("accion", choices=["dispositivos", "calibrar", "referencias", "ejecutar", "informe", "tas"])
     ap.add_argument("--pelicula", help="tas: película .fm2 de FCEUX (TASVideos)")
     ap.add_argument("--desfase", type=int, default=1, help="tas: fotograma de la película = fotograma + desfase (FCEUX: 1)")
+    ap.add_argument("--modo", choices=["fotogramas", "lecturas"], default="lecturas",
+                    help="tas: la película avanza por fotograma (desfase) o por lectura del mando (lag de FCEUX)")
+    ap.add_argument("--cola", choices=["fotogramas", "lecturas"], default="lecturas",
+                    help="tas --modo lecturas: el Nano avanza por fotograma (con el byte de Mesen2 en cada uno) o por lectura")
     ap.add_argument("--cada", type=int, default=600, help="tas: una escena cada tantos fotogramas")
     ap.add_argument("--extra", type=int, default=600, help="tas: fotogramas tras el final de la película")
     ap.add_argument("carpeta_informe", nargs="?")

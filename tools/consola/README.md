@@ -149,6 +149,25 @@ python3 -I prueba.py ejecutar --solo "Mega Man" --max 2
 - Las pruebas con la SD de fábrica y las de pila (guardar, apagar, cargar) siguen siendo a mano. Las de pila se
   ejecutan igual: el juego se prueba, pero no la partida guardada.
 
+### Películas TAS
+
+`prueba.py tas --pelicula X.fm2 --rom RUTA_EN_SD` reproduce una película de TASVideos (formato `.fm2` de FCEUX)
+en la consola y la compara escena a escena con Mesen2:
+- **Por lecturas** (`--modo lecturas`, por defecto): FCEUX reproduce antes la película (`tas.lag_fceux`, con
+  `tas_catalogo/lag_fceux.lua`) y se queda solo con los fotogramas en que el juego leyó el mando
+  (`tas.por_lecturas`). El Nano (orden `QL`) avanza un byte por cada fotograma con lectura, así que los fotogramas
+  de lag, que FCEUX, Mesen2 y la consola no reparten igual, no desfasan la película. Hace falta `fceux` instalado.
+- **Por fotogramas** (`--modo fotogramas --desfase 1`): un byte por fotograma (orden `QB`); vale para películas sin
+  lag, como el TAS de SMB.
+- `--cola fotogramas` (con `--modo lecturas`): Mesen2 va por lecturas, pero el Nano recibe por fotograma el byte
+  que Mesen2 usó en cada uno. Sirve si la consola reparte el lag de otra forma; en general va mejor `lecturas`.
+- Cada juego deja `lecturas_nano.txt` (fotograma e índice de cada lectura del Nano) para compararlo con el
+  `polls.txt` de la referencia y ver dónde se separa la consola.
+- `tas_catalogo/tanda_consola.py` reproduce en la consola, de la más corta a la más larga, las películas de
+  `tanda_consola.json` (las que sincronizan en Mesen2).
+- Antes de ir a la consola, `tas_catalogo/preflight_fceux.py` comprueba con FCEUX como juez qué películas
+  sincronizan también en Mesen2 (la referencia del banco): las que no, darían "distinto" aunque el mapper esté bien.
+
 ### Guiones
 
 Para generar recorridos propios sin depender de un TAS publicado, está el bot v2
@@ -190,10 +209,12 @@ que empiezan por `[auto`.
 | `captura.py` | ffmpeg: capturadora (v4l2, MJPEG 720p60) recortada a 256x240, clips MP4 y audio ALSA |
 | `calibrar.py` | geometría de la imagen (ROM de calibración o menú) y mapa de colores |
 | `rom/hacer_rom.py` | la ROM de calibración, con su ensamblador 6502 mínimo |
+| `rom/hacer_rom_irq65.py` | ROM propia que mide el IRQ del mapper 65 (vueltas de CPU hasta la IRQ: última, mínima y máxima) |
 | `menu.py` | lectura del menú del OS v13 (fuente aprendida) y navegación |
 | `referencia.py`, `mesen_ref.lua` | capturas de Mesen2 y fotogramas en que el juego lee el mando |
 | `comparar.py`, `sonido.py` | veredictos de imagen y audio |
 | `prueba.py` | todo junto, informe y resultados para la página |
 | `simulador.py` | consola, Nano y capturadora simulados (`--seco`) |
-| `prueba_firmware.py` | pruebas de la lógica del firmware con tiempo simulado (guion, lecturas dobles, armado, reset) |
+| `prueba_firmware.py` | pruebas de la lógica del firmware con tiempo simulado (guion, lecturas dobles, armado, reset, colas QB y QL) |
+| `tas.py`, `tas_catalogo/` | películas TAS: lectura de .fm2, lag en FCEUX, búsqueda inversa por mapper y preflight FCEUX/Mesen2 |
 | `datos/` | lo aprendido en la consola real: calibración, fuente del menú, cursor |
