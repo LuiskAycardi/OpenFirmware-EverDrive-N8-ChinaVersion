@@ -2,7 +2,7 @@
 ; GPL-3.0-or-later. La entrada y el tipo de arranque están en arranque.s; la SD en sd.s; la FAT en fat.s.
 ;
 ; Con la pantalla apagada: inicializa la tarjeta, monta la FAT, lista la raíz y mide cuánto tarda en leer 64
-; sectores (32 KiB) con el bit 0 del reg 2 a 1 (como lo deja la BIOS) y a 0. Después enciende la pantalla y muestra
+; sectores (32 KiB). Después enciende la pantalla y muestra
 ; el mando y un contador de fotogramas. No escribe nunca en la tarjeta.
 
         .setcpu "6502"
@@ -10,7 +10,7 @@
 
         .export principal, nmi
         .import tipo_arranque, arranques, resets, vueltas
-        .import sd_iniciar, sd_leer_sector, sd_rapido, sd_error, sd_r1, sd_sdhc
+        .import sd_iniciar, sd_leer_sector, sd_error, sd_r1, sd_sdhc
         .import fat_montar, dir_abrir_raiz, dir_siguiente
         .import fat_error, fat_tipo, fat_spc, fat_part, fat_datos, sector
         .importzp sd_lba, sd_ptr, dir_ent
@@ -25,12 +25,11 @@ botones:    .res 1              ; A en el bit 7 ... Derecha en el bit 0
 fotogramas: .res 2
 tmp:        .res 1
 nmis:       .res 2              ; lo incrementa la NMI: un fotograma = una NMI
+mando_on:   .res 1              ; 0 mientras arranca: la NMI no lee el mando (ver nmi)
 fila:       .res 2              ; dirección de la PPU de la línea de la lista
 entradas:   .res 1              ; entradas de la raíz
 cuenta:     .res 1
-t_rapido:   .res 2              ; fotogramas de la prueba de lectura con el bit 0 del reg 2 a 1
-t_lento:    .res 2              ; y a 0
-e_prueba:   .res 1              ; errores de la prueba (bit 0: rápida, bit 1: lenta)
+t_rapido:   .res 2              ; fotogramas de la prueba de lectura
 
 ; ------------------------------------------------------------------------------------------------ código
         .segment "CODE"
@@ -91,6 +90,8 @@ principal:
         jsr     hex
 
 @pantalla:
+        lda     #1
+        sta     mando_on
         lda     nmis
 @vb:    cmp     nmis
         beq     @vb
@@ -113,9 +114,14 @@ bucle:
 ; NMI: lee el mando una vez por fotograma, como el v13 (puerto 1 y el de expansión de la Famicom: bits 0 y 1 de
 ; $4016 y $4017). El kit Lava ve las mismas lecturas para su reset (Select ~2 s y luego Select+A).
 ; No toca $4400/$4401: puede caer en mitad de una lectura de la SD.
+; Mientras el OS arranca (mando_on = 0) no lee el mando: así cada reset deja un silencio largo sin LATCH (lo que
+; tarda en leer la SD), que el Nano del banco cuenta como un reset. Con la lectura activa desde el principio el
+; silencio era de 54 ms, menos que su umbral de 60 ms (medido en la NES).
 nmi:    pha
         txa
         pha
+        lda     mando_on
+        beq     @sin_mando
         lda     #1
         sta     MANDO1
         lda     #0
@@ -128,6 +134,7 @@ nmi:    pha
         rol     botones
         dex
         bne     @b
+@sin_mando:
         inc     nmis
         bne     @fin
         inc     nmis+1
@@ -252,49 +259,21 @@ letra:  lda     (dir_ent),y
 @ya:    sta     PPUDATA
         rts
 
-; Lee SECTORES_PRUEBA sectores desde el principio de la partición y cuenta los fotogramas, con el bit 0 del reg 2
-; a 1 y a 0. Deja el bit a 1.
+; Lee SECTORES_PRUEBA sectores desde el principio de la partición y cuenta los fotogramas.
+; (Con el bit 0 del reg 2 a 0 las lecturas en ráfaga fallan: medido en la NES el 2026-11-16. Es el SPI rápido.)
 prueba_velocidad:
-        lda     #0
-        sta     e_prueba
-        lda     #1
-        jsr     sd_rapido
         jsr     @medir
         sta     t_rapido
         stx     t_rapido+1
-        rol     e_prueba
-        lda     #0
-        jsr     sd_rapido
-        jsr     @medir
-        sta     t_lento
-        stx     t_lento+1
-        lda     #0
-        rol
-        asl
-        ora     e_prueba
-        sta     e_prueba
-        lda     #1
-        jsr     sd_rapido
-
+        php
         en      FILA_SD + 96 + 12
-        lda     e_prueba
-        lsr
+        plp
         bcs     @er
         lda     t_rapido+1
         jsr     hex
         lda     t_rapido
-        jsr     hex
-        jmp     @l
-@er:    escribe t_fallo
-@l:     en      FILA_SD + 96 + 25
-        lda     e_prueba
-        and     #2
-        bne     @el
-        lda     t_lento+1
-        jsr     hex
-        lda     t_lento
         jmp     hex
-@el:    escribe t_fallo
+@er:    escribe t_fallo
         rts
 
 ; Devuelve A,X = fotogramas (bajo, alto) y acarreo = 1 si alguna lectura falló.
@@ -533,7 +512,7 @@ textos:
         texto   FILA_SD + 2,        "SD:"
         texto   FILA_SD + 32 + 2,   "PART          DATOS"
         texto   FILA_SD + 64 + 2,   "EN RAIZ:"
-        texto   FILA_SD + 96 + 2,   "32K EN F:      R2.0=0:"
+        texto   FILA_SD + 96 + 2,   "32K EN F:      FOTOGRAMAS"
         texto   FILA_MANDO + 2,     "MANDO:"
         texto   FILA_MANDO + 32 + 2, "FOTOGRAMAS:"
         .byte   $FF

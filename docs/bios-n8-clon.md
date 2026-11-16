@@ -54,7 +54,7 @@ mando**: no hay ningún menú oculto activado con botones.
 | `$4400` | número de registro (lo comparten el CPLD y el FPGA) | seguro |
 | reg 0 por `$4401` | dato SPI de la SD. Escribir envía un byte; leer devuelve el último recibido o, en ráfaga, uno nuevo | seguro (BIOS y v13 en el modelo) |
 | reg 1 por `$4401` | dato USB (FIFO) | leído en la BIOS; falta saber si el clon lo lleva |
-| reg 2 bit 0 | lo pone la BIOS antes de leer archivos; probablemente el SPI rápido | **(por medir)** |
+| reg 2 bit 0 | **SPI rápido.** La BIOS lo pone tras inicializar la tarjeta. Medido en la NES con el OS propio: con el bit a 0 las órdenes funcionan (esperando al bit 0 de `$4403`), pero la lectura de datos en ráfaga falla; con el bit a 1 se leen 32 KiB en 18 fotogramas (unos 109 KiB/s, sector a sector) | medido |
 | reg 2 bit 1 | /CS de la SD: 0 = tarjeta seleccionada | seguro |
 | reg 2 bit 2 | ráfaga: cada lectura de `$4401` saca un byte nuevo de la SD | seguro |
 | reg 2 bit 3 | **la tarjeta es SDHC** (la BIOS lo pone solo con SDHC; el v13 lo consulta) | seguro en el modelo |

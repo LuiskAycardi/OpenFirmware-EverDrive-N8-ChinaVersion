@@ -82,7 +82,7 @@ comprobar('EN RAIZ: 06' in pan, '6 entradas en la raíz (2 carpetas y 4 archivos
 for linea in ('EDFC    .    <DIR>', 'PRUEBAS .    <DIR>', 'IRQ65   .NES 00006010', 'ZELDA   .NES 00020010',
               'NOTAS   .TXT 0000012C', '.NES 0000A010'):
     comprobar(linea in pan, f'en la lista: «{linea}»')
-comprobar('32K EN F: 00' in pan and 'FALLO' not in pan, 'prueba de lectura de 32 KiB con el bit 0 a 1 y a 0, sin fallos')
+comprobar('32K EN F: 00' in pan and 'FALLO' not in pan, 'prueba de lectura de 32 KiB sin fallos')
 comprobar(m.cpld[2] == 0x0B, f'reg 2 al terminar = $0B: rápido, tarjeta libre, SDHC (${m.cpld[2]:02X})')
 comprobar(solo_lectura(m), 'solo órdenes de lectura; ninguna escritura en la tarjeta')
 m.pad = 0x80 | 0x20

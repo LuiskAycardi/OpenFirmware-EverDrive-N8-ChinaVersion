@@ -1,4 +1,4 @@
-# OS propio del EverDrive N8 clon — etapa 1: «hola mundo»
+# OS propio del EverDrive N8 clon — etapa 2: lectura de la SD
 
 Primer `OS.BIN` propio (GPL-3.0-or-later). Todavía no lanza juegos: arranca, pinta una pantalla con una fuente
 propia y mide lo que falta saber del hardware (ver [docs/os-propio-viabilidad.md](../docs/os-propio-viabilidad.md)
@@ -22,7 +22,7 @@ Prueba con la BIOS real en el modelo de `tools/bios` (la BIOS no está en el rep
 [tools/bios/README.md](../tools/bios/README.md)):
 
 ```bash
-python3 -I os/herramientas/probar_hola.py --bios /ruta/bios.bin --rbf ~/SD_Pruebas/EDFC/MAPS/255.RBF --trabajo /tmp/carpeta-nueva
+python3 -I os/herramientas/probar_os.py --bios /ruta/bios.bin --rbf ~/SD_Pruebas/EDFC/MAPS/255.RBF --trabajo /tmp/carpeta-nueva
 ```
 
 Comprueba (19 casos) que:
@@ -97,3 +97,28 @@ encendido.
   entre un fotograma sin lectura (33 ms) y esos 87 ms.
 - Historia de las pruebas del reset (Select+B no resetea, ni con el v13; el Lava usa Select y luego Select+A; cuatro
   formas de leer el mando y el bit 2 del reg 9 no cambian nada): [docs/bios-n8-clon.md](../docs/bios-n8-clon.md) §7.
+
+## Etapa 2: lectura de la SD (`src/sd.s`, `src/fat.s`)
+
+- **Solo lectura:** el código no tiene ninguna orden de escritura en la tarjeta.
+- `sd.s`: SPI por el CPLD (reg 0 dato, reg 2 control, `$4403` bit 0 libre). Al arrancar corta con CMD12 la lectura
+  múltiple que deja la BIOS y vuelve a inicializar la tarjeta (CMD0, CMD8, ACMD41, CMD58), con el reg 2 como lo
+  usa la BIOS: bits 0 y 3 a cero mientras inicializa; después bit 0 (rápido) y bit 3 si es SDHC. Lee sectores con
+  CMD17 y el modo ráfaga.
+- `fat.s`: MBR o tarjeta sin particiones, FAT16 y FAT32, y el directorio raíz siguiendo la cadena de clústeres
+  (salta nombres largos, borrados y la etiqueta). Por ahora muestra solo los nombres cortos 8.3.
+- La pantalla (`src/principal.s`) muestra la tarjeta, la FAT, el número de entradas de la raíz, las 13 primeras y
+  el tiempo de leer 32 KiB. Si algo falla, `SD: ERROR nn R1=xx` (01 CMD0, 02 ACMD41, 03 CMD58, 04 CMD17, 05 datos,
+  06 firma del sector 0, 07 sector de arranque, 08 clúster).
+- El mando no se lee hasta que termina el arranque: cada reset deja un silencio largo sin LATCH, que el Nano del
+  banco cuenta como reset.
+
+### Resultados en la NES (2026-11-16)
+
+- Tarjeta de 4 GB: `SDHC FAT32 CLUSTER 08`, partición en `0x800`, datos en `0x4320`; raíz con 5 entradas, todas
+  correctas (EDFC, PRUEBAS, IRQ65.NES y los dos Super Mario con su tamaño).
+- 32 KiB en 18 fotogramas (`0012`): unos 109 KiB/s leyendo sector a sector.
+- Con el bit 0 del reg 2 a 0, la lectura de datos falla: es el SPI rápido (la prueba se quitó del arranque).
+- Botón RESET y ráfaga de 4 resets del Lava (algunos en mitad de la lectura): después lee la tarjeta sin errores.
+- Con la NMI leyendo el mando desde el principio, el Nano veía solo 54 ms de silencio por reset y no los contaba;
+  por eso ahora el mando no se lee durante el arranque. **Esta última versión falta probarla en la NES.**
