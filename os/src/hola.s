@@ -22,6 +22,7 @@ PPUDATA   = $2007
 APU_DMC   = $4010
 APU_EST   = $4015
 MANDO1    = $4016
+MANDO2    = $4017
 APU_CONT  = $4017
 REG_SEL   = $4400
 REG_DAT   = $4401
@@ -36,6 +37,7 @@ fotogramas: .res 2
 vivo:       .res 4              ; reg 2, reg 9, reg 138, $4403 en el fotograma actual
 tmp:        .res 1
 nmis:       .res 1              ; lo incrementa la NMI: un fotograma = una NMI
+antes:      .res 1              ; botones del fotograma anterior (para detectar pulsaciones)
 
 ; En la propia imagen (PRG-RAM): no se borra al arrancar; la BIOS la recarga a 0 en cada arranque completo.
         .segment "ESTADO"
@@ -47,6 +49,7 @@ e_s:        .res 1
 e_p:        .res 1
 e_regs:     .res 6              ; regs 2, 9, 10, 138, 139, 140 al entrar
 e_4403:     .res 1
+modo_mando: .res 1              ; forma de leer el mando (0-3); sobrevive al reset, como `arranques`
 
 ; ------------------------------------------------------------------------------------------------ código
         .segment "CODE"
@@ -155,11 +158,40 @@ bucle:
         bne     @sin_acarreo
         inc     fotogramas+1
 @sin_acarreo:
+        lda     modo_mando
+        cmp     #3
+        beq     @leido                  ; modo 3: lo lee la NMI
         jsr     leer_mando
+@leido: lda     antes                   ; A recién pulsado (solo A): siguiente modo de lectura
+        eor     #$FF
+        and     botones
+        cmp     #$80
+        bne     @sin_cambio
+        lda     botones
+        cmp     #$80
+        bne     @sin_cambio
+        inc     modo_mando
+        lda     modo_mando
+        and     #3
+        sta     modo_mando
+@sin_cambio:
+        lda     botones
+        sta     antes
         jsr     medir_vivos
         jmp     bucle
 
-nmi:    inc     nmis
+; NMI: en el modo 3 lee el mando aquí, al principio del VBlank, como el v13.
+nmi:    pha
+        txa
+        pha
+        lda     modo_mando
+        cmp     #3
+        bne     @fin
+        jsr     leer_v13
+@fin:   inc     nmis
+        pla
+        tax
+        pla
 nada:   rti
 
 ; ------------------------------------------------------------------------------------------------ rutinas
@@ -393,9 +425,26 @@ valores_vivos:
         jsr     hex
         lda     fotogramas
         jsr     hex
+        lda     #>(FILA_FOTO + 32 + 14)
+        ldx     #<(FILA_FOTO + 32 + 14)
+        jsr     ppu_dir
+        lda     modo_mando
+        jsr     hex
         rts
 
+; Formas de leer el mando, para averiguar qué necesita el reset del kit Lava (Select+B):
+;  0: pulso de LATCH y 8 lecturas de $4016 seguidas;
+;  1: como el v13: 8 lecturas de $4017 y $4016 (puerto 2 OR puerto 1);
+;  2: con pausas: LATCH alto unos 12 ciclos y unos 40 ciclos entre lecturas;
+;  3: como el 1, pero desde la NMI.
 leer_mando:
+        lda     modo_mando
+        beq     leer_simple
+        cmp     #1
+        beq     leer_v13
+        jmp     leer_lento
+
+leer_simple:
         lda     #1
         sta     MANDO1
         lda     #0
@@ -404,6 +453,39 @@ leer_mando:
 @b:     lda     MANDO1
         lsr                             ; bit 0 -> acarreo
         rol     botones                 ; A primero: queda en el bit 7
+        dex
+        bne     @b
+        rts
+
+leer_v13:
+        lda     #1
+        sta     MANDO1
+        lda     #0
+        sta     MANDO1
+        ldx     #8
+@b:     lda     MANDO2
+        ora     MANDO1
+        lsr
+        rol     botones
+        dex
+        bne     @b
+        rts
+
+leer_lento:
+        lda     #1
+        sta     MANDO1
+        ldy     #3
+@p1:    dey
+        bne     @p1
+        lda     #0
+        sta     MANDO1
+        ldx     #8
+@b:     ldy     #8
+@p2:    dey
+        bne     @p2
+        lda     MANDO1
+        lsr
+        rol     botones
         dex
         bne     @b
         rts
@@ -437,6 +519,7 @@ textos:
         texto   FILA_VIVO - 32 + 2, "REG2 REG9 R138 4403  (AHORA)"
         texto   FILA_MANDO + 2,    "MANDO:"
         texto   FILA_FOTO + 2,     "FOTOGRAMAS:"
+        texto   FILA_FOTO + 32 + 2, "MODO MANDO:   (A CAMBIA)"
         texto   NT + 24 * 32 + 2,  "SELECT+B: PROBAR EL RESET"
         texto   NT + 25 * 32 + 2,  "VOLVER AL OS DE FABRICA:"
         texto   NT + 26 * 32 + 2,  "COPIA OS_V13.BIN COMO OS.BIN"
