@@ -44,7 +44,7 @@ def arranque(a):
         if e[0] == 'CPLD' and e[1] == 2 and (e[2] ^ e[3]) in (2, 4):
             continue
         if e[0] in ('CPLD', 'FPGA', '4402'):
-            print('  ', e[0], *[f'{x}' if i < len(e) - 1 else f'(PC ${x:04X})' for i, x in enumerate(e[1:])])
+            print('  ', e[0], *[f'{x}' if i < len(e) - 2 else f'(PC ${x:04X})' for i, x in enumerate(e[1:])])
     print('bancos de PRG-RAM escritos:', sorted(m.escrituras_prgram.items()))
     print('configuraciones del FPGA (bytes):', [len(x) for x in m.fpga_cfgs])
     print(f'CPLD final: {dict(m.cpld)}  $4402={m.m4402}  FPGA: {m.fpga}  PPU $2000={m.ppu_ctrl:02X} $2001={m.ppu_mask:02X}')
