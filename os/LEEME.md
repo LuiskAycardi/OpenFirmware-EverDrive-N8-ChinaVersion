@@ -92,7 +92,7 @@ encendido.
 - Registros al entrar en frío: CPU `01 FF 00 FB 35`; reg 2 = `09`, reg 9 = `01`, reg 10 = `01`; regs 138-140 =
   `44` (bus abierto); `$4403` = `01`. Los 8 botones se leen bien.
 - La VUELTA DE JUEGO solo está probada en el emulador: hace falta el lanzador de la etapa 3.
-- Con este OS, el Nano devuelve `reset=0` en `reset-mando`: cuenta silencios de 200 ms y el OS vuelve a leer el
-  mando antes. Los resets se ven en el contador de la pantalla.
+- El Nano cuenta los mismos resets que la pantalla: `reset-mando` devuelve `reset=4 sil=87` y RESETS sube 4. Este
+  OS está 87 ms sin leer el mando en cada reset (el v13, unos 700 ms); el Nano cuenta como reset 50 ms de silencio.
 - Historia de las pruebas del reset (Select+B no resetea, ni con el v13; el Lava usa Select y luego Select+A; cuatro
   formas de leer el mando y el bit 2 del reg 9 no cambian nada): [docs/bios-n8-clon.md](../docs/bios-n8-clon.md) §7.

@@ -21,7 +21,7 @@
  *   R [sel] [a]         RESET POR EL MANDO (kit Lava RGB): Select solo durante sel ms (2500) y después Select+A
  *                       durante a ms (5000). Mientras Select+A sigue pulsado, el kit repite el reset (unos 0,7 s
  *                       cada 1,4 s); hacen falta varios para que el N8 vuelva a su menú (con uno solo, el juego
- *                       vuelve a arrancar). -> !R reset=N lat=L (N = silencios de 200 ms tras haber leído el mando
+ *                       vuelve a arrancar). -> !R reset=N lat=L sil=S (N = silencios de 50 ms tras haber leído el mando
  *                       con Select+A: resets vistos; L = lecturas con Select+A pulsado; L=0: el juego no lee y el kit no
  *                       puede actuar). Medido en la NES el 2026-11-16 (docs/bios-n8-clon.md §7). Select+B no resetea.
  *   H [ms]              RESET POR EL BOTÓN (D2 + PC817): botón RESET de la consola pulsado ms (1000, máx. 5000; con
@@ -71,7 +71,9 @@ static uint8_t armado, arm_cargado;
 static uint32_t arm_p0, arm_sil;
 
 static uint8_t pulso;        /* 0, 'T' o 'R' */
+#define SILENCIO_RESET 50                  /* ms sin lecturas = reset (3 fotogramas; el OS propio vuelve a leer pronto) */
 static uint8_t pulso_m, pulso_reset, pulso_sil;
+static uint32_t pulso_silmax;              /* silencio más largo visto con Select+A (ticks) */
 static uint32_t pulso_fin, pulso_lat0, pulso_cambio;
 
 #define NQ 256                      /* cola de entrada por fotograma (potencia de 2) */
@@ -240,7 +242,7 @@ void nucleo_tick(uint32_t t) {
     }
     if (pulso) {
         if (pulso == 'R') {
-            /* Reset por el mando (kit Lava): Select solo y, pasado pulso_cambio, Select+A. Cada silencio de 200 ms
+            /* Reset por el mando (kit Lava): Select solo y, pasado pulso_cambio, Select+A. Cada silencio de 50 ms
              * con Select+A pulsado, después de haber leído el mando, es un reset del kit. */
             if (pulso_m == BSEL && (int32_t)(t - pulso_cambio) >= 0) {
                 pulso_m = BSEL | BA;
@@ -248,7 +250,9 @@ void nucleo_tick(uint32_t t) {
                 recargar();
             }
             if (pulso_m != BSEL) {
-                uint8_t sil = n_latch != pulso_lat0 && (t - t_ult) >= ms_ticks(200);
+                uint8_t sil = n_latch != pulso_lat0 && (t - t_ult) >= ms_ticks(SILENCIO_RESET);
+                if (n_latch != pulso_lat0 && (t - t_ult) > pulso_silmax)
+                    pulso_silmax = t - t_ult;
                 if (sil && !pulso_sil && pulso_reset < 255)
                     pulso_reset++;
                 pulso_sil = sil;
@@ -263,6 +267,7 @@ void nucleo_tick(uint32_t t) {
                 tx_s("!R");
                 tx_kv("reset", pulso_reset);
                 tx_kv("lat", n_latch - pulso_lat0);
+                { uint32_t r; tx_kv("sil", divu(pulso_silmax, TICKS_MS, &r)); }
             } else {
                 tx_s("!T");
             }
@@ -417,7 +422,7 @@ static void ejecutar(const char *s, uint32_t t) {
             uint32_t sel = 2500, a = 5000;
             if (numero(&p, &v)) { sel = v; if (numero(&p, &v)) a = v; }
             if (sel > 10000 || a == 0 || a > 20000) { error("ms"); break; }
-            pulso = 'R'; pulso_m = BSEL; pulso_reset = 0; pulso_sil = 0;
+            pulso = 'R'; pulso_m = BSEL; pulso_reset = 0; pulso_sil = 0; pulso_silmax = 0;
             pulso_cambio = t + ms_ticks(sel); pulso_fin = pulso_cambio + ms_ticks(a);
             pulso_lat0 = n_latch;
             recargar(); ok();

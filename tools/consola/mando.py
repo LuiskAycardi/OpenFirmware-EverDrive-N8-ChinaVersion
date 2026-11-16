@@ -245,7 +245,7 @@ class Mando:
         """RESET POR EL MANDO: la combinación del kit Lava RGB (orden R del Nano). Select solo durante select_ms y
         después Select+A durante a_ms; mientras Select+A sigue pulsado, el kit repite el reset y el N8 acaba volviendo
         a su menú (con un solo reset el juego vuelve a arrancar). Devuelve {'reset': resets vistos (silencios de
-        200 ms), 'lat': lecturas con Select+A pulsado}. lat=0: el juego no lee el mando y el kit no puede actuar.
+        50 ms), 'lat': lecturas con Select+A pulsado, 'sil': silencio más largo en ms}. lat=0: el juego no lee el mando y el kit no puede actuar.
         No es el botón RESET: para ese, reset_boton()."""
         t0 = time.monotonic()
         self.orden(f"R {int(select_ms)} {int(a_ms)}")
