@@ -453,3 +453,14 @@ como referencia de hechos, sin copiar código).
 - **Total: 194 mappers.** Romset No-Intro: 170 de sus 275 mappers y 5998 ROMs que caben; faltan 185 ROMs
   que cabrían (105 mappers, casi todos con 1-3 ROMs piratas) además de las de más de 512 KiB y mapper > 255.
 
+
+## Mapper 4: protección de PRG-RAM de `$A001` (2026-11-15)
+- El MMC3 del mapper 4 respeta ya `$A001` como Mesen2 en el submapper 0: al arrancar la PRG-RAM está
+  deshabilitada, D7 la habilita y D6 la deja en solo lectura. Antes se ignoraba.
+- El núcleo no recibe el submapper de la cabecera, así que el MMC6 (StarTropics I y II) se reconoce por su
+  propia señal: escribir `$8000` con D5 = 1 (habilita su RAM; un MMC3 ignora ese bit). Desde ese momento, y
+  hasta volver al menú, la PRG-RAM queda libre como antes.
+- Fuzz del 4 (`--semilla 1`, 2 y 3, 600 pasos): idéntico a Mesen2 con la detección del MMC6 apagada; con ella
+  encendida difiere solo porque el fuzz escribe `$8000` con D5 = 1 al azar. StarTropics I y II, Crystalis,
+  Super Mario Bros. 3: idénticos en el banco; Kirby's Adventure (7 px) y The Adventures of Lex and Grim
+  (diverge en el fotograma 91) dan exactamente lo mismo que antes del cambio.

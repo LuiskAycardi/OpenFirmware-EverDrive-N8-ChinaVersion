@@ -82,14 +82,16 @@ not use them).
   esté bien. Para probar, mejor las versiones USA o Japón.
 - **Diferencias conocidas** con el emulador (detalle en `docs/fase4-mappers.md` del repositorio):
   - MMC5 (mapper 5): el modo split vertical tiene limitaciones por el cableado de la SRAM.
-  - Mapper 4 (MMC3): ignora la protección de escritura de la PRG-RAM (`$A001`), por compatibilidad con
-    el MMC6.
   - Kart Fighter (116): en Mesen2 recibe una IRQ que aquí no llega; puede comportarse distinto.
   - Famicom Jump II (153): se cuelga si su partida empieza a cero (también en el emulador).
   - Varios juegos con efectos de pantalla partida pueden diferir unos pocos píxeles en la línea del corte.
-- **Hardware real**: hasta ahora solo se han probado **algunos juegos en una NES real** (RBF 100, 101 y
-  102, versiones anteriores). **Nunca probados en consola**: 103 (MMC5), 104, 105 y 106 (VRC7 con sonido
-  FM). Pronto se creará un banco de pruebas real con una NES para probarlos de forma automática.
+- **Hardware real**: ya hay un banco de pruebas automático con una **NES NTSC real** (mando emulado,
+  capturadora y películas TAS de TASVideos comparadas escena a escena con Mesen2). Películas completas
+  verificadas, sin perder la sincronización: Super Mario Bros. (0), Nuts & Milk (0), Rainbow Islands (2),
+  Fire 'n Ice (4), Wizards & Warriors III (7) y Metal Force (156); además, tramos de Mighty Bomb Jack (3),
+  Captain Comic (11), Plummet/Arm Wrestling (30), Solitaire (79) y Goonies (87), y la IRQ del mapper 65
+  medida con una ROM de prueba (idéntica a Mesen2). Son mappers de los RBF 100, 101 y 102. **Nunca
+  probados en consola**: 103 (MMC5), 104, 105 y 106 (VRC7 con sonido FM).
 
 **EN**
 - **Save states**: not implemented in this package (the save state table is empty). Battery saves
@@ -100,14 +102,17 @@ not use them).
   fine. For testing, prefer the USA or Japan versions.
 - **Known differences** from the emulator (details in the repository's `docs/fase4-mappers.md`):
   - MMC5 (mapper 5): the vertical split mode is limited by the SRAM wiring.
-  - Mapper 4 (MMC3): ignores the PRG-RAM write protection (`$A001`), for MMC6 compatibility.
   - Kart Fighter (116): in Mesen2 it receives an IRQ that does not arrive here; it may behave
     differently.
   - Famicom Jump II (153): hangs if its save starts zeroed (also in the emulator).
   - Several games with split-screen effects may differ by a few pixels on the split line.
-- **Real hardware**: so far only **some games have been tested on a real NES** (RBF 100, 101 and 102,
-  earlier versions). **Never tested on hardware**: 103 (MMC5), 104, 105 and 106 (VRC7 with FM audio). A
-  real-hardware test bench with a NES will be set up soon to test them automatically.
+- **Real hardware**: there is now an automated test bench with a **real NTSC NES** (emulated
+  controller, capture card and TASVideos TAS movies compared scene by scene against Mesen2). Full movies
+  verified without losing sync: Super Mario Bros. (0), Nuts & Milk (0), Rainbow Islands (2), Fire 'n Ice
+  (4), Wizards & Warriors III (7) and Metal Force (156); plus stretches of Mighty Bomb Jack (3), Captain
+  Comic (11), Plummet/Arm Wrestling (30), Solitaire (79) and Goonies (87), and the mapper 65 IRQ measured
+  with a test ROM (identical to Mesen2). These mappers live in RBF 100, 101 and 102. **Never tested on
+  hardware**: 103 (MMC5), 104, 105 and 106 (VRC7 with FM audio).
 
 ## Cómo informar / How to report
 

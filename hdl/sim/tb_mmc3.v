@@ -178,12 +178,23 @@ module tb_mmc3;
         expect_a10(14'h2400, 1, "MMC3: vertical $2400");
         expect_a10(14'h2800, 0, "MMC3: vertical $2800");
 
-        // PRG-RAM ($A001 se ignora)
+        // PRG-RAM: deshabilitada al arrancar; $A001 D7 la habilita y D6 la protege (como Mesen2, submapper 0)
         cpu_write(16'h6123, 8'h55);
-        check(last_ram_ce && last_ram_we && last_prg_addr == 19'h00123, "MMC3: PRG-RAM $6000");
+        check(!last_ram_ce, "MMC3: PRG-RAM deshabilitada hasta $A001");
+        cpu_write(16'hA001, 8'h80);
+        cpu_write(16'h6123, 8'h55);
+        check(last_ram_ce && last_ram_we && last_prg_addr == 19'h00123, "MMC3: PRG-RAM $6000 con $A001=$80");
+        cpu_write(16'hA001, 8'hC0);
+        cpu_write(16'h7FFF, 8'h55);
+        check(last_ram_ce && !last_ram_we, "MMC3: $A001=$C0 protege la escritura");
         cpu_write(16'hA001, 8'h00);
         cpu_write(16'h7FFF, 8'h55);
-        check(last_ram_ce && last_ram_we, "MMC3: $A001 no bloquea la PRG-RAM");
+        check(!last_ram_ce, "MMC3: $A001=$00 deshabilita la PRG-RAM");
+        // MMC6 (StarTropics): $8000 con D5 = 1 deja la RAM libre aunque $A001 la proteja a la manera del MMC3
+        cpu_write(16'h8000, 8'h20);
+        cpu_write(16'hA001, 8'h40);
+        cpu_write(16'h7123, 8'h55);
+        check(last_ram_ce && last_ram_we, "MMC6: $8000 D5 deja la PRG-RAM libre");
         back_to_menu;
 
         start_game(8'd4, 5'b01111, 8'b001111, 8'd0);

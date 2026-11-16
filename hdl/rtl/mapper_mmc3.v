@@ -6,8 +6,11 @@
 //   $8000 par    selección: [2:0] registro destino R0..R7, [6] modo PRG, [7] inversión CHR A12
 //   $8001 impar  dato del banco elegido
 //   $A000 par    mirroring: 0 = vertical, 1 = horizontal
-//   $A001 impar  protección de PRG-RAM: se ignora (como hacen los emuladores, por
-//                compatibilidad con el MMC6 de StarTropics); la PRG-RAM queda habilitada
+//   $A001 impar  protección de PRG-RAM (mapper 4): D7 = habilitada, D6 = solo lectura; al arrancar,
+//                deshabilitada (como Mesen2 en el submapper 0). El MMC6 de StarTropics (mapper 4
+//                sin submapper en la cabecera iNES) usa $A001 de otra forma: se reconoce porque
+//                escribe $8000 con D5 = 1 (habilita su RAM; un MMC3 ignora ese bit), y desde ese
+//                momento la PRG-RAM queda libre como antes.
 //   $C000 par    valor de recarga del contador de IRQ
 //   $C001 impar  recargar el contador en el próximo pulso
 //   $E000 par    desactivar IRQ (y reconocer la pendiente)
@@ -90,6 +93,7 @@ module mapper_mmc3 #(
     wire M47    = G0 && (map_id == 8'd47);
     wire M115   = (G0 && (map_id == 8'd115)) || (G2 && (map_id == 8'd248));
     wire M189   = G0 && (map_id == 8'd189);
+    wire M4     = G0 && (map_id == 8'd4);
     // fase 4 (GRUPO 1)
     wire M12  = G1 && (map_id == 8'd12),  M44  = G1 && (map_id == 8'd44),  M45  = G1 && (map_id == 8'd45);
     wire M49  = G1 && (map_id == 8'd49),  M52  = G1 && (map_id == 8'd52),  M74  = G1 && (map_id == 8'd74);
@@ -134,6 +138,7 @@ module mapper_mmc3 #(
     reg [7:0] xa [0:3];                   // 45: cuatro registros; 198/199: registros extra
     reg [1:0] i45;                        // 45: siguiente registro
     reg [1:0] a001;                       // D7-D6 de $A001 (49/52: el registro exterior solo con la RAM habilitada)
+    reg       mmc6;                       // mapper 4: el juego escribió $8000 con D5 = 1 (MMC6, StarTropics)
     reg [5:0] x198a, x198b;               // 198: PRG de 8 KB en $8000/$A000 (al encender 0 y 1)
     reg [7:0] x199 [0:3];                 // 199: PRG $C000/$E000 y CHR extra (al encender $FE, $FF, 1, 3)
 
@@ -228,7 +233,7 @@ module mapper_mmc3 #(
         r6 = 6'd0; r7 = 6'd1;
         mir_h = 0; irq_latch = 0; irq_en = 0; reload_tgl = 0; ext = 0; ext_chr = 0; prot = 0;
         sel3 = 0; mir_s = 0; x2 = 0; xa[0] = 0; xa[1] = 0; xa[2] = 8'h0F; xa[3] = 0; i45 = 0;
-        a001 = 0; x198a = 0; x198b = 1; x199[0] = 8'hFE; x199[1] = 8'hFF; x199[2] = 8'd1; x199[3] = 8'd3;
+        a001 = 0; mmc6 = 0; x198a = 0; x198b = 1; x199[0] = 8'hFE; x199[1] = 8'hFF; x199[2] = 8'd1; x199[3] = 8'd3;
     end
 
     wire rom_wr = !romsel_n && !cpu_rw;
@@ -301,7 +306,7 @@ module mapper_mmc3 #(
             ext_chr   <= 1'b0;
             prot      <= 8'd0;
             sel3 <= 0; mir_s <= 0; x2 <= 0; xa[0] <= 0; xa[1] <= 0; xa[2] <= 8'h0F; xa[3] <= 0; i45 <= 0;
-            a001 <= 0; x198a <= 0; x198b <= 1;
+            a001 <= 0; mmc6 <= 0; x198a <= 0; x198b <= 1;
             x199[0] <= 8'hFE; x199[1] <= 8'hFF; x199[2] <= 8'd1; x199[3] <= 8'd3;
         end else if (romsel_n) begin          // $4000-$7FFF: registros exteriores
             if (M176 && lo_wr && (cpu_a & 15'h7010)==15'h5010)
@@ -385,7 +390,8 @@ module mapper_mmc3 #(
                 if (sel[0]) x198b <= cpu_d[5:0]; else x198a <= cpu_d[5:0];   // ($4F/$3F: dentro de 512 KB, 6 bits)
             end
             if (wcore) case (rs)
-                3'b000: begin sel <= wd[2:0]; sel3 <= wd[3]; prg_mode <= wd[6]; chr_inv <= wd[7]; end
+                3'b000: begin sel <= wd[2:0]; sel3 <= wd[3]; prg_mode <= wd[6]; chr_inv <= wd[7];
+                              if (M4 && wd[5]) mmc6 <= 1'b1; end
                 3'b001: case (sel)
                             3'd0: r0 <= wd;
                             3'd1: r1 <= wd;
@@ -397,7 +403,7 @@ module mapper_mmc3 #(
                             3'd7: r7 <= wd[5:0];
                         endcase
                 3'b010: begin mir_h <= wd[0]; mir_s <= wd[1]; end
-                3'b011: a001 <= wd[7:6];              // protección de PRG-RAM: ignorada (salvo 49/52)
+                3'b011: a001 <= wd[7:6];              // protección de PRG-RAM (mapper 4 sin MMC6, 49/52, grupo 2)
                 3'b100: irq_latch <= wd;
                 3'b101: reload_tgl <= ~reload_tgl;
                 3'b110: irq_en <= 1'b0;
@@ -497,8 +503,9 @@ module mapper_mmc3 #(
     assign prg_a      = romsel_n ? {6'd0, cpu_a[12:10]}    // PRG-RAM, banco 0
                                  : {bank8, cpu_a[12:10]};
     assign prg_rom_en = !romsel_n;
-    assign prg_ram_en = win_6000 && m2 && !NO_RAM && (!G2 || a001[1]);
-    assign prg_wr     = !cpu_rw && prg_ram_en && (!G2 || !a001[0]);
+    wire   prot_a001  = G2 || (M4 && !mmc6);  // $A001 decide: D7 habilita, D6 protege la escritura
+    assign prg_ram_en = win_6000 && m2 && !NO_RAM && (!prot_a001 || a001[1]);
+    assign prg_wr     = !cpu_rw && prg_ram_en && (!prot_a001 || !a001[0]);
 
     // ================================================================ CHR
     wire [2:0] slot = ppu_a[12:10] ^ {chr_inv, 2'b00};
