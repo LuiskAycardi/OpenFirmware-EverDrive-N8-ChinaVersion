@@ -13,7 +13,7 @@ Sustituye a marcar a mano la página "Pruebas N8". Tú solo mueves la microSD. E
     Select solo 2,5 s y luego Select+A 5 s. Mientras Select+A sigue pulsado, el kit repite el reset y el N8 vuelve
     al menú (con una pulsación corta solo vuelve a arrancar el juego). Solo funciona si el juego lee el mando.
     Devuelve `reset=` (silencios de 60 ms o más: resets vistos; sirve para el OS propio, 87 ms, y para el v13, unos 700 ms) y `sil=` (el silencio más largo, en ms).
-    Probado en la NES: 5 resets y vuelta al menú desde SMB con el v13; 4 resets (`sil=87`) con el OS propio. Select+B no resetea (docs/bios-n8-clon.md §7).
+    Probado en la NES: 5 resets y vuelta al menú desde SMB con el v13; 4 resets (`sil=87`) con el OS propio. Con el firmware de 60 ms y el v13: 4 resets en el menú y 5 desde SMB (`sil=751`). Select+B no resetea (docs/bios-n8-clon.md §7).
 
 Si un juego se cuelga y ya no lee el mando, el reset no llega: entonces te avisa (pitido y notificación) para
 que apagues y enciendas, y sigue solo con el siguiente juego en cuanto vuelve a ver el menú.
