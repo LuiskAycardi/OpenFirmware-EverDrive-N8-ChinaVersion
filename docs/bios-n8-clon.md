@@ -174,6 +174,10 @@ CPU vuelve a entrar en el v13 que ya está en la RAM, sin pasar por la BIOS. El 
 modo OS: por eso **todo RBF tiene que llevar el modo OS** (`n8_os_iface.v`). **(Por medir** que el CPLD no baje el
 bit 0 con el reset; la etapa 1 del plan lo responde con un contador de arranques.**)**
 
+**Hecho en el OS propio** (`os/src/arranque.s`, probado en la NES el 2026-11-16): distingue encendido, reset en el
+OS y vuelta de un juego, y aguanta la ráfaga de 4 resets del Lava (contadores 01/00/00 → 02/01/00 con el botón →
+06/05/00 con el Lava). Detalles en [os/LEEME.md](../os/LEEME.md).
+
 Para el OS propio:
 - Instalar sus vectores en `$FFFA-$FFFF` de la RAM nada más arrancar, con RESET apuntando a una entrada que
   funcione igual sin la BIOS (con el RBF del juego en modo OS) y con el CPLD en el estado que deja el juego.

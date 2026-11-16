@@ -216,8 +216,8 @@ textos_fijos:
 @fin:   rts
 
 valores_fijos:
-        lda     #>(FILA_TIPO + 11)
-        ldx     #<(FILA_TIPO + 11)
+        lda     #>(FILA_TIPO + 12)
+        ldx     #<(FILA_TIPO + 12)
         jsr     ppu_dir
         ldx     tipo_arranque
         lda     nombres_tipo_lo,x
