@@ -71,3 +71,6 @@ __pycache__/
 
 # paquetes de release (release/make_release.py)
 /release/out/
+
+# OS propio: salida de compilación
+/os/build/

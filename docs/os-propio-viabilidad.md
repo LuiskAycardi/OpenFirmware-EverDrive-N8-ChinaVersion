@@ -337,7 +337,7 @@ para volver.
    archivo de tamaño múltiplo de 8 KiB, primer byte distinto de `$EA` y `$FC00-$FFFF` vacío). El modelo del CPLD y
    de la SD ya existe en `tools/bios/` y arranca el OS con la BIOS real en el PC. Falta llevarlo a Mesen2 si hace
    falta ver la imagen.
-1. **«Hola mundo».** Pinta texto, lee el mando y muestra en hexadecimal: S, los regs 2, 9, 10 y 138-140 leídos por
+1. **«Hola mundo».** *Hecho en [`os/`](../os/LEEME.md); probado con la BIOS real en el emulador, falta la consola.* Pinta texto, lee el mando y muestra en hexadecimal: S, los regs 2, 9, 10 y 138-140 leídos por
    `$4401`, `$4403`, los primeros bytes de la RAM de la CPU y de la página `$FC00`, y un contador de arranques en la
    PRG-RAM alta. Responde a §1.3, §2.4 y §2.6. Select+B prueba el camino del reset.
 2. **SD.** Inicialización propia (CMD0/8/ACMD41/58), lectura del sector 0, MBR, partición y FAT32. Muestra la raíz.
