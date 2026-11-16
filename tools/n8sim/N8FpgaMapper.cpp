@@ -291,7 +291,9 @@ void N8FpgaMapper::InitMapper(RomData& romData)
 		{ 133, (uint8_t)(chr8 ? chr8 - 1 : 0xFF) },
 		{ 134, (uint8_t)(h.Byte6 & 0x1B) },
 		{ 136, 0 },
-		{ 131, mapper },
+		// El OS v13 cambia el 219 por 0 y el 220 por 4 antes de escribir el reg 131 (OS.BIN $B182; con
+		// Toy Story, 219, en la NES el 2026-11-16). El RTL lo deshace para el 219 (0 con PRG > 32 KiB).
+		{ 131, (uint8_t)(mapper == 219 ? 0 : mapper == 220 ? 4 : mapper) },
 	};
 	// Solo el MMC2/MMC4 (9, 10) usa /RD en el RTL (latches con clk). Las reglas de tiempo de /RD del puente
 	// (fase baja completa y fase alta mínima, ver FinishRead y MapperReadVram) se aplican solo ahí, para no

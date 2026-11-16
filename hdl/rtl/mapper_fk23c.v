@@ -192,7 +192,12 @@ module mapper_fk23c (
         else if (extmode) cpage = {3'd0, cr} | cB;
         else cpage = {3'd0, cr & cim} | (cB & ~{3'd0, cim});
     end
-    wire useram = cfg[7] || selchrram || (wramcfg && raminchr && cpage <= 11'd7);
+    // $5xx0.5 (CHR-RAM) y la RAM en el primer banco de CHR ($A001) solo valen si el cartucho tiene CHR-RAM. El OS
+    // no pasa su tamaño: con CHR-ROM, se toma la batería como indicio (en No-Intro, todos los 176 con CHR-ROM y
+    // CHR-RAM llevan batería; los multicarts sin batería no tienen CHR-RAM y ponen el bit: Super 9999999-in-1
+    // sacaba basura en la NES, 2026-11-15).
+    wire hay_chrram = cfg[7] || cfg[1];
+    wire useram = cfg[7] || (hay_chrram && (selchrram || (wramcfg && raminchr && cpage <= 11'd7)));
     assign chr_raw   = useram;
     assign chr_a     = useram ? {1'b1, cpage[7:0]} : cpage[8:0];
     assign chr_en    = !ppu_a[13];

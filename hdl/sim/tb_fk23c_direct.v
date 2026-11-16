@@ -118,14 +118,20 @@ module tb_fk23c_direct;
         wr(16'ha001, 8'h00); er(16'h6000, 0, 0, 0, 0);
 
         // ---- CHR-RAM: select bit, RAM in the first CHR bank, CHR-RAM-only cartridges
+        // Without battery (cfg[1]) and with CHR-ROM there is no CHR-RAM: neither $5xx0.5 nor $A001 selects it
+        // (multicarts like Super 9999999-in-1 set the bit and must keep reading CHR-ROM).
         bank(0, 8'h00);
+        wr(16'h5010, 8'h20); ec(14'h0400, 9'h001, 0);
+        wr(16'h5010, 8'h00); wr(16'ha001, 8'h24); ec(14'h0400, 9'h001, 0);
+        wr(16'ha001, 8'h00);
+        cfg = 8'h02;                                       // battery: the cart has CHR-RAM
         wr(16'h5010, 8'h20); ec(14'h0400, 9'h101, 1);
         ppu_a = 14'h0400; ppu_wr_n = 0; #100; check(chr_wr, "CHR-RAM writable"); ppu_wr_n = 1;
         wr(16'h5010, 8'h00); ec(14'h0400, 9'h001, 0);
         ppu_wr_n = 0; #100; check(!chr_wr, "CHR-ROM not writable"); ppu_wr_n = 1;
         wr(16'ha001, 8'h24); ec(14'h0400, 9'h101, 1);     // pages 0-7 -> RAM
         bank(2, 8'h08); ec(14'h1000, 9'h008, 0);          // page 8 stays ROM
-        wr(16'ha001, 8'h00); bank(2, 8'h04);
+        wr(16'ha001, 8'h00); bank(2, 8'h04); cfg = 0;
         cfg = 8'h80; ec(14'h1000, 9'h104, 1); cfg = 0;
 
         // ---- IRQ: 2 CPU cycles after reaching 0; $E000 is the only acknowledge

@@ -79,7 +79,7 @@ module n8_top (
     wire m2 = cpu_m2_gclk;
 
     // ------------------------------------------------------------ interfaz OS
-    wire [7:0]  mapper_id, cfg;
+    wire [7:0]  mapper_os, cfg;
     wire [4:0]  prg_size;
     wire [5:0]  chr_size;
     wire        os_mode, m2_ok, mem_off, map_reset;
@@ -91,13 +91,18 @@ module n8_top (
     n8_os_iface os (
         .clk(clk), .m2(m2), .cpu_a(cpu_a), .cpu_d(cpu_d), .romsel_n(cpu_romsel_n),
         .cpu_rw(cpu_rw), .bios_off(cpld_bios_off), .ppu_a(ppu_a), .ppu_wr_n(ppu_wr_n),
-        .mapper_id(mapper_id), .os_mode(os_mode), .cfg(cfg),
+        .mapper_id(mapper_os), .os_mode(os_mode), .cfg(cfg),
         .prg_size(prg_size), .chr_size(chr_size),
         .m2_ok(m2_ok), .mem_off(mem_off), .map_reset(map_reset),
         .prg_a(os_prg_a), .prg_rom_en(os_prg_rom_en), .prg_ram_en(os_prg_ram_en),
         .prg_wr(os_prg_wr), .chr_a(os_chr_a), .chr_en(os_chr_en), .chr_wr(os_chr_wr),
         .ciram_en(os_ciram_en), .ciram_a10(os_ciram_a10)
     );
+
+    // El OS v13 cambia el mapper 219 de la cabecera por 0 (y el 220 por 4) antes de escribirlo en el reg 131
+    // (OS.BIN $B182; comprobado en la NES con Toy Story el 2026-11-16). Un NROM nunca pasa de 32 KiB de PRG:
+    // un "0" con más PRG es un 219.
+    wire [7:0]  mapper_id = (mapper_os == 8'd0 && prg_size > 5'd1) ? 8'd219 : mapper_os;
 
     // ------------------------------------------------------------ mappers del juego
     // Cada mapper entrega un bus de 26 bits:

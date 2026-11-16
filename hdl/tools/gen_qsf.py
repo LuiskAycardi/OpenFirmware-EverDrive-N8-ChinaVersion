@@ -8,6 +8,7 @@ La plantilla tiene el dispositivo, las opciones y los pines. Aquí se añaden:
   - la macro N8_RBF_NNN, que elige qué mappers entran en este RBF (ver n8_top.v),
   - el SDC común y el pull-up débil de ppu_d (bus abierto de la PPU = $FF, mappers 93 y 185).
 """
+import os
 import pathlib
 import sys
 
@@ -25,6 +26,8 @@ out = [f"# Generado por tools/gen_qsf.py desde n8_nrom.qsf: RBF {rbf}. No editar
 out += keep
 out += [f"set_global_assignment -name VERILOG_FILE ../../rtl/{f.name}"
         for f in sorted((hdl / "rtl").glob("*.v"))]
+# N8_MACROS="A B": macros extra para compilaciones de depuración (p. ej. N8_DEPURAR_219)
+out += [f'set_global_assignment -name VERILOG_MACRO "{m}=1"' for m in os.environ.get("N8_MACROS", "").split()]
 out += [f'set_global_assignment -name VERILOG_MACRO "N8_RBF_{rbf}=1"',
         "set_global_assignment -name SDC_FILE ../n8_nrom.sdc"]
 out += [f"set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ppu_d[{i}]" for i in range(8)]

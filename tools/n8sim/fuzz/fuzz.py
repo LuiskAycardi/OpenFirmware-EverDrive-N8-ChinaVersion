@@ -36,12 +36,12 @@ NO_BATTERY = {56, 103, 176, 178}
 # Mesen2 se la pone igual (con el bit de pila de la cabecera de la ROM sintética).
 # NO_RAM MMC3 boards (115/248): Mesen2 still maps WRAM at $6000 from the synthetic
 # header, the real board has none — same case as the other no-PRG-RAM boards below.
-IGNORAR = {m: ("6000",) for m in (116,59,114,215,35,115,248,111,234,91,222,220,0, 2, 3, 7, 11, 13, 28, 30, 31, 60, 77, 96, 142, 164, 171, 175, 188, 221)}
+IGNORAR = {m: ("6000",) for m in (116,59,114,215,115,248,111,234,91,222,220,0, 2, 3, 7, 11, 13, 28, 30, 31, 60, 77, 96, 142, 164, 171, 175, 188, 221)}
 
 # CHR-RAM mayor de 8 KB: cabecera NES 2.0 con el tamaño (con iNES 1 Mesen2 da 8 KB y los bancos se repiten).
 REFERENCE_MAPPER = {220:4,248:115}  # Explicit historical N8 alias; not a native Mesen mapper220.
 
-CHR_RAM_KB = {111:32,28: 32, 30: 32, 96: 32, 157: 8}
+CHR_RAM_KB = {111:32,28: 32, 30: 32, 96: 32, 157: 8, 176: 256}
 
 # Placas reales distintas con el mismo número: la ROM sintética se genera como NES 2.0 con el submapper de cada
 # placa (así Mesen2 la emula como esa placa) y solo escribe en el rango que esa placa decodifica.
@@ -54,7 +54,10 @@ BOARD_VARIANTS = {
     157: {"_br": dict(submapper=0, nvram_bytes=128, wr_only="hi"),
           "_base": dict(submapper=0, wr_only="hi", battery=False)},
 }
-PRG_RAM_KB = {}
+# 176: cabecera NES 2.0 con 32 KiB de PRG-RAM de trabajo y sin CHR-RAM, como las ROMs reales del 176 sin batería.
+# En iNES 1.0 Mesen2 pone 256 KiB de CHR-RAM aunque haya CHR-ROM; ningún 176 de No-Intro es así, y en la placa
+# real sin CHR-RAM el bit $5xx0.5 no cambia nada (Super 9999999-in-1, 2026-11-15).
+PRG_RAM_KB = {176: 32}
 
 # Tamaños máximos reales de cada placa (PRG KB, CHR KB). Con más, Mesen2 y el OS ven otra placa (p. ej. el
 # banco "último" fijo). Por defecto 512/512.

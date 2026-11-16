@@ -168,7 +168,6 @@ module mapper_mmc3 #(
     reg [7:0] er0219=0, er1219=0, er2219=0;
     reg [5:0] pp219 [0:3];
     reg [7:0] cc219 [0:7];
-    integer init219, reset219;
     reg [7:0] x114 = 0; reg s114 = 0;                     // 114: PRG register, "select written" flag
     reg [7:0] e121 [0:7];                                 // 121: extra registers (Mesen's naming 0-7)
     reg [7:0] x215a = 0, x215b = 8'd3, x215c = 0;         // 215: $5000, $5001 (power-on 3), $5007
@@ -223,8 +222,10 @@ module mapper_mmc3 #(
         end
     endfunction
     initial begin
-        for (init219=0; init219<4; init219=init219+1) pp219[init219]=6'h3c+init219[5:0];
-        for (init219=0; init219<8; init219=init219+1) cc219[init219]=init219[7:0];
+        // 219 al encender: los cuatro últimos bancos de 8 KiB en $8000-$FFFF; CHR 0-7.
+        pp219[0]=6'h3c; pp219[1]=6'h3d; pp219[2]=6'h3e; pp219[3]=6'h3f;
+        cc219[0]=8'd0; cc219[1]=8'd1; cc219[2]=8'd2; cc219[3]=8'd3;
+        cc219[4]=8'd4; cc219[5]=8'd5; cc219[6]=8'd6; cc219[7]=8'd7;
     end
 
     initial begin
@@ -292,8 +293,9 @@ module mapper_mmc3 #(
         if (rst) begin
             mode176<=0; base176<=0; chr176<=0; unrom176<=0;
             er0219<=0; er1219<=0; er2219<=0;
-            for (reset219=0; reset219<4; reset219=reset219+1) pp219[reset219]<=6'h3c+reset219[5:0];
-            for (reset219=0; reset219<8; reset219=reset219+1) cc219[reset219]<=reset219[7:0];
+            pp219[0]<=6'h3c; pp219[1]<=6'h3d; pp219[2]<=6'h3e; pp219[3]<=6'h3f;   // ver el initial
+            cc219[0]<=8'd0; cc219[1]<=8'd1; cc219[2]<=8'd2; cc219[3]<=8'd3;
+            cc219[4]<=8'd4; cc219[5]<=8'd5; cc219[6]<=8'd6; cc219[7]<=8'd7;
             x114 <= 0; s114 <= 0; x215a <= 0; x215b <= 8'd3; x215c <= 0;
             e121[0]<=0; e121[1]<=0; e121[2]<=0; e121[3]<=8'h80; e121[4]<=0; e121[5]<=0; e121[6]<=0; e121[7]<=0;
             sel <= 0; prg_mode <= 0; chr_inv <= 0;
@@ -415,8 +417,29 @@ module mapper_mmc3 #(
     // 115: lectura de la protección en $5000-$5FFF. 187: $5000-$5FFF = $83. 238: $4020-$7FFF = registro.
     wire rd5   = romsel_n && cpu_rw && (cpu_a[14:12] == 3'b101);
     wire rd238 = M238 && romsel_n && cpu_rw && cpu_a[14] && (cpu_a[13:5] != 9'd0);
+`ifdef N8_DEPURAR_219
+    // Depuración (solo con la macro N8_DEPURAR_219): con el 219, las 16 primeras escrituras de la CPU fuera de
+    // $0000-$3FFF desde que se sale del modo OS, legibles en $5000-$503F: byte 0 dato, 1 A7-A0, 2 A15 y A14-A8,
+    // 3 número de escrituras guardadas.
+    reg [23:0] log219 [0:15];
+    reg [4:0]  n219 = 0;
+    always @(negedge m2) begin
+        if (rst) n219 <= 0;
+        else if (M219 && !cpu_rw && (!romsel_n || cpu_a[14]) && !n219[4]) begin
+            log219[n219[3:0]] <= {!romsel_n, cpu_a, cpu_d};
+            n219 <= n219 + 5'd1;
+        end
+    end
+    wire        rd219 = M219 && romsel_n && cpu_rw && cpu_a[14:6] == 9'b101000000;   // $5000-$503F
+    wire [23:0] e219  = log219[cpu_a[5:2]];
+    wire [7:0]  d219  = cpu_a[1:0] == 2'd0 ? e219[7:0] : cpu_a[1:0] == 2'd1 ? e219[15:8] :
+                        cpu_a[1:0] == 2'd2 ? e219[23:16] : {3'd0, n219};
+    assign cpu_dout = rd219 ? d219 : M115 ? prot : M187 ? 8'h83 : M121 ? e121[4] : ext;
+    assign cpu_doe  = ((M115 || M187 || M121) && rd5) || rd238 || rd219 ? 8'hFF : 8'h00;
+`else
     assign cpu_dout = M115 ? prot : M187 ? 8'h83 : M121 ? e121[4] : ext;
     assign cpu_doe  = ((M115 || M187 || M121) && rd5) || rd238 ? 8'hFF : 8'h00;
+`endif
 
     // ================================================================ PRG
     reg [5:0] mbank;                      // banco de 8 KB del MMC3

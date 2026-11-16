@@ -464,3 +464,55 @@ como referencia de hechos, sin copiar código).
   encendida difiere solo porque el fuzz escribe `$8000` con D5 = 1 al azar. StarTropics I y II, Crystalis,
   Super Mario Bros. 3: idénticos en el banco; Kirby's Adventure (7 px) y The Adventures of Lex and Grim
   (diverge en el fotograma 91) dan exactamente lo mismo que antes del cambio.
+
+## Fallos de la tanda de consola de los RBF 103-106 (2026-11-15)
+
+Primera tanda en la NES real de los RBF 103 a 106 (39 juegos NTSC elegidos por cobertura, modo `ejecutar` de
+`tools/consola/prueba.py`). Dos juegos fallaban solo en la consola; los dos se reproducen también en `difftest.py`.
+
+- **35 (Wario Land 2, JY039): sin PRG-RAM.** El mapper 35 no daba RAM en `$6000` (se suponía que la placa no la
+  lleva), pero la cabecera NES 2.0 declara 8 KiB de PRG-NVRAM con pila y el juego se cuelga sin ella (gris en la
+  NES, verde en el banco). Ahora `mapper35.v` da 8 KiB en `$6000-$7FFF` si la cabecera tiene el bit de pila
+  (`cfg[1]`), como Mesen2. Difftest: de «diverge desde el fotograma 1» a «menor» (97 píxeles). El fuzz ya no
+  ignora `$6000` en el 35 (4 semillas iguales).
+- **176 (Super 9999999-in-1): CHR-RAM inexistente.** Al entrar en Track & Field el multicart escribe
+  `$5FF0=$64`, con el bit 5 («CHR-RAM») a 1. El modelo pasaba entonces la CHR a la RAM, vacía; la placa no tiene
+  CHR-RAM y Mesen2 solo la usa si el cartucho la tiene. El OS no pasa el tamaño de la CHR-RAM (solo `Byte6 & 0x1B`
+  y el bit «solo CHR-RAM»), así que con CHR-ROM se toma la pila como indicio: en No-Intro los 28 juegos 176 con
+  CHR-ROM y CHR-RAM llevan pila y los 5 sin pila no tienen CHR-RAM. `$5xx0.5` y la «RAM en el primer banco de CHR»
+  de `$A001` solo valen con `cfg[7] || cfg[1]`. Difftest de los 5 sin pila: Super 9999999-in-1 y Xiao Boshi
+  pasan a idénticos; 20-in-1 sigue idéntico, Spider-Man (1 píxel) y Dream Master (40 píxeles desde el 752)
+  quedan como estaban.
+- Fuzz del 176: la ROM sintética pasa a NES 2.0 con 32 KiB de PRG-RAM (`PRG_RAM_KB`) y sin CHR-RAM, como las
+  reales; la variante `_ram` declara 256 KiB de CHR-RAM. En iNES 1.0 Mesen2 pone 256 KiB de CHR-RAM aunque haya
+  CHR-ROM, caso que no existe en No-Intro. Quedan diferencias en algunas semillas (2 de 6) por un artefacto de
+  Mesen2: la «RAM en el primer banco de CHR» no comprueba si hay CHR-RAM y, sin ella, `SetPpuMemoryMapping`
+  deja el mapeo anterior; el modelo lee la CHR-ROM.
+
+Otros resultados de esa tanda que no son fallos del mapper: las peleas de los juegos de lucha (90, 121, 209)
+siguen otro camino por unos fotogramas de diferencia; Super Mario & Sonic 2 (90) y AV Kyuukyoku Mahjong 2 (116)
+tampoco arrancan en Mesen2. El OS v13 lista los archivos en el orden de la FAT, no alfabético, en páginas de 21
+entradas que se cambian con Derecha/Izquierda: hay que copiarlos a la SD en orden, y `menu.py` pasa de página.
+
+Con el 105.RBF corregido, Wario Land 2 y Super 9999999-in-1 dan «ok» en la NES. **Toy Story (219), resuelto:**
+se queda en gris en la consola tras «loading...» y no vuelve al menú con RESET ni con Select+B, pero en
+`difftest.py` sale idéntico a Mesen2, también con la PRG-RAM inicial a `0xFF` o `0x55`: el fallo es solo del
+hardware y hay que acotarlo en la consola.
+  Descartado (2026-11-15): RAM de la CPU (Mesen2 arranca con RAM a 0, a 1 y aleatoria), PRG-RAM, configuración del
+  OS («Rom Info»: mapper 219, PRG 8, CHR 16, «EX RAM», igual que Pocahontas 2, que va bien), síntesis (sin latches;
+  bits constantes coherentes), `n8_top` completo del RBF 105 en Verilator (idéntico) y el estado que deja el OS: dos
+  variantes de la ROM con prólogo en `$FFEC` (B: `SEI` + `$4017=$40` + leer `$4015`; C: `SEI` + dos VBlank) también
+  se quedan en negro/gris en la NES. El juego no llega a pintar el copyright (Mesen2 lo pinta en el fotograma 0) y
+  su reset no empieza con `SEI`. El firmware oficial pone el 219 en su RBF de mappers sencillos, no con el MMC3.
+
+- **Causa de Toy Story (2026-11-16): el OS v13 cambia el mapper 219 por 0 (y el 220 por 4)** antes de escribirlo en
+  el registro 131 (`OS.BIN` `$B182`; elige el RBF con el número original, así que carga el 105). El FPGA recibía un
+  NROM y mostraba los primeros 32 KiB: en `$E000` quedaba el banco 3 (medido en la NES con una ROM de prueba de un
+  color por banco). Ni el difftest ni el netlist de Quartus lo veían porque el puente no hacía esa traducción.
+  Arreglo: `n8_top.v` trata un mapper 0 con PRG > 32 KiB (ningún NROM lo tiene) como 219, y
+  `tools/n8sim/N8FpgaMapper.cpp` imita la traducción del OS. Toy Story: 6 de 7 escenas «ok» en la NES (la 120 es
+  la pantalla de copyright, casi negra). El 220 (alias del 4 en el OS) sigue siendo un MMC3 normal.
+- Herramientas que quedaron de esta búsqueda: `N8_MACROS="N8_DEPURAR_219" make -C hdl out/105.RBF` compila un RBF que
+  guarda las 16 primeras escrituras del 219 y las devuelve en `$5000-$503F`; Quartus exporta el netlist con
+  `quartus_eda --simulation --tool=modelsim --format=verilog` y se puede simular con iverilog quitando el PLL de
+  `cycloneii_atoms.v`.

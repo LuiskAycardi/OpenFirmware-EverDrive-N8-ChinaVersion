@@ -6,6 +6,7 @@
 //   $9000-$9007 (addr&0xF007): 1 KiB CHR page for that window (8 banks).
 //   $C002: IRQ disable + acknowledge.  $C003: IRQ enable.  $C005: IRQ counter.
 //   $D001: bit0 mirroring (1 = horizontal, 0 = vertical).
+//   $6000-$7FFF: 8 KiB PRG-RAM when the header has the battery bit (cfg[1]).
 //   IRQ: MMC3-style A12 rise decrements the counter; fires at 0 and self-disables.
 // A14:A12 and A2:A0 decode (A3..A11 don't-care), matching the ASIC's $F007 mask.
 module mapper35 (
@@ -83,8 +84,10 @@ module mapper35 (
     wire [1:0] slot = cpu_a[14:13];
     assign prg_a      = romsel_n ? {6'd0, cpu_a[12:10]} : {pr[slot][5:0], cpu_a[12:10]};
     assign prg_rom_en = !romsel_n;
-    assign prg_ram_en = 1'b0;
-    assign prg_wr     = 1'b0;
+    // PRG-RAM de 8 KiB en $6000-$7FFF si la cabecera marca batería (cfg[1]), como Mesen2. Wario Land 2 (JY039) la
+    // declara (NES 2.0: 8 KiB de PRG-NVRAM) y sin ella se cuelga al arrancar (gris en la NES, 2026-11-15).
+    assign prg_ram_en = romsel_n && cpu_a[14:13] == 2'b11 && m2 && cfg[1];
+    assign prg_wr     = prg_ram_en && !cpu_rw;
     assign chr_a      = cfg[7] ? {6'd0, ppu_a[12:10]} : {1'b0, ch[ppu_a[12:10]]};
     assign chr_en     = !ppu_a[13];
     assign chr_wr     = cfg[7] && !ppu_wr_n && !ppu_a[13];
