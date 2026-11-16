@@ -257,12 +257,15 @@ class Maquina:
             return self.nt[a & 0x7FF]
         return self.pal[a & 0x1F]
 
+    # tiles $80-$92 de la fuente del OS propio (os/herramientas/fuente.py)
+    EXTRA = {0x80 + i: c for i, c in enumerate('áéíóúñüÁÉÍÓÚÑÜ¿¡ºª\u25b6')}
+
     def pantalla(self):
-        """Nametable 0 como texto (la BIOS y el v13 usan tiles con código ASCII)."""
+        """Nametable 0 como texto (la BIOS y el v13 usan tiles con código ASCII; el OS propio, además, $80-$92)."""
         filas = []
         for f in range(30):
             t = bytes(self.nt[f * 32:(f + 1) * 32])
-            s = ''.join(chr(c) if 32 <= c < 127 else ' ' for c in t).rstrip()
+            s = ''.join(chr(c) if 32 <= c < 127 else self.EXTRA.get(c, ' ') for c in t).rstrip()
             if s.strip():
                 filas.append(f'{f:2d} {s}')
         return '\n'.join(filas)

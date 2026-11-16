@@ -74,33 +74,33 @@ comprobar(ok, 'la BIOS salta a $8000')
 r = m.correr(PASOS, nmi_cada=9000)
 pan = m.pantalla()
 comprobar(r == 'limite', 'el OS sigue corriendo (sin opcodes ilegales)')
-comprobar('OS PROPIO N8 - ETAPA 2: SD' in pan and 'ARRANQUE: FRIO (BIOS)' in pan and contadores(m) == (1, 0, 0),
+comprobar('OS propio N8 - etapa 2: SD' in pan and 'Arranque: frío (BIOS)' in pan and contadores(m) == (1, 0, 0),
           'encendido: FRIO, contadores 1/0/0')
 comprobar(m.ppu_mask & 0x08 and m.ppu_ctrl & 0x80, 'fondo visible y NMI activa')
-comprobar('SD: SDHC FAT32 CLUSTER 01' in pan and 'PART 00002000' in pan, 'tarjeta SDHC, FAT32, partición en 0x2000')
-comprobar('EN RAIZ: 06' in pan, '6 entradas en la raíz (2 carpetas y 4 archivos; nombres largos y etiqueta fuera)')
+comprobar('SD: SDHC FAT32 clúster 01' in pan and 'Part 00002000' in pan, 'tarjeta SDHC, FAT32, partición en 0x2000')
+comprobar('En raíz: 06' in pan, '6 entradas en la raíz (2 carpetas y 4 archivos; nombres largos y etiqueta fuera)')
 for linea in ('EDFC    .    <DIR>', 'PRUEBAS .    <DIR>', 'IRQ65   .NES 00006010', 'ZELDA   .NES 00020010',
               'NOTAS   .TXT 0000012C', '.NES 0000A010'):
     comprobar(linea in pan, f'en la lista: «{linea}»')
-comprobar('32K EN F: 00' in pan and 'FALLO' not in pan, 'prueba de lectura de 32 KiB sin fallos')
+comprobar('32K en f: 00' in pan and 'fallo' not in pan, 'prueba de lectura de 32 KiB sin fallos')
 comprobar(m.cpld[2] == 0x0B, f'reg 2 al terminar = $0B: rápido, tarjeta libre, SDHC (${m.cpld[2]:02X})')
 comprobar(solo_lectura(m), 'solo órdenes de lectura; ninguna escritura en la tarjeta')
 m.pad = 0x80 | 0x20
 m.correr(60_000, nmi_cada=9000)
-comprobar('MANDO: A - S - - - - -' in m.pantalla(), 'el mando se ve en vivo (Select+A)')
+comprobar('Mando: A - S - - - - -' in m.pantalla(), 'el mando se ve en vivo (Select+A)')
 m.pad = 0
 
 # resets: en el OS, en ráfaga (alguno a mitad de la lectura de la SD) y vuelta de un juego
 m.cpu.reset()
 m.correr(PASOS, nmi_cada=9000)
-comprobar('ARRANQUE: RESET' in m.pantalla() and contadores(m) == (2, 1, 0) and 'EN RAIZ: 06' in m.pantalla(),
+comprobar('Arranque: reset' in m.pantalla() and contadores(m) == (2, 1, 0) and 'En raíz: 06' in m.pantalla(),
           'reset en el OS: RESET 2/1/0 y la SD se vuelve a leer bien')
 for pasos in (500, 3000, 20_000, 60_000, 150_000, 400_000):      # los últimos caen dentro de la lectura de la SD
     m.correr(pasos, nmi_cada=9000)
     m.cpu.reset()
 m.correr(PASOS, nmi_cada=9000)
 pan = m.pantalla()
-comprobar('ARRANQUE: RESET' in pan and contadores(m) == (8, 7, 0) and 'EN RAIZ: 06' in pan and 'ERROR' not in pan,
+comprobar('Arranque: reset' in pan and contadores(m) == (8, 7, 0) and 'En raíz: 06' in pan and 'error' not in pan,
           f'ráfaga de 6 resets, algunos a mitad de lectura: contadores {contadores(m)} y la SD bien')
 m.prgram[0x18000 | (etiquetas['en_juego'] & 0x7FFF)] = 1
 m.cpld[9] = 0x15
@@ -110,7 +110,7 @@ for i in range(0x800):
 m.cpu.reset()
 m.correr(PASOS, nmi_cada=9000)
 pan = m.pantalla()
-comprobar('ARRANQUE: VUELTA DE JUEGO' in pan and contadores(m) == (9, 7, 1) and 'EN RAIZ: 06' in pan,
+comprobar('Arranque: vuelta de juego' in pan and contadores(m) == (9, 7, 1) and 'En raíz: 06' in pan,
           'vuelta de un juego: VUELTA DE JUEGO 9/7/1 y la SD bien')
 comprobar(estado(m, 'en_juego') == 0 and m.cpld[9] == 1, 'marca en_juego borrada y reg 9 = 01')
 cpld = [e for e in m.log[m.n_log:] if e[0] == 'CPLD']
@@ -126,25 +126,25 @@ comprobar(solo_lectura(m) and bytes(m.sd.img) == pathlib.Path(img32).read_bytes(
 m, ok = arrancar(img32, sdhc=False)
 m.correr(PASOS, nmi_cada=9000)
 pan = m.pantalla()
-comprobar('SD: SDSC FAT32' in pan and 'EN RAIZ: 06' in pan and 'ZELDA   .NES 00020010' in pan and m.cpld[2] == 0x03,
+comprobar('SD: SDSC FAT32' in pan and 'En raíz: 06' in pan and 'ZELDA   .NES 00020010' in pan and m.cpld[2] == 0x03,
           'SDSC (direcciones en bytes): misma lista; reg 2 = $03')
 
 m, ok = arrancar(imagen('f16.img', 16, True, ARCHIVOS))
 m.correr(PASOS, nmi_cada=9000)
 pan = m.pantalla()
-comprobar('SD: SDHC FAT16 CLUSTER' in pan and 'EN RAIZ: 06' in pan and 'NOTAS   .TXT 0000012C' in pan, 'FAT16 con MBR')
+comprobar('SD: SDHC FAT16 clúster' in pan and 'En raíz: 06' in pan and 'NOTAS   .TXT 0000012C' in pan, 'FAT16 con MBR')
 
 m, ok = arrancar(imagen('f32nombr.img', 32, False, ARCHIVOS))
 m.correr(PASOS, nmi_cada=9000)
 pan = m.pantalla()
-comprobar('FAT32' in pan and 'PART 00000000' in pan and 'EN RAIZ: 06' in pan, 'FAT32 sin MBR (sin particiones)')
+comprobar('FAT32' in pan and 'Part 00000000' in pan and 'En raíz: 06' in pan, 'FAT32 sin MBR (sin particiones)')
 
 muchos = [(f'J{i:03d}.NES', 16 + i) for i in range(60)]
 for fat in (32, 16):
     m, ok = arrancar(imagen(f'muchos{fat}.img', fat, True, muchos))
     m.correr(PASOS + 1_500_000, nmi_cada=9000)
     pan = m.pantalla()
-    comprobar('EN RAIZ: 3E' in pan and 'J010    .NES 0000001A' in pan and 'ERROR' not in pan,
+    comprobar('En raíz: 3E' in pan and 'J010    .NES 0000001A' in pan and 'error' not in pan,
               f'FAT{fat}: raíz de 62 entradas (varios sectores{" y cadena de clústeres" if fat == 32 else ""}); se listan 13')
     comprobar(solo_lectura(m), f'FAT{fat}: solo lectura')
 
@@ -155,7 +155,7 @@ m, ok = arrancar(img32)
 m.sd.__class__ = SDmuda                   # la tarjeta deja de contestar después de que la BIOS cargue el OS
 r = m.correr(PASOS, nmi_cada=9000)
 pan = m.pantalla()
-comprobar(r == 'limite' and 'SD: ERROR 01 R1=FF' in pan and 'MANDO:' in pan and m.ppu_mask & 0x08,
+comprobar(r == 'limite' and 'SD: error 01 R1=FF' in pan and 'Mando:' in pan and m.ppu_mask & 0x08,
           'tarjeta muda: ERROR 01 en pantalla y el OS sigue vivo')
 
 print('pantalla del caso FAT32:')

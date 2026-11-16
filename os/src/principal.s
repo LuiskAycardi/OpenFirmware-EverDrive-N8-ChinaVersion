@@ -244,16 +244,11 @@ lista_raiz:
         jsr     hex
 @bien:  rts
 
-; Escribe el carácter Y de la entrada, pasado a lo que tiene la fuente ($20-$5F).
+; Escribe el carácter Y de la entrada; lo que no es ASCII imprimible sale como «?».
 letra:  lda     (dir_ent),y
-        cmp     #$61
-        bcc     @rango
-        cmp     #$7B
-        bcs     @raro
-        and     #$DF                    ; minúscula -> mayúscula
-@rango: cmp     #$20
+        cmp     #$20
         bcc     @raro
-        cmp     #$60
+        cmp     #$7F
         bcc     @ya
 @raro:  lda     #'?'
 @ya:    sta     PPUDATA
@@ -376,7 +371,7 @@ subir_fuente:
         sta     ptr
         lda     #>fuente
         sta     ptr+1
-        ldx     #4                      ; 4 x 256 = 1024 bytes (64 tiles)
+        ldx     #8                      ; 8 x 256 = 2048 bytes (128 tiles: $20-$9F)
         ldy     #0
 @b:     lda     (ptr),y
         sta     PPUDATA
@@ -506,31 +501,31 @@ FILA_MANDO = NT + 25 * 32
 .endmacro
 
 textos:
-        texto   FILA_TIT + 2,       "OS PROPIO N8 - ETAPA 2: SD"
-        texto   FILA_ARR + 2,       "ARRANQUE:"
-        texto   FILA_ARR + 32 + 2,  "ENT/RES/VUE:"
+        texto   FILA_TIT + 2,       "OS propio N8 - etapa 2: SD"
+        texto   FILA_ARR + 2,       "Arranque:"
+        texto   FILA_ARR + 32 + 2,  "Ent/res/vue:"
         texto   FILA_SD + 2,        "SD:"
-        texto   FILA_SD + 32 + 2,   "PART          DATOS"
-        texto   FILA_SD + 64 + 2,   "EN RAIZ:"
-        texto   FILA_SD + 96 + 2,   "32K EN F:      FOTOGRAMAS"
-        texto   FILA_MANDO + 2,     "MANDO:"
-        texto   FILA_MANDO + 32 + 2, "FOTOGRAMAS:"
+        texto   FILA_SD + 32 + 2,   "Part          Datos"
+        texto   FILA_SD + 64 + 2,   {"En ra", C_i, "z:"}
+        texto   FILA_SD + 96 + 2,   "32K en f:      fotogramas"
+        texto   FILA_MANDO + 2,     "Mando:"
+        texto   FILA_MANDO + 32 + 2, "Fotogramas:"
         .byte   $FF
 
-nombre_frio:    .byte "FRIO (BIOS)", 0
-nombre_reset:   .byte "RESET", 0
-nombre_vuelta:  .byte "VUELTA DE JUEGO", 0
+nombre_frio:    .byte "fr", C_i, "o (BIOS)", 0
+nombre_reset:   .byte "reset", 0
+nombre_vuelta:  .byte "vuelta de juego", 0
 nombres_tipo_lo: .byte <nombre_frio, <nombre_reset, <nombre_vuelta
 nombres_tipo_hi: .byte >nombre_frio, >nombre_reset, >nombre_vuelta
 
 t_sdhc:     .byte "SDHC ", 0
 t_sdsc:     .byte "SDSC ", 0
-t_fat16:    .byte "FAT16 CLUSTER ", 0
-t_fat32:    .byte "FAT32 CLUSTER ", 0
-t_error:    .byte "ERROR ", 0
+t_fat16:    .byte "FAT16 cl", C_u, "ster ", 0
+t_fat32:    .byte "FAT32 cl", C_u, "ster ", 0
+t_error:    .byte "error ", 0
 t_r1:       .byte " R1=", 0
 t_dir:      .byte "<DIR>", 0
-t_fallo:    .byte "FALLO", 0
+t_fallo:    .byte "fallo", 0
 
 cifras:
         .byte   "0123456789ABCDEF"

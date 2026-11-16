@@ -20,3 +20,22 @@ REG_CHR   = 130                 ; FPGA, modo OS: banco de la CHR visible en $000
 TIPO_FRIO   = 0                 ; la BIOS acaba de cargar el OS.BIN
 TIPO_RESET  = 1                 ; reset (botón o kit Lava) estando en el OS
 TIPO_VUELTA = 2                 ; reset estando en un juego: el RBF ha vuelto al modo OS
+
+; caracteres de la fuente fuera de ASCII (herramientas/fuente.py)
+C_a = $80                       ; á
+C_e = $81                       ; é
+C_i = $82                       ; í
+C_o = $83                       ; ó
+C_u = $84                       ; ú
+C_n = $85                       ; ñ
+C_ud = $86                      ; ü
+C_A = $87                       ; Á
+C_E = $88                       ; É
+C_I = $89                       ; Í
+C_O = $8A                       ; Ó
+C_U = $8B                       ; Ú
+C_N = $8C                       ; Ñ
+C_UD = $8D                      ; Ü
+C_INT = $8E                     ; ¿
+C_EXC = $8F                     ; ¡
+C_CURSOR = $92                  ; cursor del menú
