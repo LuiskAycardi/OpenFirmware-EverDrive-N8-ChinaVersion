@@ -90,7 +90,8 @@ not use them).
   verificadas, sin perder la sincronización: Super Mario Bros. (0), Nuts & Milk (0), Rainbow Islands (2),
   Fire 'n Ice (4), Wizards & Warriors III (7) y Metal Force (156); además, tramos de Mighty Bomb Jack (3),
   Captain Comic (11), Plummet/Arm Wrestling (30), Solitaire (79) y Goonies (87), y la IRQ del mapper 65
-  medida con una ROM de prueba (idéntica a Mesen2). Son mappers de los RBF 100, 101 y 102. **Nunca
+  medida con una ROM de prueba (idéntica a Mesen2). Fire 'n Ice se repitió con el `100.RBF` de esta
+  versión (protección de `$A001`): 40 de 40 escenas iguales a Mesen2. Son mappers de los RBF 100, 101 y 102. **Nunca
   probados en consola**: 103 (MMC5), 104, 105 y 106 (VRC7 con sonido FM).
 
 **EN**
@@ -111,7 +112,8 @@ not use them).
   verified without losing sync: Super Mario Bros. (0), Nuts & Milk (0), Rainbow Islands (2), Fire 'n Ice
   (4), Wizards & Warriors III (7) and Metal Force (156); plus stretches of Mighty Bomb Jack (3), Captain
   Comic (11), Plummet/Arm Wrestling (30), Solitaire (79) and Goonies (87), and the mapper 65 IRQ measured
-  with a test ROM (identical to Mesen2). These mappers live in RBF 100, 101 and 102. **Never tested on
+  with a test ROM (identical to Mesen2). Fire 'n Ice was rerun with this release's `100.RBF` (`$A001`
+  protection): 40 out of 40 scenes match Mesen2. These mappers live in RBF 100, 101 and 102. **Never tested on
   hardware**: 103 (MMC5), 104, 105 and 106 (VRC7 with FM audio).
 
 ## Cómo informar / How to report

@@ -29,10 +29,13 @@ testbenches and real games.
 - Validación: todos contra Mesen2 con el fuzz de ROMs sintéticas, bancos directos con pruebas de
   mutación y cientos de juegos reales (fotogramas comparados uno a uno). Las diferencias conocidas
   están en `docs/fase4-mappers.md`.
-- **Hardware real**: hasta ahora **solo se han probado algunos juegos en una NES real**; el resto de
-  mappers solo se ha validado en el emulador. **Pronto se creará un banco de pruebas real con una NES**
-  (mando emulado con Arduino y captura de vídeo, ver `tools/consola/`) para probar en el cartucho los
-  juegos de forma automática.
+- **Hardware real**: hay un **banco de pruebas automático con una NES NTSC real** (mando emulado con un
+  Arduino Nano, reset por cable, capturadora de vídeo y películas TAS de TASVideos comparadas escena a
+  escena con Mesen2; ver `tools/consola/README.md`). Películas completas sin perder la
+  sincronización: Super Mario Bros. y Nuts & Milk (0), Rainbow Islands (2), Fire 'n Ice (4),
+  Wizards & Warriors III (7) y Metal Force (156); además, tramos de los mappers 3, 11, 30, 79 y 87 y la
+  IRQ del 65 medida con una ROM de prueba. Son mappers de los RBF 100, 101 y 102; **los RBF 103 a 106
+  aún no se han probado en consola** y el resto de mappers solo se ha validado en el emulador.
 
 **EN**
 - **194 mappers**: the 177 of the official 1.26 firmware (all but the FDS) plus 17 more (46, 59, 83,
@@ -44,10 +47,13 @@ testbenches and real games.
 - Validation: every mapper against Mesen2 with synthetic-ROM fuzzing, direct testbenches with mutation
   testing and hundreds of real games (frames compared one by one). Known differences are listed in
   `docs/fase4-mappers.md`.
-- **Real hardware**: so far **only some games have been tested on a real NES**; the remaining mappers
-  have only been validated in the emulator. **A real-hardware test bench with a NES will be set up
-  soon** (Arduino-emulated controller and video capture, see `tools/consola/`) to test games on the
-  cartridge automatically.
+- **Real hardware**: there is an **automated test bench with a real NTSC NES** (controller emulated
+  by an Arduino Nano, wired reset, video capture and TASVideos TAS movies compared scene by scene
+  against Mesen2; see `tools/consola/README.md`). Full movies without losing sync:
+  Super Mario Bros. and Nuts & Milk (0), Rainbow Islands (2), Fire 'n Ice (4), Wizards & Warriors III
+  (7) and Metal Force (156); plus stretches of mappers 3, 11, 30, 79 and 87 and the mapper 65 IRQ
+  measured with a test ROM. These mappers live in RBF 100, 101 and 102; **RBF 103 to 106 have not been
+  tested on the console yet** and the remaining mappers have only been validated in the emulator.
 
 ## Cartucho compatible / Supported cartridge
 
