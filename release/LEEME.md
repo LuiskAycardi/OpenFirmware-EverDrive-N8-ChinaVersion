@@ -90,9 +90,12 @@ not use them).
   verificadas, sin perder la sincronización: Super Mario Bros. (0), Nuts & Milk (0), Rainbow Islands (2),
   Fire 'n Ice (4), Wizards & Warriors III (7) y Metal Force (156); además, tramos de Mighty Bomb Jack (3),
   Captain Comic (11), Plummet/Arm Wrestling (30), Solitaire (79) y Goonies (87), y la IRQ del mapper 65
-  medida con una ROM de prueba (idéntica a Mesen2). Fire 'n Ice se repitió con el `100.RBF` de esta
-  versión (protección de `$A001`): 40 de 40 escenas iguales a Mesen2. Son mappers de los RBF 100, 101 y 102. **Nunca
-  probados en consola**: 103 (MMC5), 104, 105 y 106 (VRC7 con sonido FM).
+  medida con una ROM de prueba (idéntica a Mesen2). Fire 'n Ice se repitió con el `100.RBF` de la v0.1.2
+  (protección de `$A001`): 40 de 40 escenas iguales a Mesen2. **RBF 103 a 106** (2026-11-15/16): 39 juegos
+  NTSC elegidos por cobertura, 20 segundos cada uno con botones de guion. Arrancan y coinciden con Mesen2
+  los del MMC5 (5), 56, 91, 105, 111, 117, 222, 234, 35, 59, 83, 90, 114, 116, 121, 176, 194, 209, 211,
+  215, 219 y el VRC7 (85). En los juegos de lucha la pelea puede seguir otro camino por unos fotogramas de
+  diferencia. Los fallos que salieron (35, 176 y 219) están corregidos en esta versión.
 
 **EN**
 - **Save states**: not implemented in this package (the save state table is empty). Battery saves
@@ -112,9 +115,12 @@ not use them).
   verified without losing sync: Super Mario Bros. (0), Nuts & Milk (0), Rainbow Islands (2), Fire 'n Ice
   (4), Wizards & Warriors III (7) and Metal Force (156); plus stretches of Mighty Bomb Jack (3), Captain
   Comic (11), Plummet/Arm Wrestling (30), Solitaire (79) and Goonies (87), and the mapper 65 IRQ measured
-  with a test ROM (identical to Mesen2). Fire 'n Ice was rerun with this release's `100.RBF` (`$A001`
-  protection): 40 out of 40 scenes match Mesen2. These mappers live in RBF 100, 101 and 102. **Never tested on
-  hardware**: 103 (MMC5), 104, 105 and 106 (VRC7 with FM audio).
+  with a test ROM (identical to Mesen2). Fire 'n Ice was rerun with v0.1.2's `100.RBF` (`$A001`
+  protection): 40 out of 40 scenes match Mesen2. **RBF 103 to 106** (2026-11-15/16): 39 NTSC games picked
+  by coverage, 20 seconds each with scripted buttons. The MMC5 (5), 56, 91, 105, 111, 117, 222, 234, 35, 59,
+  83, 90, 114, 116, 121, 176, 194, 209, 211, 215, 219 and VRC7 (85) games boot and match Mesen2. In
+  fighting games the fight may take another path because of a few frames of difference. The failures found
+  (35, 176 and 219) are fixed in this release.
 
 ## Cómo informar / How to report
 
