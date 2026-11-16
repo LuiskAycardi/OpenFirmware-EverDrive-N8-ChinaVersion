@@ -6,7 +6,8 @@ Sustituye a marcar a mano la página "Pruebas N8". Tú solo mueves la microSD. E
 - **navega por el menú** del OS v13 hasta cada ROM;
 - **juega** con el mismo guion que el banco de pruebas;
 - **compara** cada escena con Mesen2;
-- **vuelve al menú** con el reset del kit Lava (Select+B).
+- **vuelve al menú** con el botón RESET de la consola (el Nano lo pulsa con un PC817 en D2). Select+B no resetea, y el reset
+  del kit Lava (Select 2 s y luego A) vuelve a arrancar el juego en vez de volver al menú (docs/bios-n8-clon.md §7).
 
 Si un juego se cuelga y ya no lee el mando, el reset no llega: entonces te avisa (pitido y notificación) para
 que apagues y enciendas, y sigue solo con el siguiente juego en cuanto vuelve a ver el menú.

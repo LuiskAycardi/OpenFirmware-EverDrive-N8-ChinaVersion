@@ -98,3 +98,8 @@ arrancar es **reg 9 = 5** (pone el bit 2); nuestro OS lo deja en 1. Al lanzar un
 solo con el FDS (`$FE`), los borra en los demás y, según su configuración y el reg 138, puede poner el bit 3.
 Prueba siguiente: **Start invierte el bit 2 del reg 9** (lectura-modificación-escritura, como el v13) y se vuelve
 a probar Select+B.
+
+**Resultado (2026-11-16):** con el bit 2 del reg 9 a 1 (REG9 = 05), Select+B tampoco resetea. Se probó después con el
+v13 y **Select+B tampoco resetea con el OS de fábrica**: en su menú abre el «Main Menu» y dentro de SMB no hace nada.
+Lo que vuelve al menú es el **botón RESET** (el banco lo pulsa con el PC817). El reset del Lava vuelve a arrancar el
+juego. Detalles en [docs/bios-n8-clon.md](../docs/bios-n8-clon.md) §7. Nuestro OS no tenía ningún fallo de reset.
