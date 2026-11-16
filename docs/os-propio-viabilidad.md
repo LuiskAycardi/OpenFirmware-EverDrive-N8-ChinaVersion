@@ -10,6 +10,12 @@ protocolo de la SD y de la carga del FPGA está en la BIOS, que se puede leer. L
 algunos bits del CPLD y el estado exacto en que la BIOS deja la consola. Se mide con un «hola mundo» en la
 consola (etapa 1). Volver al OS de fábrica consiste en copiar otra vez un archivo a la SD.
 
+> **Actualización (2026-11-16, más tarde):** la BIOS se ha ejecutado entera en un emulador propio
+> ([bios-n8-clon.md](bios-n8-clon.md), `tools/bios/`). Resuelve el §1.4: los bloques ilegibles del v13 los
+> desofusca el 255.RBF de fábrica, y un OS en claro funciona con él si no empieza por `$EA`. También fija
+> requisitos nuevos para el OS.BIN (tamaño múltiplo de 8 KiB, archivo contiguo en la SD) y corrige el §2.6: el
+> reset probablemente no pasa por la BIOS. Donde este documento y aquel no coincidan, vale aquel.
+
 Reglas de este trabajo: el `OS.BIN` v13 y la BIOS se leen y se desensamblan (da65) en una carpeta temporal,
 fuera del repositorio. **Aquí no se copia código ni tablas de Krikzz** y no se commitea ningún binario suyo. Lo
 que sigue describe comportamiento (registros, orden de las operaciones, formatos), igual que
@@ -84,8 +90,8 @@ Según [hardware-fpga.md](hardware-fpga.md) y `n8_os_iface.v`, con `bios_off` = 
   estado del OS.
 - **Tamaño máximo de un OS propio:** 55 KiB (`0x12000-0x1FBFF`), de los que 31 KiB se ejecutan directamente
   (`$8000-$FBFF`). El resto son datos o código que se ejecuta por bancos de 8 KiB en `$6000`. No hay que ocupar
-  todo el archivo, pero conviene que mida siempre `0xE000`, como el de fábrica: la BIOS podría dar por hecho
-  ese tamaño (está por confirmar, §1.4).
+  todo el archivo. Lo que manda es que su tamaño sea un **múltiplo de 8 KiB**: la BIOS lo alinea para que
+  termine en `0x1FFFF` y trunca el resto ([bios-n8-clon.md](bios-n8-clon.md) §3).
 
 ### 1.3 Estado que deja la BIOS (por medir en la etapa 1)
 
@@ -113,9 +119,9 @@ exige el cifrado. O lo deshace solo cuando reconoce el formato del v13, o el v13
 camino que todavía no hemos visto. Para el OS propio basta lo primero: **un `OS.BIN` en texto plano arranca**.
 Lo único que perdemos es leer la capa de E/S del v13, y la de la BIOS la sustituye.
 
-Cómo cerrarlo: (a) buscar en la BIOS la rutina de copia del OS.BIN y ver si transforma los datos según alguna
-marca del archivo; (b) en la etapa 1, hacer que el «hola mundo» vuelque la PRG-RAM del v13 ya en marcha (con un
-RBF que lo permita) y compararla con el archivo. Es curiosidad: no bloquea nada.
+**Resuelto** ([bios-n8-clon.md](bios-n8-clon.md) §4): la BIOS copia el archivo sin tocarlo, y es el 255.RBF de
+fábrica el que sirve un cargador interno cuando la CPU lee `$EA` en `$8000`. Ese cargador desofusca los tres
+bloques. Con otro primer byte, el FPGA no interviene.
 
 ## 2. Interfaces que necesita un OS
 
@@ -254,9 +260,9 @@ repite con nuestro formato. Hay que guardar antes una copia de `EDFC/SAVE`.
   **cada RBF tiene que llevar `n8_os_iface`**.
 - Después, la CPU lee el vector de reset. Si el CPLD mantiene el bit 0 del reg 9, el vector sale de la PRG-RAM, es
   decir, el de la página que copió la BIOS (`$FC40`). Ese código salta a `$C000`, y en la RAM `$C000` es código del
-  OS, no su entrada. Por eso lo más probable es que **el CPLD vuelva el bit 0 a 0 con el reset y la BIOS arranque
-  desde cero**: recarga el 255.RBF y el OS.BIN, y el OS ve la marca de partida. Encaja con el código del v13 que
-  mira la marca `'S'` nada más arrancar.
+  OS, no su entrada. *Corregido después:* el v13 sobrescribe esos vectores en la RAM (RESET = `$8000`), así que lo
+  más probable es que el reset vuelva al v13 ya cargado **sin pasar por la BIOS**, con el RBF del juego en modo OS
+  ([bios-n8-clon.md](bios-n8-clon.md) §7). Sigue por medir.
 
 **Falta:** confirmarlo. **Cómo:** en la etapa 1, el «hola mundo» cuenta en la PRG-RAM alta cuántas veces ha
 arrancado y anota si la página `$FC00` de la RAM ha cambiado. Si después de Select+B el contador sube y el 255.RBF
@@ -328,9 +334,9 @@ con `EDFC/MAPS/255.RBF` de fábrica, nuestros 100-106, `MAPROUT.BIN` y una copia
 para volver.
 
 0. **Preparación (sin consola).** Proyecto cc65 en `os/` (enlazador a `$8000-$FBFF` más bancos en `$6000`;
-   archivo de `0xE000` con `$FC00-$FFFF` vacío). Modelo del CPLD en `tools/n8sim` o en el parche de Mesen2: regs 0,
-   2, 6, 9 y `$4402`/`$4403`, con una imagen de SD como archivo. Así el OS se prueba en Mesen2 antes que en la NES,
-   igual que los mappers.
+   archivo de tamaño múltiplo de 8 KiB, primer byte distinto de `$EA` y `$FC00-$FFFF` vacío). El modelo del CPLD y
+   de la SD ya existe en `tools/bios/` y arranca el OS con la BIOS real en el PC. Falta llevarlo a Mesen2 si hace
+   falta ver la imagen.
 1. **«Hola mundo».** Pinta texto, lee el mando y muestra en hexadecimal: S, los regs 2, 9, 10 y 138-140 leídos por
    `$4401`, `$4403`, los primeros bytes de la RAM de la CPU y de la página `$FC00`, y un contador de arranques en la
    PRG-RAM alta. Responde a §1.3, §2.4 y §2.6. Select+B prueba el camino del reset.
