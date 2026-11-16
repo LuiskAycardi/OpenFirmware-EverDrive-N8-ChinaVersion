@@ -319,7 +319,9 @@ class Menu:
         # Menú del OS v13 del N8 (comprobado en la consola el 2026-11-11 con la ROM de calibración, que confirma que el
         # Nano envía cada botón bien): B entra en carpetas y abre el "File Menu" de una ROM, A vuelve atrás; para lanzar
         # hay que pulsar B (abre el menú) y B otra vez ("Sel. And Start", la opción marcada).
+        # Páginas de 21 entradas: Derecha/Izquierda pasan de página; Abajo/Arriba no salen de ella (2026-11-15).
         self.teclas = {"abajo": "down", "arriba": "up", "entrar": "b", "volver": "a", "lanzar": ["b", "b"],
+                       "pag_sig": "right", "pag_ant": "left", "por_pagina": 21,
                        "pulso_ms": 100, "pausa_ms": 150, **(teclas or {})}  # el OS v13 ignora pulsos de ~50 ms (medido 2026-11-11)
         self.log = log or (lambda *_: None)
         self.fase = (0, 0)
@@ -529,6 +531,13 @@ class Menu:
             orden = self._orden(lec, esperado)
             if nombre not in orden:
                 raise ErrorMenu(f"{nombre!r} no está en la carpeta {carpeta!r}")
+            if lec.orden and nombre not in lec.orden and lec.seleccion in lec.orden:
+                # en otra página: Derecha/Izquierda según dónde caiga en el orden (el de la SD, escrita en orden)
+                tecla = self.teclas["pag_sig"] if orden.index(nombre) > orden.index(lec.seleccion) else self.teclas["pag_ant"]
+                self._tocar(mando, tecla)
+                pasos += 1
+                lec = None
+                continue
             delta = orden.index(nombre) - orden.index(lec.seleccion)
             n = min(abs(delta), 8)
             for _ in range(n):

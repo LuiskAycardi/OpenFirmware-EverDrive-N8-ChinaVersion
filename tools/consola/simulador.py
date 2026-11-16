@@ -77,7 +77,7 @@ def fuente_8x8():
 
 class OsSimulado:
     """Menú tipo OS v13: lista de la carpeta, barra del cursor azul y nombre completo abajo en gris."""
-    FILAS_LISTA = 24
+    FILAS_LISTA = 21          # entradas por página en el OS v13 (Derecha/Izquierda cambian de página)
 
     def __init__(self, raiz, estilo="barra+estado"):
         self.raiz = pathlib.Path(raiz)
@@ -104,14 +104,19 @@ class OsSimulado:
             self.repite = 0
         self.anterior = m
         es = self.lista()
-        if nuevos & 0x20 and self.cursor < len(es) - 1:
+        # Como el OS v13: páginas de FILAS_LISTA entradas; Abajo/Arriba no salen de la página y Derecha/Izquierda
+        # pasan a la página siguiente/anterior (cursor en su primera entrada).
+        pag = self.cursor // self.FILAS_LISTA
+        fin_pag = min(len(es), (pag + 1) * self.FILAS_LISTA) - 1
+        if nuevos & 0x20 and self.cursor < fin_pag:
             self.cursor += 1
-        if nuevos & 0x10 and self.cursor > 0:
+        if nuevos & 0x10 and self.cursor > pag * self.FILAS_LISTA:
             self.cursor -= 1
-        if self.cursor < self.arriba:
-            self.arriba = self.cursor
-        if self.cursor >= self.arriba + self.FILAS_LISTA:
-            self.arriba = self.cursor - self.FILAS_LISTA + 1
+        if nuevos & 0x80 and (pag + 1) * self.FILAS_LISTA < len(es):
+            self.cursor = (pag + 1) * self.FILAS_LISTA
+        if nuevos & 0x40 and pag > 0:
+            self.cursor = (pag - 1) * self.FILAS_LISTA
+        self.arriba = (self.cursor // self.FILAS_LISTA) * self.FILAS_LISTA
         # Como el OS v13 real (comprobado en la consola el 2026-11-11): B entra en una carpeta o, sobre una ROM, abre el
         # "File Menu"; B otra vez la lanza ("Sel. And Start"); A cierra ese menú o vuelve a la carpeta de arriba.
         archivo = getattr(self, "menu_archivo", None)
@@ -127,7 +132,7 @@ class OsSimulado:
             self.ruta = os.path.dirname(self.ruta)
             es = self.lista()
             self.cursor = es.index(antes) if antes in es else 0
-            self.arriba = max(0, self.cursor - 5)
+            self.arriba = (self.cursor // self.FILAS_LISTA) * self.FILAS_LISTA
         if nuevos & 0x02 and es:                        # B: entrar, o abrir el File Menu de la ROM
             e = es[self.cursor]
             p = self.raiz / self.ruta / e

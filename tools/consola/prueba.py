@@ -342,6 +342,9 @@ def volver_al_menu(b, res):
 
 def lanzar(b, rom_rel, p0, guion_txt):
     """Navega hasta la ROM, carga y arma el guion y la lanza (B, B en el OS v13). Devuelve la hora del pulso."""
+    # Tras la ROM de calibración (o un juego) el guion sigue activo y el fotograma sigue contando con las lecturas
+    # del menú: al cargar el guion nuevo, sus tramos pulsarían en el menú (right+b, a...) y la B de lanzar se perdía.
+    b.mando.desarmar()
     asegurar_menu(b)
     carpeta, nombre = os.path.split(rom_rel)
     lec = b.menu.ir_a_carpeta(b.mando, b.cap, carpeta)
