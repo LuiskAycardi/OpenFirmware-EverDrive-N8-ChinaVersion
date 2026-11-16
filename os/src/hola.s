@@ -9,7 +9,8 @@
 ;  - pinta todo con una fuente propia y muestra en vivo el mando, los registros 2, 9 y 138, $4403 y un contador
 ;    de fotogramas.
 ; Solo escribe en: RAM de la CPU, su propia imagen en $8000-$FFFF (PRG-RAM), la PPU, el reg 130 del FPGA (banco de
-; la CHR en modo OS, como el v13) y el número de registro de $4400. No escribe ningún registro del CPLD.
+; la CHR en modo OS, como el v13) y el número de registro de $4400. Del CPLD solo toca, y solo si se pulsa Start, el
+; bit 2 del reg 9 (el v13 lo pone a 1 al arrancar: ¿activa el reset con Select+B?).
 
         .setcpu "6502"
 
@@ -175,6 +176,20 @@ bucle:
         and     #3
         sta     modo_mando
 @sin_cambio:
+        lda     antes                   ; Start recién pulsado (solo Start): invertir el bit 2 del reg 9
+        eor     #$FF
+        and     botones
+        cmp     #$10
+        bne     @sin_reg9
+        lda     botones
+        cmp     #$10
+        bne     @sin_reg9
+        lda     #9                      ; lectura-modificación-escritura, como el v13 (que deja el reg 9 = 5
+        sta     REG_SEL                 ; en su menú): solo cambia el bit 2; los bits 1:0 siguen en 01
+        lda     REG_DAT
+        eor     #%00000100
+        sta     REG_DAT
+@sin_reg9:
         lda     botones
         sta     antes
         jsr     medir_vivos
@@ -520,7 +535,7 @@ textos:
         texto   FILA_MANDO + 2,    "MANDO:"
         texto   FILA_FOTO + 2,     "FOTOGRAMAS:"
         texto   FILA_FOTO + 32 + 2, "MODO MANDO:   (A CAMBIA)"
-        texto   NT + 24 * 32 + 2,  "SELECT+B: PROBAR EL RESET"
+        texto   NT + 24 * 32 + 2,  "START=REG9 BIT2  SEL+B=RESET"
         texto   NT + 25 * 32 + 2,  "VOLVER AL OS DE FABRICA:"
         texto   NT + 26 * 32 + 2,  "COPIA OS_V13.BIN COMO OS.BIN"
         .byte   $FF

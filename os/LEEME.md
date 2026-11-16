@@ -83,3 +83,18 @@ Si la pantalla sale negra o gris, apaga, vuelve al v13 y dime qué color salió.
   resetea con ninguna de las cuatro formas de leer el mando (A cambia de modo): simple, como el v13
   (`$4017 | $4016`), con pausas y desde la NMI. Las cuatro dan 302 LATCH en 5 s y ARRANQUES se queda en 01. La
   forma de leer el mando no es la causa. Siguiente paso: comprobar con el v13 que el kit resetea hoy.
+
+### El reset del kit Lava no es Select+B (2026-11-16)
+
+El Lava RGB 2.0 vigila el puerto del mando 1 (hilos CLK, DATA y LATCH) y resetea por la misma línea que el botón
+RESET (hilo RST). Su combinación es **mantener Select unos 2 s y después pulsar A** (según
+[amaiorano.io](https://amaiorano.io/2025/09/03/lava-rgb.html)). Probado con el Nano en nuestro OS:
+- Select 2 s y después A: **resetea** (ARRANQUES 02, CPU `00 A8 03 F5 36` al entrar).
+- Select 2 s y después B: no resetea.
+- Select+B juntos, 5 u 8 s, con cualquiera de los cuatro modos de lectura: no resetea.
+
+Así que el **Select+B que usa el banco lo hace el N8**, no el Lava. La única escritura del v13 en el CPLD al
+arrancar es **reg 9 = 5** (pone el bit 2); nuestro OS lo deja en 1. Al lanzar un juego, el v13 pone los bits 2 y 4
+solo con el FDS (`$FE`), los borra en los demás y, según su configuración y el reg 138, puede poner el bit 3.
+Prueba siguiente: **Start invierte el bit 2 del reg 9** (lectura-modificación-escritura, como el v13) y se vuelve
+a probar Select+B.

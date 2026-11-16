@@ -55,6 +55,12 @@ m.pad = 0x40 | 0x20              # B+Select con el modo 3 (lectura en la NMI)
 m.correr(60_000, nmi_cada=9000)
 comprobar('MANDO: - B S - - - - -' in m.pantalla(), 'el modo 3 (lectura en la NMI) ve B+Select')
 m.pad = 0
+m.correr(30_000, nmi_cada=9000)
+m.pad = 0x10; m.correr(30_000, nmi_cada=9000); m.pad = 0; m.correr(30_000, nmi_cada=9000)
+comprobar(m.cpld[9] == 5, f'Start pone el bit 2 del reg 9 (reg 9 = {m.cpld[9]}, como el v13)')
+m.pad = 0x10; m.correr(30_000, nmi_cada=9000); m.pad = 0; m.correr(30_000, nmi_cada=9000)
+comprobar(m.cpld[9] == 1, 'Start otra vez lo devuelve a 1')
+n_log = len(m.log)
 # reset de la consola: el CPLD mantiene el reg 9 (supuesto a medir) y la CPU lee el vector de la RAM
 m.cpu.reset()
 comprobar(m.cpu.pc == 0x8000, 'el vector RESET instalado en la RAM apunta a $8000')
