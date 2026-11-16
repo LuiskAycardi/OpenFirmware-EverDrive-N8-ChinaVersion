@@ -12,7 +12,7 @@ Sustituye a marcar a mano la página "Pruebas N8". Tú solo mueves la microSD. E
   - **reset por el mando** (`mando.py reset-mando`, `Mando.reset_mando()`, orden R): la combinación del kit Lava,
     Select solo 2,5 s y luego Select+A 5 s. Mientras Select+A sigue pulsado, el kit repite el reset y el N8 vuelve
     al menú (con una pulsación corta solo vuelve a arrancar el juego). Solo funciona si el juego lee el mando.
-    Devuelve `reset=` (silencios de 50 ms o más: resets vistos) y `sil=` (el silencio más largo, en ms).
+    Devuelve `reset=` (silencios de 60 ms o más: resets vistos; sirve para el OS propio, 87 ms, y para el v13, unos 700 ms) y `sil=` (el silencio más largo, en ms).
     Probado en la NES: 5 resets y vuelta al menú desde SMB con el v13; 4 resets (`sil=87`) con el OS propio. Select+B no resetea (docs/bios-n8-clon.md §7).
 
 Si un juego se cuelga y ya no lee el mando, el reset no llega: entonces te avisa (pitido y notificación) para

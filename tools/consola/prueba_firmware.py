@@ -125,7 +125,7 @@ def main():
     bien &= comprobar(n.latch() == 0, "suelta los botones al terminar")
 
     # 3b. un OS que vuelve a leer pronto (80 ms sin lecturas por reset) también cuenta; un fotograma suelto sin
-    #     lectura (33 ms entre lecturas) no es un reset
+    #     lectura (33 ms entre lecturas), o dos (50 ms), no son un reset
     n = Nano()
     n.orden("R 500 3000")
     t0 = n.t
@@ -133,14 +133,14 @@ def main():
         dt = (n.t - t0) / TICKS
         n.t += int(PER)
         corto = dt >= 1.0 and ((dt - 1.0) % 1.0) < 0.08            # reset: 80 ms callado, cada segundo
-        suelto = abs(dt - 0.75) < 0.008                             # un fotograma sin lectura
+        suelto = abs(dt - 0.75) < 0.008 or abs(dt - 1.5) < 0.016    # uno y dos fotogramas sin lectura (33 y 50 ms)
         if corto or suelto:
             n.l.nucleo_tick(n.t)
         else:
             n.latch()
     n.avanzar(0.3)
     s = n.salida.decode() + n.leer()
-    bien &= comprobar("!R reset=3" in s, f"resets cortos de 80 ms contados, fotograma suelto no ({s.strip().splitlines()[-1]})")
+    bien &= comprobar("!R reset=3" in s, f"resets cortos de 80 ms contados; uno o dos fotogramas sin lectura, no ({s.strip().splitlines()[-1]})")
 
     # 4. reset por el mando con el juego colgado (no lee): lat=0 y ningún reset
     n = Nano()

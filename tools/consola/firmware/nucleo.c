@@ -21,7 +21,7 @@
  *   R [sel] [a]         RESET POR EL MANDO (kit Lava RGB): Select solo durante sel ms (2500) y después Select+A
  *                       durante a ms (5000). Mientras Select+A sigue pulsado, el kit repite el reset (unos 0,7 s
  *                       cada 1,4 s); hacen falta varios para que el N8 vuelva a su menú (con uno solo, el juego
- *                       vuelve a arrancar). -> !R reset=N lat=L sil=S (N = silencios de 50 ms tras haber leído el mando
+ *                       vuelve a arrancar). -> !R reset=N lat=L sil=S (N = silencios de 60 ms tras haber leído el mando
  *                       con Select+A: resets vistos; L = lecturas con Select+A pulsado; L=0: el juego no lee y el kit no
  *                       puede actuar). Medido en la NES el 2026-11-16 (docs/bios-n8-clon.md §7). Select+B no resetea.
  *   H [ms]              RESET POR EL BOTÓN (D2 + PC817): botón RESET de la consola pulsado ms (1000, máx. 5000; con
@@ -71,7 +71,9 @@ static uint8_t armado, arm_cargado;
 static uint32_t arm_p0, arm_sil;
 
 static uint8_t pulso;        /* 0, 'T' o 'R' */
-#define SILENCIO_RESET 50                  /* ms sin lecturas = reset (3 fotogramas; el OS propio vuelve a leer pronto) */
+/* ms sin lecturas = reset. Punto medio entre un fotograma sin lectura (33 ms entre lecturas, no es un reset) y el
+ * reset más corto medido (87 ms, el OS propio); el v13 calla unos 700 ms. Vale para los dos. */
+#define SILENCIO_RESET 60
 static uint8_t pulso_m, pulso_reset, pulso_sil;
 static uint32_t pulso_silmax;              /* silencio más largo visto con Select+A (ticks) */
 static uint32_t pulso_fin, pulso_lat0, pulso_cambio;
@@ -242,7 +244,7 @@ void nucleo_tick(uint32_t t) {
     }
     if (pulso) {
         if (pulso == 'R') {
-            /* Reset por el mando (kit Lava): Select solo y, pasado pulso_cambio, Select+A. Cada silencio de 50 ms
+            /* Reset por el mando (kit Lava): Select solo y, pasado pulso_cambio, Select+A. Cada silencio de 60 ms
              * con Select+A pulsado, después de haber leído el mando, es un reset del kit. */
             if (pulso_m == BSEL && (int32_t)(t - pulso_cambio) >= 0) {
                 pulso_m = BSEL | BA;
