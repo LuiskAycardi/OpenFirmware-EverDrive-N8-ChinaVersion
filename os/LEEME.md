@@ -121,4 +121,6 @@ encendido.
 - Con el bit 0 del reg 2 a 0, la lectura de datos falla: es el SPI rápido (la prueba se quitó del arranque).
 - Botón RESET y ráfaga de 4 resets del Lava (algunos en mitad de la lectura): después lee la tarjeta sin errores.
 - Con la NMI leyendo el mando desde el principio, el Nano veía solo 54 ms de silencio por reset y no los contaba;
-  por eso ahora el mando no se lee durante el arranque. **Esta última versión falta probarla en la NES.**
+  por eso ahora el mando no se lee durante el arranque. Probado en la NES: el silencio por reset pasa a 419 ms y
+  el Nano cuenta igual que la pantalla (`reset-mando` con 5 s: `reset=4`, contadores 02/01 → 06/05; con 2 s:
+  `reset=2`, 06/05 → 08/07). La tarjeta se lee bien después de cada reset.
