@@ -79,5 +79,7 @@ Si la pantalla sale negra o gris, apaga, vuelve al v13 y dime qué color salió.
   por la BIOS**.
 - **Select+B del kit Lava: no reseteaba** con la primera versión, ni con 5 s ni con 8 s pulsados. Esa versión
   esperaba el VBlank leyendo `$2002`, perdía fotogramas y el Nano contaba unos 55 LATCH por segundo en lugar de
-  60. Ahora el OS se sincroniza con la NMI y lee el mando una vez por fotograma, como los juegos. **Falta
-  comprobarlo en la NES.**
+  60. Con la NMI, la consola lee el mando 60 veces por segundo, **pero el Lava sigue sin resetear**. Tampoco
+  resetea con ninguna de las cuatro formas de leer el mando (A cambia de modo): simple, como el v13
+  (`$4017 | $4016`), con pausas y desde la NMI. Las cuatro dan 302 LATCH en 5 s y ARRANQUES se queda en 01. La
+  forma de leer el mando no es la causa. Siguiente paso: comprobar con el v13 que el kit resetea hoy.
