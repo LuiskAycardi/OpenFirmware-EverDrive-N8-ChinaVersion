@@ -69,3 +69,15 @@ Pruebas que hacer, anotando ARRANQUES y las filas de registros después de cada 
 6. Fijarse en si R138 cambia mientras se pulsa o se suelta el reset (el v13 espera a que deje de valer `52`).
 
 Si la pantalla sale negra o gris, apaga, vuelve al v13 y dime qué color salió.
+
+## Resultados en la NES (2026-11-16, SD recién formateada, vista con la capturadora y el Nano)
+
+- **Arranca a la primera** con el 255.RBF de fábrica. Primer encendido: ARRANQUES 01; CPU `01 FF 00 FB 35`
+  (igual que el emulador); REG2 `09`, REG9 `01`, R10 `01`; R138-R140 `44` (bus abierto); `$4403` `01`.
+- **Mando:** los 8 botones aparecen bien (probados con el Nano en tres combinaciones).
+- **Botón RESET:** ARRANQUES 02 y entrada con otros registros de la CPU (`01 00 04 FC 36`): el reset **no pasa
+  por la BIOS**.
+- **Select+B del kit Lava: no reseteaba** con la primera versión, ni con 5 s ni con 8 s pulsados. Esa versión
+  esperaba el VBlank leyendo `$2002`, perdía fotogramas y el Nano contaba unos 55 LATCH por segundo en lugar de
+  60. Ahora el OS se sincroniza con la NMI y lee el mando una vez por fotograma, como los juegos. **Falta
+  comprobarlo en la NES.**

@@ -35,6 +35,7 @@ botones:    .res 1
 fotogramas: .res 2
 vivo:       .res 4              ; reg 2, reg 9, reg 138, $4403 en el fotograma actual
 tmp:        .res 1
+nmis:       .res 1              ; lo incrementa la NMI: un fotograma = una NMI
 
 ; En la propia imagen (PRG-RAM): no se borra al arrancar; la BIOS la recarga a 0 en cada arranque completo.
         .segment "ESTADO"
@@ -79,9 +80,9 @@ reset:
         sta     e_4403
 
         ; vectores propios en la RAM (la BIOS dejó los suyos en $FFFA-$FFFF)
-        lda     #<nada
+        lda     #<nmi
         sta     $FFFA
-        lda     #>nada
+        lda     #>nmi
         sta     $FFFB
         lda     #<reset
         sta     $FFFC
@@ -137,13 +138,17 @@ reset:
 
 @vb3:   bit     PPUSTATUS
         bpl     @vb3
-        jsr     sin_scroll
+        jsr     sin_scroll                  ; activa la NMI
         lda     #%00001010              ; fondo visible, también en la columna izquierda
         sta     PPUMASK
 
+; Un paso por fotograma, sincronizado con la NMI: leer $2002 en un bucle pierde algún VBlank, y el kit Lava
+; necesita ver Select+B en todos los fotogramas seguidos (comprobado en la NES: con la espera por $2002 no
+; reseteaba).
 bucle:
-@vb:    bit     PPUSTATUS
-        bpl     @vb
+        lda     nmis
+@vb:    cmp     nmis
+        beq     @vb
         jsr     valores_vivos
         jsr     sin_scroll
         inc     fotogramas
@@ -154,6 +159,7 @@ bucle:
         jsr     medir_vivos
         jmp     bucle
 
+nmi:    inc     nmis
 nada:   rti
 
 ; ------------------------------------------------------------------------------------------------ rutinas
@@ -161,7 +167,8 @@ sin_scroll:
         lda     #0
         sta     PPUSCROLL
         sta     PPUSCROLL
-        sta     PPUCTRL                 ; nametable 0, patrones del fondo en $0000, sin NMI
+        lda     #$80
+        sta     PPUCTRL                 ; NMI activa, nametable 0, patrones del fondo en $0000
         rts
 
 ; ppu_dir: A = byte alto, X = byte bajo
@@ -450,4 +457,4 @@ fuente:
 ; ------------------------------------------------------------------------------------------------ vectores
 ; La BIOS los pisa con los suyos al copiar su página $FC00; los de verdad se instalan en reset.
         .segment "VECTORS"
-        .word   nada, reset, nada
+        .word   nmi, reset, nada

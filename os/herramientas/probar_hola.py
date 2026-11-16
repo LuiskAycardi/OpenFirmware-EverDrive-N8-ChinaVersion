@@ -34,7 +34,7 @@ comprobar(m.arrancar_bios() == 'parada' and m.cpu.pc == 0x8000, 'la BIOS salta a
 n_log = len(m.log)
 prg_antes = dict(m.escrituras_prgram)
 partidas = bytes(m.prgram[:0x12000])
-r = m.correr(300_000)
+r = m.correr(300_000, nmi_cada=9000)
 pan = m.pantalla()
 comprobar(r == 'limite', 'el OS sigue corriendo (sin opcodes ilegales)')
 comprobar('OS PROPIO N8 - HOLA MUNDO' in pan, 'título en pantalla')
@@ -44,13 +44,13 @@ comprobar(m.ppu_mask & 0x08, 'fondo visible')
 glifo = bytes(m.chr[0x7F000 + 0x41 * 16:0x7F000 + 0x41 * 16 + 8])
 comprobar(glifo[0] == 0x70 and glifo[3] == 0xF8, 'la «A» de la fuente está en la CHR (banco 127, tile $41)')
 m.pad = 0x80 | 0x08          # A y arriba (orden de lectura: A B Select Start Arriba Abajo Izq Der)
-m.correr(60_000)
+m.correr(60_000, nmi_cada=9000)
 comprobar('MANDO: A - - - U - - -' in m.pantalla(), 'el mando se ve en vivo (A y arriba)')
 m.pad = 0
 # reset de la consola: el CPLD mantiene el reg 9 (supuesto a medir) y la CPU lee el vector de la RAM
 m.cpu.reset()
 comprobar(m.cpu.pc == 0x8000, 'el vector RESET instalado en la RAM apunta a $8000')
-m.correr(300_000)
+m.correr(300_000, nmi_cada=9000)
 comprobar('ARRANQUES: 02' in m.pantalla(), 'tras un reset sin BIOS: ARRANQUES 02')
 otros = [e for e in m.log[n_log:] if e[0] in ('CPLD', '4402', 'ESCRITURA_EN_FLASH', 'USB_TX') or
          (e[0] == 'FPGA' and e[1] != 130) or e[0].startswith('SD_')]

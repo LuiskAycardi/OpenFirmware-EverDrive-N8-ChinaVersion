@@ -40,10 +40,10 @@ mando**: no hay ningún menú oculto activado con botones.
 
 | Elemento | Valor |
 |---|---|
-| CPU | A = `$01`, X = `$FF`, Y = `$00`, S = `$FB`, I = 1, D = 0 |
+| CPU | A = `$01`, X = `$FF`, Y = `$00`, S = `$FB`, P = `$35` (I = 1, D = 0). **Igual en la NES** |
 | RAM | páginas `$00`, `$01`, `$03`, `$05` y `$07` usadas por la BIOS; el OS debe borrarlas |
 | PPU | `$2000` = `$2001` = 0 (sin NMI y sin dibujar); paleta de fondo a `$21` |
-| CPLD | reg 9 = 1, reg 2 = `$09` (SDHC, bit 0 y tarjeta seleccionada), reg 6 = 1, `$4402` = 3, reg seleccionado 9 |
+| CPLD | reg 9 = 1, reg 2 = `$09` (SDHC, bit 0 y tarjeta seleccionada), reg 6 = 1, `$4402` = 3, reg seleccionado 9. **En la NES: reg 2 = `$09`, reg 9 = `$01`, reg 10 = `$01`** |
 | FPGA | 255.RBF en modo OS; reg 128 = 0, reg 129 = 15, reg 130 = 0 |
 | `$FC00-$FFFF` | página de la BIOS, con sus vectores: NMI e IRQ apuntan a un `RTI` y RESET a `$FC40` |
 
@@ -61,9 +61,10 @@ mando**: no hay ningún menú oculto activado con botones.
 | reg 6 | nCONFIG del FPGA (0 y después 1) | seguro |
 | reg 9 bits 1:0 | qué hay en `$8000-$FFFF`: `01` = PRG-RAM (OS), `00` = flash de la BIOS. El v13 usa otro valor para consultar la identificación de la flash; **un OS propio no lo necesita y no debe usarlo** | 01/00 seguros |
 | reg 9 bit 2 | el v13 escribe 5 antes de lanzar un juego | **(por medir)** |
-| reg 10, 138-140 | los usa el v13. Al arrancar, el v13 lee el 138 en bucle mientras vale `'R'` (`$52`) | **(por medir)** |
+| reg 10 | el v13 lo escribe. En la NES se lee `$01` al entrar en el OS (no es bus abierto) | valor medido; significado **(por medir)** |
+| regs 138-140 | el v13 lee el 138 en bucle mientras vale `'R'` (`$52`). **En la NES, con el 255.RBF del clon, los tres dan `$44`: bus abierto** (el último byte del bus es el alto de `$4400`). Nadie contesta: el 255.RBF del clon no los implementa | medido |
 | `$4402` | modo: 3 normal, 5 mientras se configura el FPGA | seguro |
-| `$4403` lectura | bit 0 = SPI libre; bit 1 = USB con dato; bit 2 = USB con sitio | bit 0 seguro |
+| `$4403` lectura | bit 0 = SPI libre; bit 1 = USB con dato; bit 2 = USB con sitio. En la NES, en reposo: `$01` | bit 0 seguro |
 | `$4403` escritura | byte de configuración del FPGA (con `$4402` = 5) | seguro |
 
 ## 3. Requisitos para el `OS.BIN`
@@ -139,7 +140,13 @@ cargar el FPGA, escribir bancos de la PRG-RAM y arrancar el OS sin la SD. La BIO
 entra cuando el OS salta a su rutina (el v13 consulta el USB en su bucle principal). Si la placa trae USB, sería
 un camino de desarrollo sin mover la SD **(por medir: ¿el clon lleva el conector?)**.
 
-## 7. Reset de la consola (Select+B del kit Lava)
+## 7. Reset de la consola (botón RESET y Select+B del kit Lava)
+
+**Medido en la NES (2026-11-16, OS de la etapa 1, `os/`):** después de pulsar el botón RESET, la pantalla dio
+ARRANQUES = 02 y el contador de fotogramas volvió a cero. Los registros de la CPU al entrar eran `01 00 04 FC 36`
+(la BIOS deja `01 FF 00 FB 35`) y el reg 9 seguía a 01. **El reset no pasa por la BIOS:** el CPLD mantiene el bit 0
+del reg 9 y la CPU entra por el vector RESET que el OS dejó en la RAM. El kit Lava resetea por la misma línea.
+
 
 El v13 escribe en la RAM sus propios vectores: RESET = `$8000`, NMI = `$80D1` e IRQ = `$8108`. Además, el
 cargador del 255.RBF deja `$8000` = `SEI`. Así que, después de un reset, si el CPLD mantiene el bit 0 del reg 9, la
