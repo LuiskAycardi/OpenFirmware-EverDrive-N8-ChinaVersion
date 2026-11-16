@@ -101,5 +101,5 @@ a probar Select+B.
 
 **Resultado (2026-11-16):** con el bit 2 del reg 9 a 1 (REG9 = 05), Select+B tampoco resetea. Se probó después con el
 v13 y **Select+B tampoco resetea con el OS de fábrica**: en su menú abre el «Main Menu» y dentro de SMB no hace nada.
-Lo que vuelve al menú es el **botón RESET** (el banco lo pulsa con el PC817). El reset del Lava vuelve a arrancar el
-juego. Detalles en [docs/bios-n8-clon.md](../docs/bios-n8-clon.md) §7. Nuestro OS no tenía ningún fallo de reset.
+Lo que vuelve al menú es el **botón RESET** (el banco lo pulsa con el PC817) o el reset del Lava manteniendo Select y
+luego Select+A unos 5 s (si se suelta antes, el juego solo vuelve a arrancar). Detalles en [docs/bios-n8-clon.md](../docs/bios-n8-clon.md) §7. Nuestro OS no tenía ningún fallo de reset.

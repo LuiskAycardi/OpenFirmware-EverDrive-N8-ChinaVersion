@@ -152,14 +152,17 @@ del reg 9 y la CPU entra por el vector RESET que el OS dejó en la RAM.
 | Disparador | En el menú | Dentro de un juego (SMB, RBF 100) |
 |---|---|---|
 | Botón RESET (PC817 del Nano, 300 ms) | — | **vuelve al menú del OS** con el cursor en el juego (pantalla negra, menú en menos de 1 s; unos 1,4 s sin leer el mando) |
-| Kit Lava: Select 2 s y luego A | resetea la CPU (nuestro OS: ARRANQUES 02) | **la CPU se resetea pero el juego vuelve a arrancar**, con la CHR corrompida: no vuelve al menú |
+| Kit Lava: Select 2 s y luego A **1 s** | resetea la CPU (nuestro OS: ARRANQUES 02) | un solo reset: **el juego vuelve a arrancar** con la CHR corrompida |
+| Kit Lava: Select 2,5 s y luego Select+A **5 s** | — | **vuelve al menú del OS** con el cursor en el juego. Mientras Select+A sigue pulsado, el Lava repite el reset: unos 0,7 s sin leer el mando cada 1,4 s |
 | Select+B, 5-8 s | v13: abre su «Main Menu» (Select); nuestro OS: nada | nada (el juego sigue) |
 
 - **Select+B no es un reset** en esta consola. El banco (`tools/consola/prueba.py`) vuelve al menú con el botón RESET
   y solo usa Select+B como último recurso, que no hace nada.
-- El reset del Lava tira de la misma línea que el botón, pero su pulso es corto. Para el N8 no basta: el FPGA solo
-  vuelve al modo OS si M2 se para al menos 128 ciclos de `clk` (`n8_os_iface.v`), así que el juego sigue en su
-  mapper y la CPU lo vuelve a arrancar. Por qué sale la CHR corrompida no está averiguado.
+- El Lava tira de la misma línea que el botón. Con una pulsación corta de Select+A da un solo reset y el juego vuelve
+  a arrancar en su mapper (la CHR corrompida no está explicada). Manteniendo Select+A unos 5 s, los resets
+  repetidos acaban devolviendo al menú: el FPGA vuelve al modo OS cuando M2 se para al menos 128 ciclos de `clk`
+  (`n8_os_iface.v`). Para el banco valen las dos cosas: el botón RESET por el PC817 o Select (2,5 s) y luego
+  Select+A (5 s).
 - Fuentes del Lava: [amaiorano.io](https://amaiorano.io/2025/09/03/lava-rgb.html) (cableado RST, CLK, DATA, LATCH
   y la combinación) y [nesdev](https://forums.nesdev.org/viewtopic.php?t=25963).
 
