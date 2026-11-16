@@ -10,7 +10,8 @@
   python3 -I prueba.py informe CARPETA         # rehace index.html y resultados_pagina.json
 
 Por cada juego:
-  1. vuelve al menú si hace falta (Select+B; si el juego no lee el mando, pide apagar y encender);
+  1. vuelve al menú si hace falta (botón RESET por el PC817; si no, reset por el mando del kit Lava; si el juego
+     no lee el mando, pide apagar y encender);
   2. navega por el menú del OS v13 hasta la ROM, comprobándolo con capturas;
   3. carga el guion en el Nano, lo arma y pulsa A. El primer LATCH del juego es el fotograma p0 del banco;
   4. graba vídeo y audio y, en cada fotograma de captura, compara la escena con la de Mesen2;
@@ -58,8 +59,9 @@ DEF = {
     "silencio_arranque_ms": 500,  # OS v13: pausas de hasta ~280 ms al lanzar; la carga del RBF calla ~770 ms (2026-11-11)
     "retraso_video_s": 0.08,
     "ventana_s": 0.35,
-    "reset_ms": 5000,
-    "reset_boton": True,          # botón RESET con el PC817 en D2 (CONEXION.md); False = solo Select+B
+    "reset_mando_select_ms": 2500,  # reset por el mando (kit Lava): Select solo...
+    "reset_mando_a_ms": 5000,       # ...y luego Select+A; con menos de unos 5 s el juego vuelve a arrancar
+    "reset_boton": True,          # botón RESET con el PC817 en D2 (CONEXION.md); False = solo el reset por el mando
     "ventana": True,             # ventana en vivo con lo que captura la consola (ffplay); --sin-ventana la quita
     "reset_boton_ms": 1000,      # pulsos cortos (300 ms) hacen fallar la carga del OS del N8 (aviso del usuario, 2026-11-11)
 }
@@ -293,6 +295,11 @@ def apagar_a_mano(b, motivo):
     raise Abortar("la consola no ha vuelto al menú en 30 minutos")
 
 
+def reset_mando(b):
+    """Reset por el mando (combinación del kit Lava). Distinto del botón RESET (reset_boton)."""
+    return b.mando.reset_mando(b.cfg["reset_mando_select_ms"], b.cfg["reset_mando_a_ms"])
+
+
 def reset_boton(b, res=None):
     """Botón RESET por el PC817. Devuelve la lectura del menú si vuelve a él (o None)."""
     if not b.cfg["reset_boton"]:
@@ -314,8 +321,8 @@ def asegurar_menu(b):
     if lec:
         log("menú de nuevo tras el botón RESET")
         return lec
-    log("no veo el menú: reset con Select+B")
-    r = b.mando.reset(b.cfg["reset_ms"])
+    log("no veo el menú: reset por el mando (kit Lava)")
+    r = reset_mando(b)
     if r.get("lat", 0) > 0:
         time.sleep(2.5)
         lec = en_menu(b, 4)
@@ -328,15 +335,15 @@ def asegurar_menu(b):
 def volver_al_menu(b, res):
     if reset_boton(b, res):
         return
-    r = b.mando.reset(b.cfg["reset_ms"])
-    res["reset"] = r
+    r = reset_mando(b)
+    res["reset"] = dict(r, mando=1)
     if not r.get("lat"):
         res.setdefault("notas", []).append("el juego no leía el mando al final: reset a mano")
         apagar_a_mano(b, "el juego no lee el mando y el kit no puede resetear")
         return
     time.sleep(2.0)
     if not en_menu(b, 4):
-        res.setdefault("notas", []).append("tras Select+B no apareció el menú")
+        res.setdefault("notas", []).append("tras el reset por el mando no apareció el menú")
         asegurar_menu(b)
 
 

@@ -102,26 +102,35 @@ def main():
     n.leer()
     bien &= comprobar(n.latch() == 0 and "!T" in n.salida.decode(), "T down: suelto a los 100 ms y aviso !T")
 
-    # 3. reset con Select+B: el juego lee hasta que el kit resetea a los 3,5 s
+    # 3. reset por el mando (kit Lava): Select solo 2,5 s y luego Select+A 5 s. El kit resetea cada 1,4 s mientras
+    #    sigue Select+A (0,7 s sin lecturas); el Nano cuenta los resets y no suelta antes de tiempo.
     n = Nano()
-    n.orden("R 5000")
+    r = n.orden("R 2500 5000")
+    bien &= comprobar("ok" in r, "R 2500 5000 aceptada")
     t0 = n.t
-    leidos = []
-    while n.t - t0 < 3.5 * TICKS:
+    fase1, fase2 = [], []
+    while n.t - t0 < 7.5 * TICKS:
+        dt = (n.t - t0) / TICKS
+        en_reset = dt >= 2.6 and ((dt - 2.6) % 1.4) < 0.7          # la consola reseteada no lee el mando
         n.t += int(PER)
-        n.l.nucleo_tick(n.t)
-        leidos.append(n.latch())
-    n.avanzar(0.5)
+        if en_reset:
+            n.l.nucleo_tick(n.t)
+        else:
+            (fase1 if dt < 2.45 else fase2).append(n.latch())
+    n.avanzar(0.3)
     s = n.salida.decode() + n.leer()
-    bien &= comprobar(all(x == 0x06 for x in leidos), "Select+B durante el reset")
-    bien &= comprobar("!R reset=1" in s, f"reset detectado por el silencio ({s.strip().splitlines()[-1]})")
+    bien &= comprobar(fase1 and all(x == 0x04 for x in fase1), "reset por el mando: Select solo los primeros 2,5 s")
+    bien &= comprobar(fase2 and all(x == 0x05 for x in fase2[3:]), "reset por el mando: después Select+A")
+    bien &= comprobar("!R reset=4" in s, f"cuenta los 4 resets del kit ({s.strip().splitlines()[-1]})")
+    bien &= comprobar(n.latch() == 0, "suelta los botones al terminar")
 
-    # 4. reset con el juego colgado (no lee): lat=0
+    # 4. reset por el mando con el juego colgado (no lee): lat=0 y ningún reset
     n = Nano()
-    n.orden("R 1000")
-    n.avanzar(1.2)
+    n.orden("R 500 1000")
+    n.avanzar(1.7)
     s = n.salida.decode() + n.leer()
-    bien &= comprobar("!R reset=0 lat=0" in s, "juego colgado: el reset no puede llegar (lat=0)")
+    bien &= comprobar("!R reset=0 lat=0" in s, "juego colgado: el reset por el mando no puede llegar (lat=0)")
+    bien &= comprobar("error" in n.orden("R 500 0"), "R con 0 ms de Select+A: rechazada")
 
     # 5. botón RESET (D2): pulsado 300 ms, suelto y, 2 s después, aviso con las lecturas del menú
     n = Nano()

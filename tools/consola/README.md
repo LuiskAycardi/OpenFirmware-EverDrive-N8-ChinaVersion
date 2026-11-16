@@ -6,9 +6,13 @@ Sustituye a marcar a mano la página "Pruebas N8". Tú solo mueves la microSD. E
 - **navega por el menú** del OS v13 hasta cada ROM;
 - **juega** con el mismo guion que el banco de pruebas;
 - **compara** cada escena con Mesen2;
-- **vuelve al menú** con el botón RESET de la consola (el Nano lo pulsa con un PC817 en D2). También vale el reset del kit
-  Lava: Select 2,5 s y luego Select+A mantenidos unos 5 s (si se suelta antes, el juego solo vuelve a arrancar).
-  Select+B no resetea, aunque `mando.py reset` (orden R del Nano) siga pulsando Select+B (docs/bios-n8-clon.md §7).
+- **vuelve al menú** con uno de los dos resets, que son cosas distintas:
+  - **reset por el botón** (`mando.py reset-boton`, `Mando.reset_boton()`, orden H): el Nano pulsa el botón RESET
+    de la consola con un PC817 en D2. Funciona aunque el juego esté colgado. Es el que usa el banco primero.
+  - **reset por el mando** (`mando.py reset-mando`, `Mando.reset_mando()`, orden R): la combinación del kit Lava,
+    Select solo 2,5 s y luego Select+A 5 s. Mientras Select+A sigue pulsado, el kit repite el reset y el N8 vuelve
+    al menú (con una pulsación corta solo vuelve a arrancar el juego). Solo funciona si el juego lee el mando.
+    Probado en la NES: 5 resets y vuelta al menú desde SMB. Select+B no resetea (docs/bios-n8-clon.md §7).
 
 Si un juego se cuelga y ya no lee el mando, el reset no llega: entonces te avisa (pitido y notificación) para
 que apagues y enciendas, y sigue solo con el siguiente juego en cuanto vuelve a ver el menú.
@@ -207,7 +211,7 @@ que empiezan por `[auto`.
 | `CONEXION.md` | cableado del Nano al puerto del mando |
 | `firmware/` | firmware del Nano: `nucleo.c` (lógica), `main_avr.c` + `arranque.S` (SPI esclavo = CD4021, interrupción de LATCH), `mando.hex` compilado con clang/ld.lld (`make -C firmware`) |
 | `flashear.py`, `serie.py` | grabar el Nano (STK500) y puerto serie con la biblioteca estándar |
-| `mando.py` | cliente del protocolo del Nano, también a mano (`estado`, `monitor`, `toca`, `reset`, `guion`) |
+| `mando.py` | cliente del protocolo del Nano, también a mano (`estado`, `monitor`, `toca`, `reset-mando`, `reset-boton`, `guion`) |
 | `captura.py` | ffmpeg: capturadora (v4l2, MJPEG 720p60) recortada a 256x240, clips MP4 y audio ALSA |
 | `calibrar.py` | geometría de la imagen (ROM de calibración o menú) y mapa de colores |
 | `rom/hacer_rom.py` | la ROM de calibración, con su ensamblador 6502 mínimo |
@@ -217,6 +221,6 @@ que empiezan por `[auto`.
 | `comparar.py`, `sonido.py` | veredictos de imagen y audio |
 | `prueba.py` | todo junto, informe y resultados para la página |
 | `simulador.py` | consola, Nano y capturadora simulados (`--seco`) |
-| `prueba_firmware.py` | pruebas de la lógica del firmware con tiempo simulado (guion, lecturas dobles, armado, reset, colas QB y QL) |
+| `prueba_firmware.py` | pruebas de la lógica del firmware con tiempo simulado (guion, lecturas dobles, armado, reset por el mando y por el botón, colas QB y QL) |
 | `tas.py`, `tas_catalogo/` | películas TAS: lectura de .fm2, lag en FCEUX, búsqueda inversa por mapper y preflight FCEUX/Mesen2 |
 | `datos/` | lo aprendido en la consola real: calibración, fuente del menú, cursor |

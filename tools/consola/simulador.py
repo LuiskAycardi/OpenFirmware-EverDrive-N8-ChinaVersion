@@ -9,7 +9,8 @@
     * los juegos: al lanzar una ROM, 0,8 s sin lecturas (el OS carga) y después las imágenes de referencia de
       Mesen2 (si las hay) o un patrón animado. Empieza a leer el mando en el fotograma p0 de su referencia;
     * la ROM de calibración (con sus botones y su contador);
-    * el kit Lava: Select+B durante 3,5 s en un juego que lee el mando -> vuelve al menú.
+    * el kit Lava: Select solo unos 2 s y luego Select+A unos 3 s en un juego que lee el mando -> vuelve al menú
+      (en la NES el kit repite el reset mientras sigue Select+A; con uno solo el juego vuelve a arrancar).
   Fallos inyectables por ROM: negra, cuelgue (deja de leer el mando y la imagen se congela) o basura.
 - La capturadora: la imagen del NES pasada a 1280x720 como un GBS-Control (escala 3,75 x 3, bordes negros,
   desenfoque, ruido, paleta algo distinta) con 3 fotogramas de retraso; el flujo de 256x240 se saca con la
@@ -191,6 +192,7 @@ class ConsolaSimulada:
         self.lee_desde = 5
         self.espera_hasta = 0.0
         self.selb = 0
+        self.sel_solo = 0
         self.imagen_actual = self.os.imagen()
         self.cache = {}
         self.cuadros = collections.deque(maxlen=RETRASO + 1)
@@ -301,7 +303,7 @@ class ConsolaSimulada:
         elif self.estado == "carga":
             img = np.zeros((240, 256, 3), np.uint8)
             if ahora >= self.espera_hasta:
-                self.estado, self.f_juego, self.selb = "juego", 0, 0
+                self.estado, self.f_juego, self.selb, self.sel_solo = "juego", 0, 0, 0
         else:
             img = self._juego()
         if dibujar:
@@ -346,8 +348,13 @@ class ConsolaSimulada:
             self.f_juego += 1
             if f >= self.lee_desde:
                 m = self._leer_mando()
-                self.selb = self.selb + 1 if (m & 0x06) == 0x06 else 0
-                if self.selb >= int(3.5 * FPS_NES):     # el kit Lava resetea: vuelve al menú
+                if m == 0x04:                           # Select solo: el kit Lava se prepara
+                    self.sel_solo += 1
+                elif m == 0x05 and self.sel_solo >= int(2 * FPS_NES):
+                    self.selb += 1                      # luego Select+A: cuenta mientras se mantenga
+                else:
+                    self.sel_solo, self.selb = 0, 0
+                if self.selb >= int(3 * FPS_NES):       # el kit Lava ha repetido el reset: vuelve al menú
                     self.log("[sim] kit Lava: reset")
                     self.estado, self.espera_hasta = "carga_os", time.monotonic() + 0.6
                     return np.zeros((240, 256, 3), np.uint8)

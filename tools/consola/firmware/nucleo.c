@@ -18,8 +18,14 @@
  *   Z n | X             fija el fotograma actual (y activa el guion) | desactiva el guion
  *   B hh | P bot | S [bot]   botones fijos: máscara hex | pulsar | soltar (sin nada: todos)
  *   T bot ms            pulsar durante ms y soltar           -> !T
- *   R [ms]              Select+B (reset del kit Lava) hasta ms (5000) o hasta ver el reset -> !R reset= lat=
- *   H [ms]              botón RESET de la consola (D2 + PC817) pulsado ms (1000, máx. 5000; con pulsos cortos el OS del N8 carga mal) -> !BOTON lat=
+ *   R [sel] [a]         RESET POR EL MANDO (kit Lava RGB): Select solo durante sel ms (2500) y después Select+A
+ *                       durante a ms (5000). Mientras Select+A sigue pulsado, el kit repite el reset (unos 0,7 s
+ *                       cada 1,4 s); hacen falta varios para que el N8 vuelva a su menú (con uno solo, el juego
+ *                       vuelve a arrancar). -> !R reset=N lat=L (N = silencios de 200 ms tras haber leído el mando
+ *                       con Select+A: resets vistos; L = lecturas con Select+A pulsado; L=0: el juego no lee y el kit no
+ *                       puede actuar). Medido en la NES el 2026-11-16 (docs/bios-n8-clon.md §7). Select+B no resetea.
+ *   H [ms]              RESET POR EL BOTÓN (D2 + PC817): botón RESET de la consola pulsado ms (1000, máx. 5000; con
+ *                       pulsos cortos el OS del N8 carga mal) -> !BOTON lat=
  *                       (lat = lecturas del mando en los 2 primeros segundos tras soltarlo, para saber si arrancó)
  *   GB | GA tramos      borrar el guion | añadir "ini-fin:bot+bot;..." (formato de N8_SCRIPT)
  *   A p0 [ms]           armar: en el primer LATCH tras ms (250) de silencio, fotograma = p0 -> !INICIO fc=
@@ -65,8 +71,8 @@ static uint8_t armado, arm_cargado;
 static uint32_t arm_p0, arm_sil;
 
 static uint8_t pulso;        /* 0, 'T' o 'R' */
-static uint8_t pulso_m, pulso_reset;
-static uint32_t pulso_t0, pulso_fin, pulso_lat0;
+static uint8_t pulso_m, pulso_reset, pulso_sil;
+static uint32_t pulso_fin, pulso_lat0, pulso_cambio;
 
 #define NQ 256                      /* cola de entrada por fotograma (potencia de 2) */
 static uint8_t qbuf[NQ];
@@ -233,11 +239,22 @@ void nucleo_tick(uint32_t t) {
         hw_miso(0);
     }
     if (pulso) {
-        /* Reset del kit: tras 2,5 s pulsando, un silencio de 200 ms en un juego que leía = consola reseteada */
-        if (pulso == 'R' && !pulso_reset && n_latch != pulso_lat0 && (t - pulso_t0) >= ms_ticks(2500) &&
-            (t - t_ult) >= ms_ticks(200))
-            pulso_reset = 1;
-        if (pulso_reset || (int32_t)(t - pulso_fin) >= 0) {
+        if (pulso == 'R') {
+            /* Reset por el mando (kit Lava): Select solo y, pasado pulso_cambio, Select+A. Cada silencio de 200 ms
+             * con Select+A pulsado, después de haber leído el mando, es un reset del kit. */
+            if (pulso_m == BSEL && (int32_t)(t - pulso_cambio) >= 0) {
+                pulso_m = BSEL | BA;
+                pulso_lat0 = n_latch;
+                recargar();
+            }
+            if (pulso_m != BSEL) {
+                uint8_t sil = n_latch != pulso_lat0 && (t - t_ult) >= ms_ticks(200);
+                if (sil && !pulso_sil && pulso_reset < 255)
+                    pulso_reset++;
+                pulso_sil = sil;
+            }
+        }
+        if ((int32_t)(t - pulso_fin) >= 0) {
             uint8_t tipo = pulso;
             pulso = 0;
             pulso_m = 0;
@@ -392,14 +409,19 @@ static void ejecutar(const char *s, uint32_t t) {
         break;
     case 'T':
         if (!mascara(&p, &m) || !numero(&p, &v)) { error("formato"); break; }
-        pulso = 'T'; pulso_m = m; pulso_reset = 0; pulso_t0 = t; pulso_fin = t + ms_ticks(v);
+        pulso = 'T'; pulso_m = m; pulso_reset = 0; pulso_fin = t + ms_ticks(v);
         recargar(); ok();
         break;
     case 'R':
-        if (!numero(&p, &v)) v = 5000;
-        pulso = 'R'; pulso_m = BSEL | BB; pulso_reset = 0; pulso_t0 = t; pulso_fin = t + ms_ticks(v);
-        pulso_lat0 = n_latch;
-        recargar(); ok();
+        {
+            uint32_t sel = 2500, a = 5000;
+            if (numero(&p, &v)) { sel = v; if (numero(&p, &v)) a = v; }
+            if (sel > 10000 || a == 0 || a > 20000) { error("ms"); break; }
+            pulso = 'R'; pulso_m = BSEL; pulso_reset = 0; pulso_sil = 0;
+            pulso_cambio = t + ms_ticks(sel); pulso_fin = pulso_cambio + ms_ticks(a);
+            pulso_lat0 = n_latch;
+            recargar(); ok();
+        }
         break;
     case 'H':
         if (!numero(&p, &v)) v = 1000;

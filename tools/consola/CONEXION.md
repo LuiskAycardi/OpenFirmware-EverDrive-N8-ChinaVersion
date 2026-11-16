@@ -95,7 +95,7 @@ Vista de frente del **puerto de la consola**. El lado redondeado queda arriba a 
   3. Apaga la consola antes de soldar o conectar el Nano.
 
 ## Reset de la consola con optoacoplador (PC817)
-El reset del kit Lava (Select+B) solo funciona si el juego lee el mando. Para resetear también un juego colgado, el
+El reset por el mando (kit Lava: Select y luego Select+A) solo funciona si el juego lee el mando. Para resetear también un juego colgado, el
 Nano "pulsa" el botón RESET del NES a través de un PC817: el LED del opto lo enciende D2 por una resistencia de
 330 Ω (≈ 11 mA) y el transistor del opto pone en corto las dos patas del botón, igual que el dedo.
 ```
@@ -117,13 +117,15 @@ Nano "pulsa" el botón RESET del NES a través de un PC817: el LED del opto lo e
 - Suelda dos cables finos a las patas del botón, sin quitarlo: el botón sigue funcionando a mano.
 - El Nano y la consola ya comparten GND por el cable del mando; el opto no hace falta para aislar, pero evita que
   un fallo del Nano o el arranque de su cargador (todos los pines en entrada) toquen la línea de reset.
-- **Firmware:** el pin D2 aún no lo maneja el firmware de `firmware/`; hasta que se añada, el reset sigue siendo
-  el del kit Lava.
+- **Firmware:** orden H (`mando.py reset-boton [ms]`, `Mando.reset_boton()`), 1000 ms por defecto. Es el **reset por
+  el botón**, distinto del reset por el mando (orden R, kit Lava).
+- **Ojo al grabar el Nano** (`flashear.py`): el 2026-11-16 la consola quedó colgada después de grabarlo (menú
+  desplazado y sin lecturas del mando). Se recuperó con `mando.py reset-boton 1000`.
 
 ## Sensor de encendido (opcional, recomendado)
 Une el +5V del puerto con **A0** a través de una resistencia de 47-100 kΩ. No es una alimentación: la resistencia
 deja pasar menos de 0,1 mA. Con esto, `prueba.py` sabe si la consola está encendida. Cuando un juego se cuelga y
-el reset con Select+B no funciona, te pide que apagues y enciendas, y **detecta solo** cuándo lo has hecho para
+el reset no funciona, te pide que apagues y enciendas, y **detecta solo** cuándo lo has hecho para
 seguir con el siguiente juego. Actívalo con `--sensor-5v` (o `"sensor_5v": true` en `config.json`).
 
 ## Cómo funciona (resumen del firmware)
@@ -156,5 +158,6 @@ Los fotogramas se cuentan con los LATCH:
   hacia abajo y la consola puede leer botones pulsados.
 - El Nano se reinicia cada vez que el PC abre el puerto serie (DTR). `mando.py` espera su saludo; no hay que hacer
   nada.
-- El kit Lava RGB resetea la consola manteniendo Select+B 3-4 s, pero solo si el juego está leyendo el mando: el kit
-  lo ve en las mismas líneas. Si el juego está colgado y no lee, el reset no llega y hay que apagar a mano.
+- El kit Lava RGB resetea la consola con **Select solo unos 2 s y luego Select+A** (Select+B no hace nada). Mantenido
+  unos 5 s, el N8 vuelve a su menú; con menos, el juego solo vuelve a arrancar. Solo funciona si el juego está
+  leyendo el mando: el kit lo ve en las mismas líneas. Si el juego está colgado, queda el reset por el botón.

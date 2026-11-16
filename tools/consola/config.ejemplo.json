@@ -11,5 +11,8 @@
  "silencio_arranque_ms": 500,
  "retraso_video_s": 0.08,
  "ventana_s": 0.35,
- "reset_ms": 5000
+ "reset_mando_select_ms": 2500,
+ "reset_mando_a_ms": 5000,
+ "reset_boton": true,
+ "reset_boton_ms": 1000
 }

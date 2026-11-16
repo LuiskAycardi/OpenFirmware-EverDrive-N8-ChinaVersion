@@ -7,7 +7,8 @@ Uso a mano (primera prueba con hardware):
   python3 -I mando.py monitor                # número de fotograma en directo
   python3 -I mando.py toca start 100         # pulsar Start 100 ms
   python3 -I mando.py pulsa right+b | suelta
-  python3 -I mando.py reset                  # Select+B hasta que el kit Lava resetee (máx. 5 s)
+  python3 -I mando.py reset-mando [2500 5000]  # reset por el mando (kit Lava): Select 2,5 s y luego Select+A 5 s
+  python3 -I mando.py reset-boton [1000]       # reset por el botón RESET de la consola (D2 + PC817)
   python3 -I mando.py guion "120-126:start;300-306:a" --desde 0
 Formato del guion: el de N8_SCRIPT de tools/n8sim/run_test.lua ("ini-fin:boton+boton;...", fotogramas
 completos desde el arranque del juego; el primer tramo que contiene el fotograma manda).
@@ -240,18 +241,21 @@ class Mando:
             raise ErrorMando("el pulso no terminó")
         time.sleep(pausa_ms / 1000)
 
-    def reset(self, ms=5000):
-        """Select+B para el kit Lava. Devuelve {'reset': 0/1, 'lat': lecturas durante la pulsación}.
-        lat=0: el juego no leía el mando, el kit no lo ha visto -> hay que apagar a mano."""
+    def reset_mando(self, select_ms=2500, a_ms=5000):
+        """RESET POR EL MANDO: la combinación del kit Lava RGB (orden R del Nano). Select solo durante select_ms y
+        después Select+A durante a_ms; mientras Select+A sigue pulsado, el kit repite el reset y el N8 acaba volviendo
+        a su menú (con un solo reset el juego vuelve a arrancar). Devuelve {'reset': resets vistos (silencios de
+        200 ms), 'lat': lecturas con Select+A pulsado}. lat=0: el juego no lee el mando y el kit no puede actuar.
+        No es el botón RESET: para ese, reset_boton()."""
         t0 = time.monotonic()
-        self.orden(f"R {int(ms)}")
-        a = self.esperar_aviso("!R", ms / 1000 + 2.0, t0)
+        self.orden(f"R {int(select_ms)} {int(a_ms)}")
+        a = self.esperar_aviso("!R", (select_ms + a_ms) / 1000 + 2.0, t0)
         if not a:
-            raise ErrorMando("el reset no terminó")
+            raise ErrorMando("el reset por el mando no terminó")
         return {k: int(v) for k, v in re.findall(r"(\w+)=(\d+)", a)}
 
     def reset_boton(self, ms=1000):
-        """Pulsa el botón RESET de la consola (D2 + PC817) 'ms' milisegundos. Vuelve 2 s después de soltarlo con
+        """RESET POR EL BOTÓN: pulsa el botón RESET de la consola (D2 + PC817, orden H) 'ms' milisegundos. Vuelve 2 s después de soltarlo con
         {'lat': lecturas del mando en esos 2 s} (el menú del N8 lee el mando: lat > 0 = arrancó)."""
         t0 = time.monotonic()
         self.orden(f"H {int(ms)}")
@@ -285,7 +289,7 @@ class Mando:
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--puerto")
-    ap.add_argument("accion", choices=["estado", "monitor", "toca", "pulsa", "suelta", "reset", "boton", "guion"])
+    ap.add_argument("accion", choices=["estado", "monitor", "toca", "pulsa", "suelta", "reset-mando", "reset-boton", "guion"])
     ap.add_argument("args", nargs="*")
     ap.add_argument("--desde", type=int, default=0, help="guion: fotograma actual (Z)")
     a = ap.parse_args()
@@ -314,9 +318,9 @@ def main():
             m.pulsar(a.args[0])
         elif a.accion == "suelta":
             m.soltar(a.args[0] if a.args else "")
-        elif a.accion == "reset":
-            print(m.reset(int(a.args[0]) if a.args else 5000))
-        elif a.accion == "boton":
+        elif a.accion == "reset-mando":
+            print(m.reset_mando(*[int(x) for x in a.args[:2]]))
+        elif a.accion == "reset-boton":
             print(m.reset_boton(int(a.args[0]) if a.args else 1000))
         elif a.accion == "guion":
             m.guion(a.args[0])
