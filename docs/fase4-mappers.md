@@ -512,6 +512,14 @@ hardware y hay que acotarlo en la consola.
   Arreglo: `n8_top.v` trata un mapper 0 con PRG > 32 KiB (ningún NROM lo tiene) como 219, y
   `tools/n8sim/N8FpgaMapper.cpp` imita la traducción del OS. Toy Story: 6 de 7 escenas «ok» en la NES (la 120 es
   la pantalla de copyright, casi negra). El 220 (alias del 4 en el OS) sigue siendo un MMC3 normal.
+- **Apaño retirado el mismo día (RTL limpio):** `n8_top.v` ya no trata «0 con PRG > 32 KiB» como 219, y el puente
+  de Mesen2 pasa el mapper de la cabecera tal cual. El OS propio (`os/`) escribe en el reg 131 el número de la
+  cabecera, sin traducir. Consecuencias:
+  - Solo cambia el `105.RBF` (el que lleva el 219); los otros seis salen idénticos byte a byte, porque el mapper 0
+    es el caso por defecto del selector.
+  - **Con el OS v13 de fábrica, el 219 (Toy Story) vuelve a no funcionar**: el v13 lo sigue cambiando por 0. Con el
+    OS propio funciona. Quien necesite el v13 con el 219 tiene el RBF anterior en el historial de git.
+  - El alias 220 → MMC3 se queda: no es un apaño para el v13, es una entrada de la tabla de mappers.
 - Herramientas que quedaron de esta búsqueda: `N8_MACROS="N8_DEPURAR_219" make -C hdl out/105.RBF` compila un RBF que
   guarda las 16 primeras escrituras del 219 y las devuelve en `$5000-$503F`; Quartus exporta el netlist con
   `quartus_eda --simulation --tool=modelsim --format=verilog` y se puede simular con iverilog quitando el PLL de

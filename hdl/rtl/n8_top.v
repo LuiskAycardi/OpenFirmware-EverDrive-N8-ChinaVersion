@@ -99,10 +99,10 @@ module n8_top (
         .ciram_en(os_ciram_en), .ciram_a10(os_ciram_a10)
     );
 
-    // El OS v13 cambia el mapper 219 de la cabecera por 0 (y el 220 por 4) antes de escribirlo en el reg 131
-    // (OS.BIN $B182; comprobado en la NES con Toy Story el 2026-11-16). Un NROM nunca pasa de 32 KiB de PRG:
-    // un "0" con más PRG es un 219.
-    wire [7:0]  mapper_id = (mapper_os == 8'd0 && prg_size > 5'd1) ? 8'd219 : mapper_os;
+    // El número de mapper llega tal cual de la cabecera de la ROM (reg 131). El OS v13 de fábrica cambia el 219
+    // por 0 y el 220 por 4 antes de escribirlo (OS.BIN $B182), así que con él el 219 no funciona; hasta el
+    // 2026-11-16 aquí se deshacía ese cambio ("0 con PRG > 32 KiB" = 219). El OS propio (os/) no traduce nada.
+    wire [7:0]  mapper_id = mapper_os;
 
     // ------------------------------------------------------------ mappers del juego
     // Cada mapper entrega un bus de 26 bits:
