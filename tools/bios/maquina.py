@@ -7,7 +7,9 @@ Componentes (todos propios, GPL-3.0-or-later; ver docs/bios-n8-clon.md):
   reg 0 = dato SPI de la SD; reg 1 = USB (sin datos); reg 2 = control de la SD (bit 1 /CS, bit 2 ráfaga);
   reg 6 = nCONFIG; reg 9 bit 0 = BIOS desconectada ($8000-$FFFF = PRG-RAM). Los demás se guardan y se devuelven.
 - FPGA en modo OS (como hdl/rtl/n8_os_iface.v): reg 128 ventana PRG en $4800, reg 129 banco de PRG-RAM en $6000,
-  reg 130 CHR. Lo que llega por $4403 se guarda por configuración (cada pulso del reg 6).
+  reg 130 CHR. Lo que llega por $4403 se guarda por configuración (cada pulso del reg 6). Mientras se configura
+  (del pulso del reg 6 a $4402 = 3) no hay nada en $8000-$FFFF. Con el reg 131 distinto de $FF, modo juego: la
+  PRG en $8000-$FFFF con la máscara del reg 132 (modelo NROM, para probar el lanzador del OS).
 - SD en modo SPI (SDHC o SDSC) sobre una imagen de disco.
 
 La BIOS NO va en el repositorio: se pasa como archivo (16 KiB, ventana $C000-$FFFF).
@@ -140,6 +142,9 @@ class Maquina:
         self.sel = 0
         self.m4402 = None
         self.fpga = {128: 0, 129: 0, 130: 0}
+        self.mapper = 0xFF             # reg 131: $FF = modo OS; otro valor = juego (modelo NROM: solo PRG)
+        self.configurando = False      # entre el pulso de nCONFIG y el final de la carga: el FPGA no mapea nada
+        self.pc_en_config = set()      # instrucciones ejecutadas en $8000-$FFFF mientras se configuraba
         self.fpga_cfgs = []            # bytes recibidos por $4403 en cada configuración (pulso 0->1 del reg 6)
         self.ultimo_spi = 0xFF
         self.ppu_ctrl = self.ppu_mask = self.ppu_addr = self.ppu_latch = self.vbl = 0
@@ -184,9 +189,15 @@ class Maquina:
         if 0x6000 <= a < 0x8000:
             return self.prgram[((self.fpga[129] & 0x0F) << 13) | (a & 0x1FFF)]
         if a >= 0x8000:
-            if self.bios_off():
-                return self.prgram[0x18000 | (a & 0x7FFF)]
-            return self.bios[a & 0x3FFF]
+            if self.configurando and a == self.cpu.pc:
+                self.pc_en_config.add(a)
+            if not self.bios_off():
+                return self.bios[a & 0x3FFF]
+            if self.configurando:
+                return 0xFF                                  # FPGA sin configurar: nadie contesta
+            if self.mapper != 0xFF:                          # juego: PRG con la máscara del reg 132
+                return self.prgrom[(a & 0x7FFF) & (((self.fpga.get(132, 0) & 0x1F) + 1 << 14) - 1)]
+            return self.prgram[0x18000 | (a & 0x7FFF)]
         return 0xFF
 
     def wr(self, a, v):
@@ -227,7 +238,9 @@ class Maquina:
             self.escrituras_prgram[b] += 1
             return
         if a >= 0x8000:
-            if self.bios_off():
+            if self.bios_off() and (self.configurando or self.mapper != 0xFF):
+                pass                                         # sin FPGA o en un juego: no es la RAM del OS
+            elif self.bios_off():
                 self.prgram[0x18000 | (a & 0x7FFF)] = v
             else:
                 self.log.append(('ESCRITURA_EN_FLASH', self.cpu.pc, a, v))   # nunca debería pasar
@@ -308,13 +321,23 @@ class Maquina:
                 self.cpld[self.sel] = v
                 if self.sel == 6 and ant == 0 and v == 1:
                     self.fpga_cfgs.append(bytearray())
+                    self.configurando = True
                 self.log.append(('CPLD', self.sel, ant, v, self.cpu.pc))
+            elif self.mapper != 0xFF:
+                self.log.append(('FPGA_EN_JUEGO', self.sel, v, self.cpu.pc))   # en un juego, el dato no se acepta
             else:
                 self.fpga[self.sel] = v
                 self.log.append(('FPGA', self.sel, v, self.cpu.pc))
+                if self.sel == 131:
+                    self.mapper = v
         elif p == 2:
             if v != self.m4402:
                 self.log.append(('4402', v, self.cpu.pc))
+            if self.configurando and self.m4402 == 5 and v == 3:    # fin de la carga: RBF nuevo, en modo OS
+                self.configurando = False
+                self.fpga = {128: 0, 129: 0, 130: 0}
+                self.mapper = 0xFF
+                self.log.append(('FPGA_CONFIG', len(self.fpga_cfgs[-1]), self.cpu.pc))
             self.m4402 = v
         else:
             if self.fpga_cfgs:
@@ -333,6 +356,11 @@ class Maquina:
             if nmi_cada and n % nmi_cada == 0 and (self.ppu_ctrl & 0x80):
                 cpu.nmi()
         return 'limite'
+
+    def reset_consola(self):
+        """Reset de la consola: M2 se para, el RBF vuelve al modo OS y la CPU lee su vector de reset."""
+        self.mapper = 0xFF
+        self.cpu.reset()
 
     def arrancar_bios(self, max_pasos=4_000_000):
         """Reset y BIOS hasta que salta al OS (bios_off = 1 y PC en $8000-$FBFF)."""

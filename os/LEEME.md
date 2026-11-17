@@ -1,4 +1,4 @@
-# OS propio del EverDrive N8 clon — etapa 2: lectura de la SD
+# OS propio del EverDrive N8 clon — etapa 3: lanzar juegos
 
 Primer `OS.BIN` propio (GPL-3.0-or-later). Todavía no lanza juegos: arranca, pinta una pantalla con una fuente
 propia y mide lo que falta saber del hardware (ver [docs/os-propio-viabilidad.md](../docs/os-propio-viabilidad.md)
@@ -124,3 +124,40 @@ encendido.
   por eso ahora el mando no se lee durante el arranque. Probado en la NES: el silencio por reset pasa a 419 ms y
   el Nano cuenta igual que la pantalla (`reset-mando` con 5 s: `reset=4`, contadores 02/01 → 06/05; con 2 s:
   `reset=2`, 06/05 → 08/07). La tarjeta se lee bien después de cada reset.
+
+## La fuente (`herramientas/fuente.py`)
+
+Dibujada desde cero para verse bien en un CRT: trazos de 2 píxeles, formas redondeadas, mayúsculas y minúsculas.
+Lleva á é í ó ú ñ ü, sus mayúsculas, ¿ ¡ º ª y un cursor (tiles `$20-$9F`; las constantes de los caracteres que no
+son ASCII están en `src/os.inc`). Para ver una muestra:
+
+```bash
+python3 -I os/herramientas/fuente.py /tmp/fuente.chr /tmp/fuente.png
+```
+
+## Etapa 3: lanzar un juego (`src/lanzar.s`)
+
+En la lista de la raíz, arriba y abajo mueven el cursor y **A o Start** lanzan la entrada. Con Select pulsado no se
+lanza nada: Select y luego Select+A es el reset del kit Lava.
+
+1. **Cabecera iNES:** PRG (hasta 512 KiB), CHR (hasta 512 KiB), mapper y byte 6. Si hay «trainer», se salta.
+2. **`EDFC/MAPROUT.BIN`:** el byte número *mapper* da el RBF (`$FF` = no hay).
+3. **`EDFC/MAPS/NNN.RBF`:** tiene que estar contiguo en la tarjeta (se comprueba en la FAT); se pasa al FPGA con una
+   lectura múltiple.
+4. **Carga del FPGA**, desde la RAM de la CPU (`$0200`), porque mientras tanto no hay nada en `$8000-$FFFF`: reg 9 a 0,
+   pulso de nCONFIG (reg 6), `$4402` = 5, cada byte de `$4401` a `$4403`, 512 bytes `$FF` de relojes de sobra,
+   `$4402` = 3 y reg 9 de vuelta a 1. Son los pasos de la BIOS.
+5. **PRG** por la ventana `$4800` (reg 128) y **CHR** por la PPU (reg 130).
+6. **Registros:** 132 = bancos de 16 KiB − 1; 133 = bancos de 8 KiB − 1, o `$FF` con CHR-RAM; 134 = byte 6 de la
+   cabecera `& $1B`; 136 = 0. Marca `en_juego` y, desde la RAM, **reg 131 = mapper de la cabecera, sin traducir**, y
+   salto al vector de reset del juego (S = `$FD`, A = X = Y = 0, `$4017` = `$FF` como el v13).
+
+Al resetear dentro del juego (botón RESET, o el Lava mantenido), el OS arranca como «vuelta de juego» y deja el
+cursor sobre el juego.
+
+Si algo falla, lo dice en pantalla y el menú sigue: «No es una ROM iNES», «Tamaño de ROM no admitido», «Falta
+EDFC/MAPROUT.BIN», «Mapper sin RBF: nn», «No encuentro el RBF nnn», «RBF fragmentado en la SD», «Error de lectura
+nn», «El FPGA no se configura», «Carpetas: en otra etapa».
+
+Límites de esta etapa: solo la raíz y nombres 8.3; la copia de la PRG va byte a byte por un búfer (lenta con ROMs
+grandes); no hay partidas guardadas (un juego con pila arranca con lo que haya en la PRG-RAM).

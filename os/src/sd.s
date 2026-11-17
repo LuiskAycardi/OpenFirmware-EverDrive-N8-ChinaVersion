@@ -4,7 +4,7 @@
 ;   reg 2             bit 0 = lo pone la BIOS tras inicializar (¿SPI rápido?), bit 1 = /CS (1 = tarjeta libre),
 ;                     bit 2 = ráfaga (cada lectura de $4401 saca un byte nuevo), bit 3 = «la tarjeta es SDHC»
 ;   $4403 bit 0       SPI libre
-; Protocolo: SD en modo SPI (CMD0, CMD8, ACMD41, CMD58, CMD16, CMD17, CMD12).
+; Protocolo: SD en modo SPI (CMD0, CMD8, ACMD41, CMD58, CMD16, CMD17, CMD18, CMD12).
 ;
 ; La BIOS deja la tarjeta a mitad de una lectura múltiple (CMD18 sin CMD12), y un reset puede cortar una lectura
 ; nuestra: por eso sd_iniciar empieza con CMD12 y vuelve a inicializar la tarjeta desde CMD0.
@@ -12,7 +12,7 @@
         .setcpu "6502"
         .include "os.inc"
 
-        .export sd_iniciar, sd_leer_sector, sd_rapido
+        .export sd_iniciar, sd_leer_sector, sd_rapido, sd_multi_ini, sd_parar, sd_base
         .export sd_error, sd_r1, sd_sdhc
         .exportzp sd_lba, sd_ptr
 
@@ -144,20 +144,7 @@ sd_iniciar:
         dey
         bne     @rel
 
-        ; cortar una lectura múltiple a medias (la que deja la BIOS)
-        jsr     arg_cero
-        lda     #12
-        sta     sd_c
-        jsr     cs_bajo
-        jsr     sd_cmd
-        ldy     #0                      ; esperar a que deje de estar ocupada
-@ocu:   lda     #$FF
-        jsr     spi
-        cmp     #$FF
-        beq     @libre
-        dey
-        bne     @ocu
-@libre: jsr     sd_fin
+        jsr     sd_parar                ; cortar una lectura múltiple a medias (la que deja la BIOS)
 
         ; CMD0: a reposo
         ldy     #16
@@ -262,6 +249,65 @@ error:  sta     sd_error
         sec
         rts
 
+; Corta una lectura múltiple (CMD12), espera a que la tarjeta quede libre y la suelta.
+sd_parar:
+        jsr     arg_cero
+        lda     #12
+        sta     sd_c
+        jsr     cs_bajo
+        jsr     sd_cmd
+        ldy     #0                      ; esperar a que deje de estar ocupada
+@ocu:   lda     #$FF
+        jsr     spi
+        cmp     #$FF
+        beq     @libre
+        dey
+        bne     @ocu
+@libre: jmp     sd_fin
+
+; Empieza una lectura múltiple (CMD18) en el sector sd_lba y deja la tarjeta seleccionada: los bloques los recoge
+; quien llama (la carga del FPGA, desde la RAM). Después hay que llamar a sd_parar. Acarreo = 1 si falla.
+sd_multi_ini:
+        jsr     arg_lba
+        lda     #18
+        sta     sd_c
+        jsr     cs_bajo
+        jsr     sd_cmd
+        beq     @bien
+        jsr     sd_fin
+        lda     #E_CMD17
+        jmp     error
+@bien:  clc
+        rts
+
+; sd_arg = dirección del sector sd_lba (número de bloque en SDHC, bytes en SDSC).
+arg_lba:
+        lda     #$FF
+        sta     sd_crc
+        lda     sd_sdhc
+        beq     @bytes
+        lda     sd_lba+3
+        sta     sd_arg
+        lda     sd_lba+2
+        sta     sd_arg+1
+        lda     sd_lba+1
+        sta     sd_arg+2
+        lda     sd_lba
+        sta     sd_arg+3
+        rts
+@bytes: lda     sd_lba                  ; sector x 512
+        asl
+        sta     sd_arg+2
+        lda     sd_lba+1
+        rol
+        sta     sd_arg+1
+        lda     sd_lba+2
+        rol
+        sta     sd_arg
+        lda     #0
+        sta     sd_arg+3
+        rts
+
 ; A = 1: pone el bit 0 del reg 2 (lo que hace la BIOS antes de leer archivos); A = 0: lo quita. Mantiene el bit 3.
 sd_rapido:
         and     #R2_RAPIDO
@@ -274,30 +320,7 @@ sd_rapido:
 ; ---------------------------------------------------------------------------------------------- lectura
 ; Lee el sector sd_lba en (sd_ptr), 512 bytes. No cambia sd_lba ni sd_ptr. Acarreo = 1 y sd_error si falla.
 sd_leer_sector:
-        lda     sd_sdhc
-        beq     @bytes
-        lda     sd_lba+3                ; SDHC: número de bloque
-        sta     sd_arg
-        lda     sd_lba+2
-        sta     sd_arg+1
-        lda     sd_lba+1
-        sta     sd_arg+2
-        lda     sd_lba
-        sta     sd_arg+3
-        jmp     @orden
-@bytes: lda     sd_lba                  ; SDSC: dirección en bytes = sector x 512
-        asl
-        sta     sd_arg+2
-        lda     sd_lba+1
-        rol
-        sta     sd_arg+1
-        lda     sd_lba+2
-        rol
-        sta     sd_arg
-        lda     #0
-        sta     sd_arg+3
-@orden: lda     #$FF
-        sta     sd_crc
+        jsr     arg_lba
         lda     #17
         sta     sd_c
         jsr     cs_bajo

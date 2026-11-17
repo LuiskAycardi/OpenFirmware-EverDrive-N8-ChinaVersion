@@ -2,6 +2,12 @@
 ;
 ;   fat_montar        lee el sector 0 (MBR o sector de arranque sin particiones) y la BPB
 ;   dir_abrir_raiz    prepara el recorrido del directorio raíz
+;   dir_abrir         lo mismo para la carpeta de la entrada dir_ent
+;   dir_buscar        busca en el directorio abierto el nombre 8.3 de 11 bytes que apunta `nombre`
+;   arch_abrir        prepara la lectura del archivo de la entrada dir_ent (deja arch_tam, arch_lba)
+;   arch_leer         lee el sector actual del archivo en `sector`
+;   arch_avanzar      pasa al sector siguiente (puede usar `sector` para mirar la FAT)
+;   arch_contiguo     acarreo = 0 si los clústeres del archivo abierto van seguidos en la tarjeta
 ;   dir_siguiente     siguiente entrada de verdad (salta nombres largos, borrados y la etiqueta): deja dir_ent
 ;                     apuntando a sus 32 bytes; acarreo = 1 cuando no hay más (o hubo error: fat_error)
 ; Límites de esta etapa: sectores de 512 bytes; FAT12 no; se decide FAT16/FAT32 por «sectores por FAT de 16 bits»
@@ -10,21 +16,26 @@
         .setcpu "6502"
         .include "os.inc"
 
-        .export fat_montar, dir_abrir_raiz, dir_siguiente
+        .export fat_montar, dir_abrir_raiz, dir_abrir, dir_siguiente, dir_buscar
+        .export arch_abrir, arch_leer, arch_avanzar, arch_contiguo
         .export fat_error, fat_tipo, fat_spc, fat_part, fat_datos, sector
-        .exportzp dir_ent
+        .export arch_lba, arch_tam, arch_clus, arch_ini
+        .exportzp dir_ent, nombre
         .import sd_leer_sector
         .importzp sd_lba, sd_ptr
 
 E_FIRMA = 6                     ; el sector 0 no acaba en 55 AA
 E_BPB   = 7                     ; sector de arranque no válido (o sectores que no son de 512 bytes)
 E_SPC   = 8                     ; sectores por clúster no es potencia de 2
-        .export E_FIRMA, E_BPB, E_SPC
+E_FIN   = 9                     ; el archivo se acaba antes de lo que dice su tamaño
+        .export E_FIRMA, E_BPB, E_SPC, E_FIN
 
         .segment "ZEROPAGE"
 dir_ent:    .res 2              ; entrada actual (dentro de `sector`)
+nombre:     .res 2              ; nombre 8.3 (11 bytes) que busca dir_buscar
 clus:       .res 4              ; clúster de trabajo
 t32:        .res 4
+t32b:       .res 4
 
         .segment "BSS"
 sector:     .res 512            ; el único búfer de sector
@@ -42,6 +53,11 @@ dir_clus:   .res 4              ; clúster actual (0 = raíz fija de FAT16)
 dir_quedan: .res 2              ; sectores que quedan en el tramo, contando el actual
 dir_idx:    .res 1              ; entrada dentro del sector (0-15)
 dir_estado: .res 1              ; 0 = hay que leer el sector; 1 = sector leído; 2 = hay que avanzar antes
+arch_lba:   .res 4              ; sector actual del archivo abierto
+arch_clus:  .res 4              ; su clúster
+arch_quedan: .res 1             ; sectores que quedan en el clúster, contando el actual
+arch_tam:   .res 4              ; tamaño en bytes
+arch_ini:   .res 4              ; primer clúster
 
         .segment "CODE"
 
@@ -445,4 +461,137 @@ dir_siguiente:
         and     #$08
         bne     @otra                   ; etiqueta del volumen
         clc
+        rts
+
+; Abre la carpeta de la entrada dir_ent.
+dir_abrir:
+        jsr     ent_clus
+        copia32 dir_clus, clus
+        lda     #0
+        sta     dir_estado
+        jmp     clus_a_lba
+
+; clus = primer clúster de la entrada dir_ent (en FAT16 la parte alta no se usa).
+ent_clus:
+        ldy     #26
+        lda     (dir_ent),y
+        sta     clus
+        iny
+        lda     (dir_ent),y
+        sta     clus+1
+        lda     #0
+        sta     clus+2
+        sta     clus+3
+        lda     fat_tipo
+        cmp     #32
+        bne     @ya
+        ldy     #20
+        lda     (dir_ent),y
+        sta     clus+2
+        iny
+        lda     (dir_ent),y
+        sta     clus+3
+@ya:    rts
+
+; Busca `nombre` (11 bytes, 8.3 con espacios) en el directorio abierto. Acarreo = 0: dir_ent es la entrada.
+dir_buscar:
+@sig:   jsr     dir_siguiente
+        bcs     @fin
+        ldy     #10
+@c:     lda     (dir_ent),y
+        cmp     (nombre),y
+        bne     @sig
+        dey
+        bpl     @c
+        clc
+@fin:   rts
+
+; ---------------------------------------------------------------------------------------------- archivos
+; Abre el archivo de la entrada dir_ent.
+arch_abrir:
+        ldy     #28
+        ldx     #0
+@t:     lda     (dir_ent),y
+        sta     arch_tam,x
+        iny
+        inx
+        cpx     #4
+        bne     @t
+        jsr     ent_clus
+        copia32 arch_ini, clus
+; Vuelve al principio del archivo abierto.
+arch_reabrir:
+        .export arch_reabrir
+        copia32 clus, arch_ini
+arch_a_clus:
+        copia32 arch_clus, clus
+        jsr     clus_a_lba              ; deja dir_lba y dir_quedan (no hay un directorio a medias)
+        copia32 arch_lba, dir_lba
+        lda     fat_spc
+        sta     arch_quedan
+        rts
+
+; Lee el sector actual del archivo en `sector`. Acarreo = 1 si falla (fat_error).
+arch_leer:
+        copia32 sd_lba, arch_lba
+        jsr     leer
+        bcc     @bien
+        lda     sd_error
+        sta     fat_error
+        sec
+@bien:  rts
+
+; Pasa al sector siguiente del archivo. Acarreo = 1 si no hay más clústeres o falla la lectura de la FAT.
+arch_avanzar:
+        dec     arch_quedan
+        beq     @clus
+        inc     arch_lba
+        bne     @ok
+        inc     arch_lba+1
+        bne     @ok
+        inc     arch_lba+2
+        bne     @ok
+        inc     arch_lba+3
+@ok:    clc
+        rts
+@clus:  copia32 clus, arch_clus
+        jsr     clus_siguiente
+        bcs     @fin
+        jsr     arch_a_clus
+        clc
+        rts
+@fin:   lda     fat_error
+        bne     @sal
+        lda     #E_FIN
+        sta     fat_error
+@sal:   sec
+        rts
+
+; ¿Van seguidos en la tarjeta todos los clústeres del archivo abierto? Acarreo = 0: sí. Deja el archivo al
+; principio. Usa `sector`.
+arch_contiguo:
+        copia32 clus, arch_ini
+@sig:   copia32 t32b, clus
+        jsr     clus_siguiente
+        bcs     @fin                    ; último clúster: todos seguidos (o error de lectura: fat_error)
+        inc     t32b
+        bne     @cmp
+        inc     t32b+1
+        bne     @cmp
+        inc     t32b+2
+        bne     @cmp
+        inc     t32b+3
+@cmp:   ldx     #3
+@c:     lda     clus,x
+        cmp     t32b,x
+        bne     @no
+        dex
+        bpl     @c
+        bmi     @sig
+@no:    jsr     arch_reabrir
+        sec
+        rts
+@fin:   jsr     arch_reabrir
+        lda     fat_error
+        cmp     #1                      ; acarreo = 1 si hubo error de lectura
         rts

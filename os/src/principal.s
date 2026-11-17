@@ -1,9 +1,10 @@
-; principal.s — OS propio del EverDrive N8 clon, etapa 2: lectura de la SD.
-; GPL-3.0-or-later. La entrada y el tipo de arranque están en arranque.s; la SD en sd.s; la FAT en fat.s.
+; principal.s — OS propio del EverDrive N8 clon, etapa 3: lista de la raíz y lanzar un juego.
+; GPL-3.0-or-later. La entrada y el tipo de arranque están en arranque.s; la SD en sd.s; la FAT en fat.s; el
+; lanzador en lanzar.s.
 ;
 ; Con la pantalla apagada: inicializa la tarjeta, monta la FAT, lista la raíz y mide cuánto tarda en leer 64
-; sectores (32 KiB). Después enciende la pantalla y muestra
-; el mando y un contador de fotogramas. No escribe nunca en la tarjeta.
+; sectores (32 KiB). Después enciende la pantalla: arriba y abajo mueven el cursor, y A o Start lanzan el juego
+; (no con Select pulsado: Select y luego Select+A es el reset del kit Lava). No escribe nunca en la tarjeta.
 
         .setcpu "6502"
         .include "os.inc"
@@ -13,9 +14,11 @@
         .import sd_iniciar, sd_leer_sector, sd_error, sd_r1, sd_sdhc
         .import fat_montar, dir_abrir_raiz, dir_siguiente
         .import fat_error, fat_tipo, fat_spc, fat_part, fat_datos, sector
+        .import lanzar, l_error, nombre_rbf, ultimo_juego
+        .importzp l_mapper
         .importzp sd_lba, sd_ptr, dir_ent
 
-LINEAS_LISTA = 13               ; entradas de la raíz que caben en pantalla
+LINEAS_LISTA = 12               ; entradas de la raíz que caben en pantalla
 SECTORES_PRUEBA = 64            ; 32 KiB
 
 ; ------------------------------------------------------------------------------------------------ variables
@@ -30,6 +33,12 @@ fila:       .res 2              ; dirección de la PPU de la línea de la lista
 entradas:   .res 1              ; entradas de la raíz
 cuenta:     .res 1
 t_rapido:   .res 2              ; fotogramas de la prueba de lectura
+sd_bien:    .res 1              ; 1 = hay lista y se puede lanzar
+visibles:   .res 1              ; entradas en pantalla (LINEAS_LISTA como mucho)
+sel:        .res 1              ; entrada bajo el cursor
+sel_ant:    .res 1              ; dónde está pintado el cursor ($FF = en ningún sitio)
+antes:      .res 1              ; botones del fotograma anterior
+nuevos:     .res 1              ; botones recién pulsados
 
 ; ------------------------------------------------------------------------------------------------ código
         .segment "CODE"
@@ -74,6 +83,21 @@ principal:
         jsr     datos_tarjeta
         jsr     lista_raiz
         jsr     prueba_velocidad
+        lda     entradas                ; el cursor: en el último juego si se vuelve de uno
+        cmp     #LINEAS_LISTA
+        bcc     @vis
+        lda     #LINEAS_LISTA
+@vis:   sta     visibles
+        beq     @pantalla
+        lda     #1
+        sta     sd_bien
+        lda     tipo_arranque
+        cmp     #TIPO_VUELTA
+        bne     @pantalla
+        lda     ultimo_juego
+        cmp     visibles
+        bcs     @pantalla
+        sta     sel
         jmp     @pantalla
 @error_sd:
         lda     sd_error
@@ -90,6 +114,12 @@ principal:
         jsr     hex
 
 @pantalla:
+        lda     #$FF
+        sta     sel_ant
+        sta     antes                   ; lo que esté pulsado al encender la pantalla no cuenta
+encender:
+        lda     #$80
+        sta     PPUCTRL
         lda     #1
         sta     mando_on
         lda     nmis
@@ -105,11 +135,148 @@ bucle:
 @vb:    cmp     nmis
         beq     @vb
         jsr     valores_vivos
+        jsr     cursor
         jsr     sin_scroll
         inc     fotogramas
-        bne     bucle
+        bne     @f
         inc     fotogramas+1
+@f:     jsr     entrada
         jmp     bucle
+
+; Pinta el cursor si ha cambiado de línea (durante el VBlank).
+cursor: lda     sd_bien
+        beq     @fin
+        lda     sel
+        cmp     sel_ant
+        beq     @fin
+        ldx     sel_ant
+        bmi     @pon
+        lda     #' '
+        jsr     @en
+@pon:   ldx     sel
+        stx     sel_ant
+        lda     #C_CURSOR
+@en:    pha
+        lda     fila_hi,x
+        pha
+        lda     fila_lo,x
+        tax
+        pla
+        jsr     ppu_dir
+        pla
+        sta     PPUDATA
+@fin:   rts
+
+; Mando: arriba y abajo mueven el cursor; A o Start (sin nada más pulsado) lanzan la entrada.
+entrada:
+        lda     antes
+        eor     #$FF
+        and     botones
+        sta     nuevos
+        lda     botones
+        sta     antes
+        lda     sd_bien
+        beq     @fin
+        lda     nuevos
+        and     #%00000100              ; abajo
+        beq     @arriba
+        inc     sel
+        lda     sel
+        cmp     visibles
+        bcc     @arriba
+        lda     #0
+        sta     sel
+@arriba:
+        lda     nuevos
+        and     #%00001000
+        beq     @lanzar
+        dec     sel
+        bpl     @lanzar
+        ldx     visibles
+        dex
+        stx     sel
+@lanzar:
+        lda     nuevos
+        and     #%10010000              ; A o Start recién pulsados...
+        beq     @fin
+        lda     botones
+        cmp     #%10000000              ; ...y solos (Select+A es del kit Lava)
+        beq     lanzar_sel
+        cmp     #%00010000
+        beq     lanzar_sel
+@fin:   rts
+
+; Lanza la entrada `sel`. Si no se puede, muestra por qué y vuelve al menú.
+lanzar_sel:
+        lda     #0
+        sta     mando_on
+        sta     PPUMASK
+        sta     PPUCTRL
+        jsr     dir_abrir_raiz
+        ldx     sel
+@busca: stx     cuenta
+        jsr     dir_siguiente
+        bcs     @error_sd
+        ldx     cuenta
+        dex
+        bpl     @busca
+        ldy     #11
+        lda     (dir_ent),y
+        and     #$10
+        beq     @rom
+        lda     #M_CARPETA
+        bne     @mensaje
+@rom:   lda     sel
+        sta     ultimo_juego
+        jsr     lanzar                  ; solo vuelve si falla
+        lda     l_error
+        bne     @mensaje
+@error_sd:
+        lda     #L_SD
+@mensaje:
+        pha
+        lda     #REG_CHR                ; la fuente: el lanzador puede haber movido el banco de la CHR
+        sta     REG_SEL
+        lda     #0
+        sta     REG_DAT
+        en      FILA_MSJ + 2
+        ldx     #28
+@b:     jsr     espacio
+        dex
+        bne     @b
+        en      FILA_MSJ + 2
+        pla
+        pha
+        tax
+        lda     mensajes_lo-1,x
+        sta     ptr
+        lda     mensajes_hi-1,x
+        sta     ptr+1
+        jsr     cadena
+        pla
+        cmp     #L_SINMAPPER
+        bne     @m5
+        lda     l_mapper
+        jsr     hex
+        jmp     @vuelve
+@m5:    cmp     #L_SINRBF
+        bne     @m7
+        ldx     #0
+@n:     lda     nombre_rbf,x
+        sta     PPUDATA
+        inx
+        cpx     #3
+        bne     @n
+        jmp     @vuelve
+@m7:    cmp     #L_SD
+        bne     @vuelve
+        lda     fat_error
+        jsr     hex
+@vuelve:
+        ldx     #$FF
+        txs
+        stx     antes
+        jmp     encender
 
 ; NMI: lee el mando una vez por fotograma, como el v13 (puerto 1 y el de expansión de la Famicom: bits 0 y 1 de
 ; $4016 y $4017). El kit Lava ve las mismas lecturas para su reset (Select ~2 s y luego Select+A).
@@ -493,6 +660,7 @@ FILA_TIT   = NT + 2 * 32
 FILA_ARR   = NT + 3 * 32
 FILA_SD    = NT + 6 * 32
 FILA_LISTA = NT + 11 * 32 + 2
+FILA_MSJ   = NT + 23 * 32
 FILA_MANDO = NT + 25 * 32
 
 .macro texto dir, cad
@@ -501,13 +669,14 @@ FILA_MANDO = NT + 25 * 32
 .endmacro
 
 textos:
-        texto   FILA_TIT + 2,       "OS propio N8 - etapa 2: SD"
+        texto   FILA_TIT + 2,       "OS propio N8 - etapa 3"
         texto   FILA_ARR + 2,       "Arranque:"
         texto   FILA_ARR + 32 + 2,  "Ent/res/vue:"
         texto   FILA_SD + 2,        "SD:"
         texto   FILA_SD + 32 + 2,   "Part          Datos"
         texto   FILA_SD + 64 + 2,   {"En ra", C_i, "z:"}
         texto   FILA_SD + 96 + 2,   "32K en f:      fotogramas"
+        texto   FILA_MSJ + 32 + 2,  "A o Start: lanzar el juego"
         texto   FILA_MANDO + 2,     "Mando:"
         texto   FILA_MANDO + 32 + 2, "Fotogramas:"
         .byte   $FF
@@ -526,6 +695,30 @@ t_error:    .byte "error ", 0
 t_r1:       .byte " R1=", 0
 t_dir:      .byte "<DIR>", 0
 t_fallo:    .byte "fallo", 0
+
+; línea de la lista -> dirección de la PPU de su cursor (columna 1)
+fila_lo:
+        .repeat LINEAS_LISTA, i
+        .byte   <(FILA_LISTA - 1 + 32 * i)
+        .endrepeat
+fila_hi:
+        .repeat LINEAS_LISTA, i
+        .byte   >(FILA_LISTA - 1 + 32 * i)
+        .endrepeat
+
+; mensajes del lanzador (L_* de lanzar.s) y M_CARPETA
+M_CARPETA = 9
+m1:     .byte "No es una ROM iNES", 0
+m2:     .byte "Tama", C_n, "o de ROM no admitido", 0
+m3:     .byte "Falta EDFC/MAPROUT.BIN", 0
+m4:     .byte "Mapper sin RBF: ", 0
+m5:     .byte "No encuentro el RBF ", 0
+m6:     .byte "RBF fragmentado en la SD", 0
+m7:     .byte "Error de lectura ", 0
+m8:     .byte "El FPGA no se configura", 0
+m9:     .byte "Carpetas: en otra etapa", 0
+mensajes_lo: .byte <m1, <m2, <m3, <m4, <m5, <m6, <m7, <m8, <m9
+mensajes_hi: .byte >m1, >m2, >m3, >m4, >m5, >m6, >m7, >m8, >m9
 
 cifras:
         .byte   "0123456789ABCDEF"

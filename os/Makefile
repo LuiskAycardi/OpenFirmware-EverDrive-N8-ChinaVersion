@@ -1,6 +1,6 @@
 # Makefile del OS propio (etapa 1). Salida: build/OS.BIN (32 KiB). Necesita cc65 (ca65, ld65) y Python 3.
 B := build
-OBJS := $(B)/arranque.o $(B)/principal.o $(B)/sd.o $(B)/fat.o
+OBJS := $(B)/arranque.o $(B)/principal.o $(B)/sd.o $(B)/fat.o $(B)/lanzar.o
 
 all: $(B)/OS.BIN
 
