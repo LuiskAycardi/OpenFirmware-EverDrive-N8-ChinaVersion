@@ -200,7 +200,7 @@ comprobar(r == 'limite' and 'SD: error 01 R1=FF' in pan and 'Mando:' in pan and 
           'tarjeta muda: ERROR 01 en pantalla y el OS sigue vivo')
 
 # ------------------------------------------------------------------ etapa 3: lanzar juegos
-def rom(prg16, chr8, mapper, byte6=0, trainer=False, semilla=1):
+def rom(prg16, chr8, mapper, byte6=0, trainer=False, semilla=1, cola=None):
     """ROM iNES de prueba: datos reconocibles y, en el vector de reset ($C000 del último banco), un programa que
     deja una marca en $0700 (A5, el primer byte de la PRG y S) y se queda en un bucle."""
     prg = bytearray((i * 13 + semilla) & 0xFF for i in range(prg16 * 16384))
@@ -209,6 +209,8 @@ def rom(prg16, chr8, mapper, byte6=0, trainer=False, semilla=1):
     prg[-6:] = bytes([0x0F, 0xC0, 0x00, 0xC0, 0x0F, 0xC0])
     chr_ = bytes((i * 3 + semilla) & 0xFF for i in range(chr8 * 8192))
     cab = bytes([0x4E, 0x45, 0x53, 0x1A, prg16, chr8, (mapper & 15) << 4 | byte6 | (4 if trainer else 0), mapper & 0xF0]) + bytes(8)
+    if cola is not None:                  # bytes 7-15 tal cual (NES 2.0, basura de cabeceras antiguas)
+        cab = cab[:7] + bytes(cola)
     return cab + (bytes(range(256)) * 2 if trainer else b'') + bytes(prg) + chr_, bytes(prg), chr_
 
 maprout = bytearray([0xFF]) * 512
@@ -220,7 +222,11 @@ rbf105 = bytes((i * 5 + 3) & 0xFF for i in range(76288 - 300))        # tamaño 
 ROMS = [('JUEGO.NES', rom(2, 1, 0, byte6=1)), ('CHRRAM.NES', rom(1, 0, 0, semilla=2)),
         ('MMC3.NES', rom(8, 8, 4, byte6=2, semilla=3)), ('TRAINER.NES', rom(2, 1, 0, trainer=True, semilla=4)),
         ('M219.NES', rom(4, 2, 219, semilla=5)), ('NOTAS.TXT', (b'no soy una ROM' * 40, b'', b'')),
-        ('SINRBF.NES', rom(2, 1, 65, semilla=6)), ('FALTA.NES', rom(2, 1, 1, semilla=7))]
+        ('SINRBF.NES', rom(2, 1, 65, semilla=6)), ('FALTA.NES', rom(2, 1, 1, semilla=7)),
+        # la cabecera de «219 Toy Story (Asia) (En) (Pirate).nes»: NES 2.0 con región y mando en los bytes 12 y 15
+        ('NES20.NES', rom(4, 2, 219, semilla=8, cola=[0xD8, 0, 0, 0, 0, 2, 0, 0, 1])),
+        # «DiskDude!» en los bytes 7-15: solo vale el nibble bajo (mapper 4)
+        ('DUDE.NES', rom(8, 8, 0x44, semilla=9, cola=b'DiskDude!'))]
 
 def imagen3(nombre, fragmentar=False, fragmentar_roms=()):
     img = t / nombre
@@ -261,7 +267,8 @@ img3 = imagen3('e3.img')
 for nombre, prg16, chr8, mapper, r132, r133, r134, rbf in (
         ('JUEGO.NES', 2, 1, 0, 1, 0, 1, rbf100), ('CHRRAM.NES', 1, 0, 0, 0, 0xFF, 0, rbf100),
         ('MMC3.NES', 8, 8, 4, 7, 7, 2, rbf100), ('TRAINER.NES', 2, 1, 0, 1, 0, 0, rbf100),
-        ('M219.NES', 4, 2, 219, 3, 1, 0x10, rbf105)):
+        ('M219.NES', 4, 2, 219, 3, 1, 0x10, rbf105), ('NES20.NES', 4, 2, 219, 3, 1, 0x10, rbf105),
+        ('DUDE.NES', 8, 8, 4, 7, 7, 0, rbf100)):
     _, prg, chr_ = dict(ROMS)[nombre]
     m = menu3(img3, nombre)
     comprobar(('▶' + nombre.split('.')[0]) in m.pantalla(), f'{nombre}: el cursor llega a la entrada')
@@ -359,7 +366,7 @@ m, ok = arrancar(img4)
 m.correr(PASOS, nmi_cada=9000)
 pan = m.pantalla()
 comprobar(lista(pan)[-1] == 'Juegos/', 'la carpeta «Juegos» (nombre largo con minúsculas) al final de la raíz')
-for _ in range(10):                       # EDFC, PRUEBAS, 8 ROMs: Juegos es la 11.ª
+for _ in range(2 + len(ROMS)):            # EDFC, PRUEBAS y las ROMs: Juegos va detrás
     toca(m, 0x04)
 comprobar(cursor_en(m.pantalla(), 'Juegos/'), 'el cursor llega a Juegos/')
 pulsa(m, 0x80, 2_000_000)

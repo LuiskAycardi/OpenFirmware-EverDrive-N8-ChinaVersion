@@ -113,8 +113,8 @@ files**: they work the same with the factory OS (except mapper 219, see below).
 **ES**
 - **Mapper 219 (Toy Story) y el OS de fábrica:** los RBF reciben ahora el número de mapper tal cual está en la
   cabecera de la ROM. El OS de fábrica cambia el 219 por 0 antes de pasarlo al FPGA, así que **con el OS de
-  fábrica el 219 vuelve a no arrancar** (en v0.1.3 el RBF deshacía ese cambio). Con el OS propio el número
-  llega bien, pero aún no se ha probado en la consola. Si necesitas Toy Story con el OS de fábrica, usa el
+  fábrica el 219 vuelve a no arrancar** (en v0.1.3 el RBF deshacía ese cambio). Con el OS propio Toy Story
+  arranca (probado en la NES). Si necesitas Toy Story con el OS de fábrica, usa el
   `105.RBF` de v0.1.3.
 - **Save states**: este paquete no los implementa (la tabla de save states va vacía). Con el OS de fábrica,
   las partidas con pila (archivos `.SRM` de `EDFC/SAVE`) sí funcionan como siempre.
@@ -143,8 +143,8 @@ files**: they work the same with the factory OS (except mapper 219, see below).
 **EN**
 - **Mapper 219 (Toy Story) and the factory OS:** the RBF files now get the mapper number exactly as written
   in the ROM header. The factory OS turns 219 into 0 before passing it to the FPGA, so **with the factory OS,
-  mapper 219 no longer boots** (in v0.1.3 the RBF undid that change). With our own OS the number arrives
-  correctly, but this has not been tested on the console yet. If you need Toy Story with the factory OS, use
+  mapper 219 no longer boots** (in v0.1.3 the RBF undid that change). With our own OS Toy Story boots
+  (tested on a NES). If you need Toy Story with the factory OS, use
   v0.1.3's `105.RBF`.
 - **Save states**: not implemented in this package (the save state table is empty). With the factory OS,
   battery saves (`.SRM` files in `EDFC/SAVE`) work as usual.

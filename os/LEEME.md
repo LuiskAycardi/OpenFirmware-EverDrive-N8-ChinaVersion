@@ -229,10 +229,15 @@ volver a él con RESET; volver a la raíz con B.
 - `PRUEBAS/14 RBF 105` (45 entradas, 3 páginas): Arriba en la primera fila lleva a la 3/3 con el cursor en la última.
 - **Reset por el mando (Lava) dentro de una carpeta:** 4 resets en el Nano y en la pantalla (`Ent/res/vue: 06 04
   01`); el menú se queda en la carpeta.
-- ⚠️ **Toy Story (mapper 219, `219 Toy Story (Asia) (En) (Pirate).nes`) no arranca con el OS propio:** pantalla en
-  negro (más de 20 s, también tras pulsar Start). RESET vuelve al menú con el cursor sobre él. Con el OS de fábrica
-  y el `105.RBF` de v0.1.3 sí arrancaba: queda por investigar qué hace distinto el v13 (o el apaño del RBF) al
-  lanzarlo.
+- **Toy Story (mapper 219)** se quedaba en negro: su cabecera es NES 2.0 (byte 7 = `$D8`) con datos en los bytes
+  12 y 15 (región y mando), y el lanzador la tomaba por una cabecera antigua con basura y usaba solo el nibble bajo:
+  mapper 11. Corregido (ver «Cabecera» abajo): Toy Story y Wario Land 2 (35) arrancan. De las 255 ROMs de la
+  colección de pruebas, 93 tienen esa cabecera y salían con el mapper equivocado.
 
-Pendiente: Toy Story (219) con el OS propio, partidas guardadas, menú completo (orden alfabético, información del
+**Cabecera** (`lanzar.s`, paso 1), según la regla de nesdev.org: si los bits 3-2 del byte 7 valen `10` es NES 2.0 y
+el nibble alto del byte 7 vale siempre (si el byte 8 pide un mapper de más de 8 bits: «Mapper sin RBF»; si el byte
+9 pide más tamaño: «Tamaño de ROM no admitido»). Si valen `00` y los bytes 12-15 son cero, iNES: también vale. En
+otro caso (como «DiskDude!»), solo el nibble bajo del byte 6.
+
+Pendiente: partidas guardadas, menú completo (orden alfabético, información del
 juego), modo banco.

@@ -519,7 +519,9 @@ hardware y hay que acotarlo en la consola.
     compilados antes de añadir el apaño (los de la tanda de consola del 15-11), porque el mapper 0 es el caso por
     defecto del selector. Respecto a los de v0.1.3, que se compilaron con el apaño, cambian los siete archivos.
   - **Con el OS v13 de fábrica, el 219 (Toy Story) vuelve a no funcionar**: el v13 lo sigue cambiando por 0. Con el
-    OS propio funciona. Quien necesite el v13 con el 219 tiene el RBF anterior en el historial de git.
+    OS propio funciona (probado en la NES el 2026-11-17, después de corregir la lectura de cabeceras NES 2.0 del
+    lanzador: la de Toy Story tiene datos en los bytes 12 y 15, y el OS la tomaba por una cabecera con basura y
+    lanzaba el mapper 11). Quien necesite el v13 con el 219 tiene el RBF anterior en el historial de git.
   - El alias 220 → MMC3 se queda: no es un apaño para el v13, es una entrada de la tabla de mappers.
 - Herramientas que quedaron de esta búsqueda: `N8_MACROS="N8_DEPURAR_219" make -C hdl out/105.RBF` compila un RBF que
   guarda las 16 primeras escrituras del 219 y las devuelve en `$5000-$503F`; Quartus exporta el netlist con

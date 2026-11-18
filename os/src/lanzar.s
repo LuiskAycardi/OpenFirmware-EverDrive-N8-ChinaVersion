@@ -126,12 +126,32 @@ lanzar:
         lsr
         lsr
         sta     l_mapper
-        lda     sector+12               ; cabeceras antiguas con basura en los bytes 7-15: solo el nibble bajo
+        ; Byte 7 (nibble alto del mapper), según el formato de la cabecera (regla de nesdev.org):
+        ;   bits 3-2 = 10: NES 2.0. Vale siempre, aunque los bytes 12-15 tengan datos (región, mando...). Los
+        ;     bits 8-11 del mapper (byte 8) y los de tamaño (byte 9) tienen que ser 0: no hay RBF ni sitio para más.
+        ;   bits 3-2 = 00 y bytes 12-15 a cero: iNES. Vale.
+        ;   lo demás: cabecera antigua con basura en 7-15 («DiskDude!»): solo el nibble bajo.
+        lda     sector+7
+        and     #$0C
+        cmp     #$08
+        bne     @ines
+        lda     sector+9
+        beq     @n20
+        lda     #L_TAM
+        jmp     falla
+@n20:   lda     sector+8
+        and     #$0F
+        beq     @alto
+        lda     #L_SINMAPPER
+        jmp     falla
+@ines:  cmp     #0
+        bne     @mapper
+        lda     sector+12
         ora     sector+13
         ora     sector+14
         ora     sector+15
         bne     @mapper
-        lda     sector+7
+@alto:  lda     sector+7
         and     #$F0
         ora     l_mapper
         sta     l_mapper
