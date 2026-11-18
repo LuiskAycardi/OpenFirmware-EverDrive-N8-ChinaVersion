@@ -1,14 +1,15 @@
 # Makefile del proyecto de mappers N8
 #   make sim     -> simulación con iverilog (todos los testbenches)
-#   make build   -> compila con Quartus II 13.0sp1 los RBF aislados out/100.RBF a out/106.RBF
+#   make build   -> compila con Quartus II 13.0sp1 los RBF aislados out/100.RBF a out/106.RBF y out/255.RBF (el del
+#                   modo OS, que la BIOS carga al encender: solo n8_os_iface y el NROM)
 #                   (cada uno con su macro N8_RBF_nnn; ver rtl/n8_top.v y tools/gen_qsf.py)
 #   make clean
 
 RTL  := $(wildcard rtl/*.v)
-TBS  := tb_nrom tb_fase1 tb_mmc3 tb_fase3 tb_fase3b tb_fase3c tb_sonido tb_fase3d tb_n163 tb_fase4 tb_mmc5 tb_mmc5_ext tb_mmc5_bus tb_snd_mmc5 tb_fase4_rest tb_misc4_direct tb_jy_direct tb_mmc3c_direct tb_fk23c_direct tb_eeprom_direct tb_vrc7_golden tb_pirate_direct
+TBS  := tb_nrom tb_fase1 tb_mmc3 tb_fase3 tb_fase3b tb_fase3c tb_sonido tb_fase3d tb_n163 tb_fase4 tb_mmc5 tb_mmc5_ext tb_mmc5_bus tb_snd_mmc5 tb_fase4_rest tb_misc4_direct tb_jy_direct tb_mmc3c_direct tb_fk23c_direct tb_eeprom_direct tb_vrc7_golden tb_pirate_direct tb_255
 OUT  := out
 QDIR := quartus
-RBFS := 100 101 102 103 104 105 106
+RBFS := 100 101 102 103 104 105 106 255
 
 # Quartus: se usa el del PATH si existe; si no, la instalación por defecto en ~/altera
 QUARTUS_ROOTDIR ?= $(HOME)/altera/13.0sp1/quartus
@@ -23,6 +24,11 @@ sim: $(addprefix $(OUT)/,$(addsuffix .vvp,$(TBS)))
 $(OUT)/%.vvp: sim/%.v sim/tb_bus.vh $(wildcard sim/*.vh) $(RTL)
 	@mkdir -p $(OUT)
 	iverilog -g2005 -Wall -I sim -o $@ $< $(RTL)
+
+# El 255.RBF se simula con su macro: solo el modo OS y el NROM.
+$(OUT)/tb_255.vvp: sim/tb_255.v sim/tb_bus.vh $(RTL)
+	@mkdir -p $(OUT)
+	iverilog -g2005 -Wall -DN8_RBF_255 -I sim -o $@ $< $(RTL)
 
 build: $(addprefix $(OUT)/,$(addsuffix .RBF,$(RBFS)))
 

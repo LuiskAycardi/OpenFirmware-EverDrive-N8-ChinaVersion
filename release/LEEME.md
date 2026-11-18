@@ -19,15 +19,16 @@ them.
 | `EDFC/MAPS/100.RBF` … `106.RBF` | **ES** Los mappers (7 archivos; cada uno lleva un grupo de mappers). **EN** The mappers (7 files; each holds a group of mappers). |
 | `EDFC/MAPROUT.BIN` | **ES** Tabla que le dice al OS qué RBF usar para cada mapper. **EN** Table telling the OS which RBF to use for each mapper. |
 | `OS-propio/OS.BIN` | **ES** Nuestro OS propio, experimental y **opcional** (ver más abajo). **EN** Our own OS, experimental and **optional** (see below). |
+| `OS-propio/255.RBF` | **ES** Nuestro RBF del modo OS, **opcional**: sustituye al `255.RBF` de fábrica (solo con el OS propio). **EN** Our OS-mode RBF, **optional**: replaces the factory `255.RBF` (own OS only). |
 | `MAPPERS.txt` | **ES** Qué mappers hay en cada RBF. **EN** Which mappers each RBF contains. |
 | `SHA256SUMS.txt` | **ES** Sumas para comprobar que los archivos llegaron bien. **EN** Checksums to verify the files. |
 | `LICENSE` | **ES** Licencia GPL-3.0 (código fuente: commit `{COMMIT}` del repositorio). **EN** GPL-3.0 license (source code: repository commit `{COMMIT}`). |
 
 **ES** — **No contiene** el OS de fábrica, los RBF de fábrica ni ningún archivo de Krikzz: se usan los que
-ya tiene tu SD.
+ya tiene tu SD (o, si quieres, nuestro `OS.BIN` y nuestro `255.RBF`).
 
 **EN** — It **does not contain** the factory OS, the factory RBF files or any file from Krikzz: the ones
-already on your SD card are used.
+already on your SD card are used (or, if you like, our `OS.BIN` and our `255.RBF`).
 
 ## Requisitos / Requirements
 
@@ -88,8 +89,13 @@ el OS de fábrica funcionan igual (salvo el mapper 219, ver abajo).
   3. Copia `OS-propio/OS.BIN` como `EDFC/OS.BIN`. El archivo tiene que quedar contiguo en la tarjeta: lo más
      seguro es usar una SD recién formateada. Si al encender la pantalla sale negra, es lo primero que hay
      que mirar.
-  4. Necesita el `EDFC/MAPS/255.RBF` de fábrica, que no se toca.
-- **Para volver al OS de fábrica:** borra `EDFC/OS.BIN` y renombra `EDFC/OS_V13.BIN` a `EDFC/OS.BIN`.
+  4. Funciona con el `EDFC/MAPS/255.RBF` de fábrica, que no se toca.
+  5. **Opcional, para no usar ningún archivo de Krikzz:** renombra `EDFC/MAPS/255.RBF` a `EDFC/MAPS/255FAB.RBF`
+     y copia `OS-propio/255.RBF` como `EDFC/MAPS/255.RBF` (también tiene que quedar contiguo). Es el RBF que la
+     BIOS carga al encender; el nuestro solo lleva el modo OS. **Con él, el OS de fábrica no arranca**: necesita
+     su propio 255. Probado en la NES: arranque, carpetas, juegos de los RBF 100 y 103, RESET y el kit Lava.
+- **Para volver al OS de fábrica:** borra `EDFC/OS.BIN` y renombra `EDFC/OS_V13.BIN` a `EDFC/OS.BIN` (y, si
+  cambiaste el 255, borra `EDFC/MAPS/255.RBF` y renombra `EDFC/MAPS/255FAB.RBF` a `EDFC/MAPS/255.RBF`).
 - **Con este OS no uses juegos con partida guardada que te importe:** todavía no guarda las partidas.
 
 **EN** — `OS-propio/OS.BIN` is our first own OS, written from scratch. **It is not needed to use the RBF
@@ -104,8 +110,13 @@ files**: they work the same with the factory OS (except mapper 219, see below).
   2. Rename your SD card's `EDFC/OS.BIN` to `EDFC/OS_V13.BIN`.
   3. Copy `OS-propio/OS.BIN` as `EDFC/OS.BIN`. The file must be contiguous on the card: the safest way is a
      freshly formatted SD card. If the screen stays black at power-on, check this first.
-  4. It needs the factory `EDFC/MAPS/255.RBF`, which is left untouched.
-- **To go back to the factory OS:** delete `EDFC/OS.BIN` and rename `EDFC/OS_V13.BIN` to `EDFC/OS.BIN`.
+  4. It works with the factory `EDFC/MAPS/255.RBF`, which is left untouched.
+  5. **Optional, to use no file from Krikzz at all:** rename `EDFC/MAPS/255.RBF` to `EDFC/MAPS/255FAB.RBF` and
+     copy `OS-propio/255.RBF` as `EDFC/MAPS/255.RBF` (it must be contiguous too). It is the RBF the BIOS loads at
+     power-on; ours only contains the OS mode. **With it, the factory OS does not boot**: it needs its own 255.
+     Tested on a NES: boot, folders, games from RBF 100 and 103, RESET and the Lava kit.
+- **To go back to the factory OS:** delete `EDFC/OS.BIN` and rename `EDFC/OS_V13.BIN` to `EDFC/OS.BIN` (and,
+  if you replaced the 255, delete `EDFC/MAPS/255.RBF` and rename `EDFC/MAPS/255FAB.RBF` to `EDFC/MAPS/255.RBF`).
 - **Do not use games with a save you care about with this OS:** it does not save battery games yet.
 
 ## Cosas que conviene saber / Good to know

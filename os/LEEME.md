@@ -3,7 +3,8 @@
 `OS.BIN` propio (GPL-3.0-or-later): arranca desde la BIOS del cartucho, lee la microSD (solo lectura), recorre sus
 carpetas con nombres largos y lanza los juegos con nuestros RBF (ver
 [docs/os-propio-viabilidad.md](../docs/os-propio-viabilidad.md) y [docs/bios-n8-clon.md](../docs/bios-n8-clon.md)).
-Funciona con el `255.RBF` de fábrica.
+Funciona con el `255.RBF` de fábrica y con el nuestro (`hdl/out/255.RBF`, solo el modo OS: con él no queda en la SD
+ningún archivo de Krikzz; probado en la NES el 2026-11-17).
 
 **Qué no hace**, a propósito: no toca la flash de la BIOS, no escribe en la SD y no toca la PRG-RAM de las
 partidas ni el estado del OS de fábrica. Solo escribe en la RAM de la CPU, en su propia imagen (`$8000-$FFFF`), en

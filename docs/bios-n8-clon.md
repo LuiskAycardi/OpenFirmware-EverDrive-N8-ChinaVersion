@@ -106,7 +106,11 @@ desofusca el 255.RBF de fábrica**, no la BIOS (la BIOS copia el archivo sin toc
 1. **Puede usar el 255.RBF de fábrica** si su primer byte en `$8000` no es `$EA` (lo normal es `SEI`) y nunca deja
    `$EA` en `$8000` mientras corre. No hace falta ni la clave ni la transformación: no se toca la protección del v13.
 2. El OS propio y el v13 pueden convivir con el mismo 255.RBF. Volver al de fábrica es cambiar solo el `OS.BIN`.
-3. Un 255.RBF propio sigue siendo opcional (etapa 8 del plan). Tendría que mantener el mapa del modo OS
+3. **Hecho el 2026-11-17: 255.RBF propio** (`make -C hdl out/255.RBF`, macro `N8_RBF_255`: solo `n8_os_iface` y el
+   NROM, 133 LE). `hdl/sim/tb_255.v` reproduce los pasos 6 y 7 de la BIOS. Probado en la NES con el OS propio:
+   arranque en frío, carpetas, SMB3 (RBF 100) y un MMC5 (RBF 103), RESET y el kit Lava. Con él no arranca el v13
+   (necesita el cargador del 255 de fábrica). Antes decía: un 255.RBF propio sigue siendo opcional (etapa 8 del
+   plan). Tendría que mantener el mapa del modo OS
    (`n8_os_iface.v`).
 
 ## 5. Errores que muestra la BIOS

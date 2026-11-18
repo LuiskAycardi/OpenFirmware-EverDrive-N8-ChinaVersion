@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Empaqueta un release para la microSD: los RBF compilados (hdl/out), un MAPROUT.BIN generado desde
-n8_top.v, el OS propio (os/build/OS.BIN, opcional para el usuario), las instrucciones (release/LEEME.md), la
+n8_top.v, el OS propio (os/build/OS.BIN) y nuestro 255.RBF (hdl/out/255.RBF), opcionales para el usuario, las instrucciones (release/LEEME.md), la
 lista de mappers, la licencia y las sumas SHA-256.
 
   make -C hdl build
@@ -49,6 +49,10 @@ def main():
         sys.exit(f"{os_bin} falta o es más antiguo que sus fuentes: make -C os")
     (stage / "OS-propio").mkdir(exist_ok=True)
     (stage / "OS-propio/OS.BIN").write_bytes(os_bin.read_bytes())
+    rbf255 = ROOT / "hdl/out/255.RBF"           # nuestro RBF del modo OS, opcional
+    if not rbf255.exists() or rbf255.stat().st_mtime < (ROOT / "hdl/rtl/n8_top.v").stat().st_mtime:
+        sys.exit(f"{rbf255} falta o es más antiguo que hdl/rtl/n8_top.v: make -C hdl build")
+    (stage / "OS-propio/255.RBF").write_bytes(rbf255.read_bytes())
     lista = subprocess.run([sys.executable, "-I", str(ROOT / "hdl/tools/gen_maprout.py"),
                             str(stage / "EDFC/MAPROUT.BIN"), "--fds", "--lista"],
                            capture_output=True, text=True, check=True).stdout

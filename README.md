@@ -129,8 +129,10 @@ page has a package ready for the microSD card (the RBF files and a `MAPROUT.BIN`
 ## OS propio / Own OS
 
 **ES** — `os/` es un `OS.BIN` escrito desde cero en ensamblador 6502 (ca65), con licencia GPL-3.0-or-later.
-Ocupa el lugar del `EDFC/OS.BIN` de fábrica; **la BIOS del cartucho y el `255.RBF` de fábrica se siguen
-usando** y no se tocan.
+Ocupa el lugar del `EDFC/OS.BIN` de fábrica. La BIOS del cartucho se sigue usando y no se toca. El `255.RBF`
+(el RBF que la BIOS carga al encender) puede ser el de fábrica o **el nuestro** (`hdl/out/255.RBF`, solo el
+modo OS, probado en la NES): con el nuestro no queda en la SD ningún archivo de Krikzz, pero el OS de fábrica
+deja de arrancar.
 
 Qué hace hoy:
 - Arranca desde la BIOS y distingue el encendido, un reset en el menú y la vuelta desde un juego. Aguanta el
@@ -158,8 +160,9 @@ partir de un volcado de la BIOS, que no está en el repositorio) para probar el 
 la consola.
 
 **EN** — `os/` is an `OS.BIN` written from scratch in 6502 assembly (ca65), licensed GPL-3.0-or-later. It
-replaces the factory `EDFC/OS.BIN`; **the cartridge BIOS and the factory `255.RBF` are still used** and are
-left untouched.
+replaces the factory `EDFC/OS.BIN`. The cartridge BIOS is still used and left untouched. The `255.RBF` (the
+RBF the BIOS loads at power-on) can be the factory one or **ours** (`hdl/out/255.RBF`, OS mode only, tested on
+a NES): with ours no file from Krikzz is left on the SD card, but the factory OS no longer boots.
 
 What it does today:
 - It boots from the BIOS and tells apart a power-on, a reset in the menu and a return from a game. It handles
@@ -202,8 +205,8 @@ console.
   cero: no lleva código, tablas ni la fuente de Krikzz.
 
 **Este repositorio no contiene** ningún firmware, BIOS, OS, RBF ni código de Krikzz, ni ROMs. Para usar los
-RBF hace falta un N8 con su BIOS, su `255.RBF` de fábrica y su tarjeta SD; el OS puede ser el de fábrica o
-el propio.
+RBF hace falta un N8 con su BIOS y su tarjeta SD; el OS y el `255.RBF` pueden ser los de fábrica o los
+nuestros.
 
 **EN**
 - The registers and behaviour of each mapper come from the public description (NESdev Wiki) and are
@@ -219,8 +222,8 @@ el propio.
   contains no code, tables or font from Krikzz.
 
 **This repository does not contain** any firmware, BIOS, OS, RBF or code from Krikzz, nor any ROMs. Using
-the RBF files requires an N8 with its BIOS, its factory `255.RBF` and its SD card; the OS can be the factory
-one or ours.
+the RBF files requires an N8 with its BIOS and its SD card; the OS and the `255.RBF` can be the factory ones
+or ours.
 
 ## Estructura / Layout
 

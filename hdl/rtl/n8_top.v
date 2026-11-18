@@ -9,6 +9,9 @@
 // pull-up débil (QSF): cuando nadie conduce el bus (CHR desactivada en los mappers 93 y 185) la
 // PPU lee $FF.
 
+// N8_RBF_255: el RBF del modo OS (el que la BIOS carga al encender, en lugar del 255.RBF de fábrica). Solo lleva
+// la interfaz del OS (n8_os_iface) y el NROM, que va siempre; ningún otro mapper.
+`ifndef N8_RBF_255
 `ifndef N8_RBF_100
 `ifndef N8_RBF_101
 `ifndef N8_RBF_102
@@ -23,6 +26,7 @@
 `define N8_RBF_104
 `define N8_RBF_105
 `define N8_RBF_106
+`endif
 `endif
 `endif
 `endif
@@ -509,6 +513,10 @@ module n8_top (
 
     assign chr_ce_n = !(!mem_off && s_chr_en);
     // Conducción del bus de datos de la PPU: MMC5 (ExRAM, RBF 103) y 253 (CHR-RAM interna, RBF 105).
+`ifdef N8_RBF_255
+    // 255.RBF: nadie conduce la PPU. Constantes (un always sin entradas no se evalúa nunca en la simulación).
+    wire [7:0] g_ppudo = 8'd0, g_ppudoe = 8'd0;
+`else
     reg [7:0] g_ppudo,g_ppudoe;
     always @(*) begin
         g_ppudo = 8'd0; g_ppudoe = 8'd0;
@@ -519,6 +527,7 @@ module n8_top (
         if (!os_mode && mapper_id==253) begin g_ppudo = ppudo_559; g_ppudoe = ppudoe_559; end
 `endif
     end
+`endif
     wire ppu_drive=!mem_off && !ppu_rd_n && ppu_wr_n && (|g_ppudoe);
     assign chr_oe_n = ppu_rd_n || ppu_drive;
     assign chr_we_n = !s_chr_wr;
