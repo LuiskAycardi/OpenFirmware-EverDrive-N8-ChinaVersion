@@ -396,6 +396,12 @@ el menú leyendo la pantalla.
   y suma). Al lanzar se guarda ya el de la siguiente: tras el juego, el botón RESET (o el kit Lava) vuelve a la
   pantalla con la siguiente. Si BANCO.TXT cambia (otro clúster o tamaño), se empieza por la primera. Si un
   lanzamiento falla, la pantalla vuelve con la siguiente y el motivo en la fila 25.
+- **Directiva `!ram=XX`** (una línea que empieza por `!`, no cuenta como entrada; el título dice «RAM=XX»): antes
+  de cada lanzamiento, la PRG-RAM de las partidas (`0x00000-0x0FFFF`) se pone a `$XX` y los juegos con pila **no
+  cargan ni guardan su partida** (ni se crea el `.srm` ni se deja la marca de pendiente). Así arrancan igual que en
+  Mesen2 (`!ram=00`, su `RamPowerOnState` «AllZeros») y las pruebas no tocan las partidas de verdad. La escribe
+  `preparar-banco` (`--con-partidas` la quita). Sin ella, el modo banco usa las partidas como el menú: en la primera
+  tanda real, Zelda (con la partida de las pruebas de la etapa 5) salió «basura» y Dragon Warrior IV «parecido».
 - La lista se lee entera cada vez (es pequeña) y la ruta se busca carpeta por carpeta con el mismo nombre largo que
   usa el menú (así las partidas y la información salen igual que lanzando desde el menú).
 - No hay informe en la SD ni `AUTO.TXT` (§4 del estudio de viabilidad): el PC lleva el registro de cada prueba y ve

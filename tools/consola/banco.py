@@ -17,20 +17,30 @@ UMBRAL = 90                 # luminancia de un bloque (blanco del OS: ~200; fond
 
 
 def lineas(texto):
-    """Las entradas de una BANCO.TXT, con las mismas reglas que el OS: sin líneas vacías ni las que empiezan por #."""
-    return [l.rstrip("\r") for l in texto.split("\n") if l.rstrip("\r") and not l.startswith("#")]
+    """Las entradas de una BANCO.TXT, con las mismas reglas que el OS: sin líneas vacías, ni las que empiezan por #
+    (comentarios) o por ! (directivas)."""
+    return [l.rstrip("\r") for l in texto.split("\n") if l.rstrip("\r") and l[0] not in "#!"]
 
 
-def escribir(raiz_sd, rutas, comentario="lista de prueba.py"):
-    """Escribe EDFC/BANCO.TXT en la SD (o en una copia). Devuelve la ruta del archivo."""
+def ram_de_mesen(estado):
+    """El byte con que Mesen2 llena la RAM al encender (RamPowerOnState), para la directiva !ram=: así los juegos con
+    pila arrancan en la consola igual que en la referencia, sin su partida. None o "AllZeros" -> 0; "AllOnes" -> $FF."""
+    return 0xFF if estado == "AllOnes" else 0x00
+
+
+def escribir(raiz_sd, rutas, comentario="lista de prueba.py", ram=0x00):
+    """Escribe EDFC/BANCO.TXT en la SD (o en una copia). Con ram (0-255), la directiva !ram=XX: antes de cada
+    lanzamiento, la PRG-RAM de las partidas a ese valor y los juegos con pila sin su partida (no se carga ni se
+    guarda: las pruebas no tocan las partidas de verdad). ram=None: con las partidas. Devuelve la ruta del archivo."""
     for r in rutas:
-        if "\n" in r or r.startswith("#") or not r:
+        if "\n" in r or r.startswith(("#", "!")) or not r:
             raise ValueError(f"ruta que el OS no puede leer en BANCO.TXT: {r!r}")
         if len(r.encode()) > 255:
             raise ValueError(f"ruta de más de 255 bytes (el OS la corta): {r!r}")
     p = pathlib.Path(raiz_sd) / LISTA
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(f"# {comentario}\n" + "".join(r + "\n" for r in rutas), encoding="utf-8")
+    directiva = f"!ram={ram:02X}\n" if ram is not None else ""
+    p.write_text(f"# {comentario}\n" + directiva + "".join(r + "\n" for r in rutas), encoding="utf-8")
     return p
 
 

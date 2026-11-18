@@ -9,7 +9,10 @@
 ;
 ; BANCO.TXT: una ruta por línea desde la raíz de la SD («PRUEBAS/1 MMC1/Metroid (USA).nes»), en UTF-8, con los
 ; nombres largos tal cual (sin distinguir mayúsculas de ASCII) o los 8.3. Las líneas vacías y las que empiezan por
-; «#» no cuentan. Fin de línea LF o CR LF.
+; «#» no cuentan. Fin de línea LF o CR LF. Directiva (línea que empieza por «!», no cuenta como entrada):
+;   !ram=XX   antes de cada lanzamiento, la PRG-RAM de las partidas (64 KiB) a $XX y los juegos con pila sin su
+;             partida: ni se carga ni se guarda (las pruebas no tocan las partidas de verdad y el juego arranca como
+;             en Mesen2, que empieza con la RAM a cero: !ram=00).
 ;
 ; El número de la entrada se guarda en la PRG-RAM con pila (banco 8, $6200, con la identidad del archivo: si
 ; BANCO.TXT cambia, se vuelve a la primera). Al lanzar, se guarda ya el de la siguiente: después del juego, el botón
@@ -25,7 +28,7 @@
         .import dir_abrir_raiz, dir_buscar, dir_abrir, dir_siguiente, ent_clus
         .import arch_abrir, arch_leer, arch_avanzar, arch_tam, sector, lfn_val, ucs_a_fuente, lfn_lo
         .import pt_nom, pt_len, igual_largo, banco_marca
-        .import lanzar, l_error, abrir_edfc
+        .import lanzar, l_error, abrir_edfc, l_sin_partida
         .importzp dir_ent, nombre, clus
 
 ANCHO   = 28
@@ -37,7 +40,8 @@ FILA_COD  = NT + 16 * 32 + 2    ; 2 filas: el número y su complemento
 FILA_MSJ  = NT + 25 * 32 + 2
 FILA_AYU  = NT + 26 * 32 + 2
 VENT    = $6000
-PUESTO  = VENT + $200           ; banco 8: "N8BK", clúster (4), tamaño (4), entrada (2), suma
+PUESTO  = VENT + $200
+REG_RAM = 129           ; banco 8: "N8BK", clúster (4), tamaño (4), entrada (2), suma
 
         .segment "ZEROPAGE"
 bp:         .res 2              ; byte del sector que se lee / carácter de la línea
@@ -59,6 +63,9 @@ bk_tam:     .res 4
 bk_ant:     .res 1
 bk_ult:     .res 1              ; 1 = el último componente de la ruta
 bk_marca:   .res 15
+bk_dir:     .res 8              ; la línea de una directiva («!ram=00»)
+bk_ram_on:  .res 1              ; 1 = hay !ram=XX
+bk_ram_val: .res 1
 
         .segment "CODE"
 
@@ -117,6 +124,7 @@ leer_lista:
         sta     bk_hay
         sta     bk_len
         sta     bk_linea
+        sta     bk_ram_on
         jsr     abrir_lista
         bcs     @fin
         ldx     #3
@@ -143,6 +151,15 @@ leer_lista:
         bcs     @b
         inc     bk_len
         tay
+        lda     bk_primero              ; directiva: a bk_dir (8 bytes)
+        cmp     #'!'
+        bne     @normal
+        cpx     #8
+        bcs     @b
+        tya
+        sta     bk_dir,x
+        jmp     @b
+@normal:
         lda     bk_n
         cmp     bk_i
         bne     @b
@@ -166,6 +183,11 @@ fin_linea:
         lda     bk_primero
         cmp     #'#'
         beq     @fin
+        cmp     #'!'
+        bne     :+
+        jsr     directiva
+        jmp     @fin
+:
         lda     bk_n
         cmp     bk_i
         bne     @cuenta
@@ -180,6 +202,81 @@ fin_linea:
         inc     bk_n+1
 @fin:   lda     #0
         sta     bk_len
+        rts
+
+; La directiva de bk_dir (bk_len bytes): «!ram=XX» (XX en hexadecimal). Las demás se ignoran.
+directiva:
+        lda     bk_len
+        cmp     #7
+        bcc     @fin
+        ldx     #4
+@c:     lda     bk_dir,x
+        cmp     t_ram_dir,x
+        bne     @fin
+        dex
+        bpl     @c
+        lda     bk_dir+5
+        jsr     cifra_hex
+        bcs     @fin
+        asl
+        asl
+        asl
+        asl
+        sta     bk_ram_val
+        lda     bk_dir+6
+        jsr     cifra_hex
+        bcs     @fin
+        ora     bk_ram_val
+        sta     bk_ram_val
+        lda     #1
+        sta     bk_ram_on
+@fin:   rts
+
+; A = valor de la cifra hexadecimal A (acarreo = 1 si no lo es).
+cifra_hex:
+        cmp     #'0'
+        bcc     @no
+        cmp     #'9' + 1
+        bcc     @dig
+        ora     #$20
+        cmp     #'a'
+        bcc     @no
+        cmp     #'f' + 1
+        bcs     @no
+        sbc     #'a' - 10 - 1           ; acarreo = 0
+        clc
+        rts
+@dig:   sbc     #'0' - 1                ; acarreo = 0
+        clc
+        rts
+@no:    sec
+        rts
+
+; Con !ram=XX: los 8 bancos de la PRG-RAM de las partidas (0x00000-0x0FFFF) a XX.
+llenar_ram:
+        ldx     #0
+@banco: lda     #REG_RAM
+        sta     REG_SEL
+        stx     REG_DAT
+        lda     #0
+        sta     REG_SEL
+        lda     #<VENT
+        sta     bp
+        lda     #>VENT
+        sta     bp+1
+        lda     bk_ram_val
+        ldy     #0
+@b:     sta     (bp),y
+        iny
+        bne     @b
+        inc     bp+1
+        ldy     bp+1
+        cpy     #>(VENT + $2000)
+        ldy     #0
+        bcc     @b
+        inx
+        cpx     #8
+        bne     @banco
         rts
 
 ; A = siguiente byte del archivo. Acarreo = 1 al final (o si falla la lectura).
@@ -535,7 +632,30 @@ pantalla:
         lda     bk_n+1
         sta     w16+1
         jsr     dec16_grande
-        lda     #>FILA_TIT
+        lda     bk_ram_on               ; «  RAM=XX» con la directiva
+        beq     @tit
+        ldx     #0
+@r:     lda     t_ram_tit,x
+        beq     :+
+        sta     (dst),y
+        iny
+        inx
+        bne     @r
+:       lda     bk_ram_val
+        lsr
+        lsr
+        lsr
+        lsr
+        tax
+        lda     cifras_hex,x
+        sta     (dst),y
+        iny
+        lda     bk_ram_val
+        and     #$0F
+        tax
+        lda     cifras_hex,x
+        sta     (dst),y
+@tit:   lda     #>FILA_TIT
         ldx     #<FILA_TIT
         jsr     texto_ppu
         lda     bk_hay
@@ -687,7 +807,13 @@ lanzar_i:
         lda     #M_NOARCH
         sta     bk_err
         jmp     pantalla
-@lanza: jsr     lanzar                  ; solo vuelve si falla
+@lanza: lda     bk_ram_on               ; !ram=XX: la RAM a XX y sin partidas
+        sta     l_sin_partida
+        beq     :+
+        jsr     llenar_ram
+:       jsr     lanzar                  ; solo vuelve si falla
+        lda     #0
+        sta     l_sin_partida
         lda     l_error
         sta     bk_err
         jmp     pantalla
@@ -920,5 +1046,8 @@ t_banco:    .byte "Modo banco  ", 0
 t_fin:      .byte "Lista terminada", 0
 t_ayuda:    .byte "Start lanzar ", C_IZQ, C_CURSOR, " otra B men", C_u, 0
 m_noarch:   .byte "No encuentro el archivo", 0
+t_ram_dir:  .byte "!ram="
+t_ram_tit:  .byte "  RAM=", 0
+cifras_hex: .byte "0123456789ABCDEF"
 mil_lo:     .byte <1000, <10000
 mil_hi:     .byte >1000, >10000

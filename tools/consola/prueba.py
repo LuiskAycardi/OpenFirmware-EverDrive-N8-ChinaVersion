@@ -251,7 +251,7 @@ class Banco:
         self.banco_lista = banco_mod.cargar_local(self.datos) if self.modo_banco else None
         if self.modo_banco and seco:            # en seco, la lista va en la SD simulada
             self.banco_lista = cfg["banco_lista"]
-            banco_mod.escribir(cfg["sd"], self.banco_lista)
+            banco_mod.escribir(cfg["sd"], self.banco_lista, ram=banco_mod.ram_de_mesen(referencia.RAM_INICIAL))
         if self.modo_banco and not self.banco_lista:
             raise Abortar("modo banco sin lista: antes, prueba.py preparar-banco con la SD en el PC")
         if (self.datos / "calibracion.json").exists():
@@ -946,6 +946,8 @@ def main():
     ap.add_argument("--modo-banco", action="store_true",
                     help="OS propio con EDFC/BANCO.TXT: sin navegar por el menú (antes, preparar-banco)")
     ap.add_argument("--destino", help="preparar-banco: la raíz de la microSD montada (por defecto, la de config.json)")
+    ap.add_argument("--con-partidas", action="store_true",
+                    help="preparar-banco: sin !ram= (los juegos con pila cargan y guardan su partida de la SD)")
     a = ap.parse_args()
     cfg = cargar_config(a.config)
     if a.sin_ventana:
@@ -976,7 +978,10 @@ def main():
         faltan = [r for r in rutas if not (destino / r).exists()]
         if faltan:
             log(f"aviso: {len(faltan)} rutas no están en {destino} (el OS dirá «No encuentro el archivo»): {faltan[:3]}")
-        p = banco_mod.escribir(destino, rutas)
+        ram = None if a.con_partidas else banco_mod.ram_de_mesen(referencia.RAM_INICIAL)
+        p = banco_mod.escribir(destino, rutas, ram=ram)
+        if ram is not None:
+            log(f"!ram={ram:02X}: los juegos con pila, sin su partida y con la RAM como en Mesen2 (--con-partidas: con ella)")
         banco_mod.guardar_local(AQUI / "datos", rutas)
         log(f"{p}: {len(rutas)} entradas (la 1, la ROM de calibración). Copia local: datos/banco_lista.json")
         return

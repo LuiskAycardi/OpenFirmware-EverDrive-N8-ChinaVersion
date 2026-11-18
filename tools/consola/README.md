@@ -75,6 +75,10 @@ python3 -I prueba.py ejecutar --modo-banco --carpeta "PRUEBAS/4 MMC3"           
 ```
 - `preparar-banco` escribe la lista (la ROM de calibración primero) en la SD montada y una copia en
   `datos/banco_lista.json`, que es la que usa `ejecutar --modo-banco`: hay que usar los mismos filtros.
+- La lista lleva `!ram=00` (el `RamPowerOnState` de Mesen2): antes de cada lanzamiento, la PRG-RAM de las partidas
+  se pone a $00 y **los juegos con pila no cargan ni guardan su partida**. Así arrancan igual que en la referencia
+  (con su partida, Zelda daba «basura» y Dragon Warrior IV «parecido») y las pruebas no tocan tus partidas.
+  `preparar-banco --con-partidas` la quita.
 - Para volver al menú normal: B en la pantalla de banco (hasta apagar) o borrar `EDFC/BANCO.TXT`.
 - En seco: `prueba.py ejecutar --seco --modo-banco --max 3` (el simulador tiene la pantalla de banco).
 

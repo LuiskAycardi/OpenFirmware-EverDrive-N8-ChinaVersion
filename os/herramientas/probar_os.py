@@ -862,6 +862,21 @@ comprobar(cabecera(pan) == 'Raíz 1/1' and 'Modo banco' not in pan, 'B: sale al 
 m.cpu.reset()
 m.correr(PASOS + 1_000_000, nmi_cada=9000)
 comprobar('Modo banco' not in m.pantalla() and cabecera(m.pantalla()) == 'Raíz 1/1', 'y un reset lo deja en el menú (hasta apagar)')
+img7c = imagen7('e7c.img', lista='!ram=00\nMMC3.NES\nJUEGO.NES\n')
+m5, ok5 = encender(pathlib.Path(img7c).read_bytes())
+m5.correr(1_000_000, nmi_cada=9000)
+pan = m5.pantalla()
+comprobar(titulo_banco(pan) == 'Modo banco  1/2  RAM=00', f'!ram=00: no cuenta como entrada y sale en el título: {titulo_banco(pan)}')
+m5.prgram[:0x10000] = bytes([0x5A]) * 0x10000
+ok5 = lanzar(m5, 0x10)
+comprobar(ok5 and m5.mapper == 4 and bytes(m5.prgram[:0x10000]) == bytes(0x10000) and not marca(m5)
+          and 'MMC3.SRM' not in nombres_save(m5) and not escrituras(m5),
+          'juego con pila con !ram=00: los 64 KiB de la PRG-RAM a $00, sin partida (no se crea ni se marca) y sin escribir')
+m5.prgram[:0x2000] = PAT
+m5.reset_consola()
+m5.correr(PASOS + 1_000_000, nmi_cada=9000)
+comprobar(titulo_banco(m5.pantalla()) == 'Modo banco  2/2  RAM=00' and 'Partida' not in m5.pantalla() and not escrituras(m5),
+          'tras el RESET: la siguiente, y lo que «guardó» el juego no se escribe en la SD')
 img7b = imagen7('e7b.img', lista='zelda.nes\nJUEGO.NES\n')
 m4, ok4 = encender(pathlib.Path(img7b).read_bytes(), prgram=ram)
 m4.correr(1_000_000, nmi_cada=9000)

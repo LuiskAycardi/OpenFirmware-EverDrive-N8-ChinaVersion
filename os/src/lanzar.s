@@ -18,6 +18,7 @@
         .setcpu "6502"
         .include "os.inc"
 
+        .export l_sin_partida
         .export lanzar, l_error, l_rbf, nombre_rbf, leer_cabecera, l_prg16, l_chr8, l_cfg, abrir_edfc
         .exportzp l_mapper
         .import dir_abrir_raiz, dir_abrir, dir_buscar
@@ -52,6 +53,7 @@ l_mapper:   .res 1
 
         .segment "BSS"
 l_error:    .res 1
+l_sin_partida: .res 1           ; 1 = sin partida (modo banco con !ram=XX): ni se carga ni se deja pendiente
 l_rbf:      .res 1
 l_prg16:    .res 1
 l_chr8:     .res 1
@@ -109,7 +111,9 @@ lanzar:
         bcc     :+
         lda     #L_PENDIENTE
         jmp     falla
-:       lda     l_cfg
+:       lda     l_sin_partida
+        bne     @sin_pila
+        lda     l_cfg
         and     #$02
         beq     @sin_pila
         jsr     partida_preparar
@@ -352,6 +356,8 @@ lanzar:
         ldx     #REG_CART_CFG
         lda     #0                      ; reset corto: el reset vuelve al OS
         jsr     fpga_reg
+        lda     l_sin_partida
+        bne     :+
         lda     l_cfg
         and     #$02
         beq     :+

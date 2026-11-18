@@ -309,7 +309,8 @@ class BancoSimulado:
         img = np.zeros((240, 256, 3), np.uint8)
         es = self.lista()
         blanco = (236, 238, 236)
-        OsSimulado.texto(self, img, 7, 2, f"Modo banco  {self.i + 1}/{len(es)}", blanco)
+        ram = next((l[5:7].upper() for l in (self.firma or "").split("\n") if l.startswith("!ram=")), None)
+        OsSimulado.texto(self, img, 7, 2, f"Modo banco  {self.i + 1}/{len(es)}" + (f"  RAM={ram}" if ram else ""), blanco)
         OsSimulado.texto(self, img, 9, 2, es[self.i][:28] if self.i < len(es) else "Lista terminada", blanco)
         banco_mod.pintar_codigo(img, self.i, blanco)
         return img
