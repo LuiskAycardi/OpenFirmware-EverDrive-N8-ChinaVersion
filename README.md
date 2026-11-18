@@ -1,13 +1,24 @@
 # OpenFirmware-EverDrive-N8-ChinaVersion
 
-**ES** — Mappers propios (Verilog) para el **EverDrive N8 China Version** (el clon chino del EverDrive N8,
-con FPGA **Altera Cyclone II EP2C5**), en sus dos versiones: **Famicom y NES**. Implementación clean room,
+**ES** — Mappers propios (Verilog) y un **OS propio** para el **EverDrive N8 China Version** (el clon chino
+del EverDrive N8, con FPGA **Altera Cyclone II EP2C5**), en sus dos versiones: **Famicom y NES**. Implementación clean room,
 validada contra el emulador Mesen2 con fuzz de ROMs sintéticas, bancos de simulación y juegos reales.
 
-**EN** — Our own Verilog mappers for the **EverDrive N8 China Version** (the Chinese clone of the EverDrive
-N8, built around an **Altera Cyclone II EP2C5** FPGA), for both cartridge versions: **Famicom and NES**.
+**EN** — Our own Verilog mappers and **our own OS** for the **EverDrive N8 China Version** (the Chinese
+clone of the EverDrive N8, built around an **Altera Cyclone II EP2C5** FPGA), for both cartridge versions:
+**Famicom and NES**.
 Clean-room implementation, validated against the Mesen2 emulator with synthetic-ROM fuzzing, simulation
 testbenches and real games.
+
+> 🎉 **ES — Novedad (noviembre de 2026): ya tenemos nuestro primer `OS.BIN` propio funcional.** Arranca
+> desde la BIOS del cartucho, lee la microSD, lista la raíz y **lanza juegos con nuestros RBF**: Super Mario
+> Bros. y Super Mario Bros. 3 funcionan en una NES real, y el botón RESET vuelve al menú con el cursor sobre
+> el juego. Es una versión temprana y experimental; ver [OS propio](#os-propio--own-os).
+>
+> 🎉 **EN — News (November 2026): we now have our first working `OS.BIN` of our own.** It boots from the
+> cartridge BIOS, reads the microSD card, lists the root folder and **launches games with our RBF files**:
+> Super Mario Bros. and Super Mario Bros. 3 run on a real NES, and the RESET button returns to the menu with
+> the cursor on the game. It is an early, experimental version; see [Own OS](#os-propio--own-os).
 
 > **ES** — Proyecto independiente: no está afiliado a Krikzz ni a EverDrive, ni respaldado por ellos.
 > «EverDrive» es una marca de su autor. Este README está en español e inglés; el resto de la
@@ -34,8 +45,16 @@ testbenches and real games.
   escena con Mesen2; ver `tools/consola/README.md`). Películas completas sin perder la
   sincronización: Super Mario Bros. y Nuts & Milk (0), Rainbow Islands (2), Fire 'n Ice (4),
   Wizards & Warriors III (7) y Metal Force (156); además, tramos de los mappers 3, 11, 30, 79 y 87 y la
-  IRQ del 65 medida con una ROM de prueba. Son mappers de los RBF 100, 101 y 102; **los RBF 103 a 106
-  aún no se han probado en consola** y el resto de mappers solo se ha validado en el emulador.
+  IRQ del 65 medida con una ROM de prueba. **Los RBF 103 a 106** también se han probado en la consola: 39
+  juegos NTSC elegidos por cobertura, 20 segundos cada uno (MMC5, VRC7 y los mappers 35, 56, 59, 83, 90, 91,
+  105, 111, 114, 116, 117, 121, 176, 194, 209, 211, 215, 219, 222 y 234). El resto de mappers solo se ha
+  validado en el emulador.
+- **RBF limpios**: cada RBF recibe el número de mapper tal cual está en la cabecera de la ROM. El OS v13 de
+  fábrica cambia el 219 por 0 y el 220 por 4; hasta noviembre de 2026 el RTL deshacía ese cambio, y ya no.
+  Con el OS de fábrica, el 219 (Toy Story) vuelve a no funcionar; con el OS propio sí debería, aunque no se ha
+  probado en la consola.
+- **OS propio** (`os/`): primera versión funcional, probada en la NES real. Ver
+  [OS propio](#os-propio--own-os).
 
 **EN**
 - **194 mappers**: the 177 of the official 1.26 firmware (all but the FDS) plus 17 more (46, 59, 83,
@@ -52,8 +71,15 @@ testbenches and real games.
   against Mesen2; see `tools/consola/README.md`). Full movies without losing sync:
   Super Mario Bros. and Nuts & Milk (0), Rainbow Islands (2), Fire 'n Ice (4), Wizards & Warriors III
   (7) and Metal Force (156); plus stretches of mappers 3, 11, 30, 79 and 87 and the mapper 65 IRQ
-  measured with a test ROM. These mappers live in RBF 100, 101 and 102; **RBF 103 to 106 have not been
-  tested on the console yet** and the remaining mappers have only been validated in the emulator.
+  measured with a test ROM. **RBF 103 to 106** have been tested on the console too: 39 NTSC games picked by
+  coverage, 20 seconds each (MMC5, VRC7 and mappers 35, 56, 59, 83, 90, 91, 105, 111, 114, 116, 117, 121,
+  176, 194, 209, 211, 215, 219, 222 and 234). The remaining mappers have only been validated in the
+  emulator.
+- **Clean RBF files**: each RBF gets the mapper number exactly as written in the ROM header. The factory OS
+  v13 turns 219 into 0 and 220 into 4; until November 2026 the RTL undid that change, and it no longer does.
+  With the factory OS, mapper 219 (Toy Story) fails again; with our own OS it should work, although it has
+  not been tested on the console.
+- **Own OS** (`os/`): first working version, tested on a real NES. See [Own OS](#os-propio--own-os).
 
 ## Cartucho compatible / Supported cartridge
 
@@ -100,6 +126,62 @@ page has a package ready for the microSD card (the RBF files and a `MAPROUT.BIN`
 `LEEME.md`). Results, good or bad, are very welcome as *issues*. The package is built with
 `make -C hdl build` and `python3 -I release/make_release.py vX.Y.Z`.
 
+## OS propio / Own OS
+
+**ES** — `os/` es un `OS.BIN` escrito desde cero en ensamblador 6502 (ca65), con licencia GPL-3.0-or-later.
+Ocupa el lugar del `EDFC/OS.BIN` de fábrica; **la BIOS del cartucho y el `255.RBF` de fábrica se siguen
+usando** y no se tocan.
+
+Qué hace hoy:
+- Arranca desde la BIOS y distingue el encendido, un reset en el menú y la vuelta desde un juego. Aguanta el
+  botón RESET y el reset por mando del kit Lava RGB.
+- Lee la microSD con un controlador propio, **solo lectura**: FAT16 y FAT32, SDHC y SDSC, con o sin MBR.
+- Muestra la lista de la raíz con una fuente propia, pensada para televisores CRT y con caracteres españoles.
+- **Lanza juegos**: lee la cabecera iNES, busca el RBF en `EDFC/MAPROUT.BIN`, carga el RBF en el FPGA, copia la
+  PRG y la CHR y salta al juego con el número de mapper de la cabecera, sin traducirlo.
+
+Qué falta: carpetas, nombres largos, partidas guardadas, una carga más rápida (unos 40 KiB/s: SMB3 tarda
+unos 9,5 s) y menú completo. **Es experimental**: pruébalo en una microSD de pruebas.
+
+Para probarlo:
+1. `make -C os` (necesita cc65 y Python 3).
+2. En la microSD, renombra el `EDFC/OS.BIN` de fábrica a `EDFC/OS_V13.BIN` y copia `os/build/OS.BIN` en su
+   lugar. Para volver al OS de fábrica, deshaz el cambio.
+3. El archivo tiene que quedar **contiguo** en la tarjeta: lo más seguro es copiarlo en una tarjeta recién
+   formateada.
+
+Detalles en `os/LEEME.md`. La BIOS y el arranque están estudiados en `docs/bios-n8-clon.md` y
+`docs/os-propio-viabilidad.md`. `tools/bios/` es un emulador propio del cartucho que ejecuta la BIOS real (a
+partir de un volcado de la BIOS, que no está en el repositorio) para probar el OS en el PC antes de llevarlo a
+la consola.
+
+**EN** — `os/` is an `OS.BIN` written from scratch in 6502 assembly (ca65), licensed GPL-3.0-or-later. It
+replaces the factory `EDFC/OS.BIN`; **the cartridge BIOS and the factory `255.RBF` are still used** and are
+left untouched.
+
+What it does today:
+- It boots from the BIOS and tells apart a power-on, a reset in the menu and a return from a game. It handles
+  the RESET button and the Lava RGB kit's controller reset.
+- It reads the microSD card with its own driver, **read-only**: FAT16 and FAT32, SDHC and SDSC, with or
+  without an MBR.
+- It shows the root folder with its own font, designed for CRT TVs and with Spanish characters.
+- **It launches games**: it reads the iNES header, looks up the RBF in `EDFC/MAPROUT.BIN`, loads the RBF into
+  the FPGA, copies the PRG and CHR data and jumps to the game with the header's mapper number, untranslated.
+
+Still missing: folders, long file names, battery saves, faster loading (about 40 KiB/s: SMB3 takes about
+9.5 s) and a full menu. **It is experimental**: try it on a spare microSD card.
+
+To try it:
+1. `make -C os` (needs cc65 and Python 3).
+2. On the microSD card, rename the factory `EDFC/OS.BIN` to `EDFC/OS_V13.BIN` and copy `os/build/OS.BIN` in
+   its place. To go back to the factory OS, undo the change.
+3. The file must end up **contiguous** on the card: the safest way is to copy it to a freshly formatted card.
+
+Details are in `os/LEEME.md`. The BIOS and the boot process are studied in `docs/bios-n8-clon.md` and
+`docs/os-propio-viabilidad.md`. `tools/bios/` is our own emulator of the cartridge that runs the real BIOS
+(from a BIOS dump, which is not in the repository) so the OS can be tested on the PC before going to the
+console.
+
 ## Cómo se ha hecho (clean room) / How it was made (clean room)
 
 **ES**
@@ -111,9 +193,13 @@ page has a package ready for the microSD card (the RBF files and a `MAPROUT.BIN`
   y `docs/mappers-n8-oficial.md`.
 - La referencia pública con licencia MIT del N8 PRO de Krikzz se ha consultado para entender algunas
   placas; no se ha copiado código.
+- Para el OS propio, la BIOS del cartucho y el OS v13 se han estudiado en local (ejecutándolos en un emulador y
+  leyendo su comportamiento) solo para conocer la interfaz con el hardware. El OS propio está escrito desde
+  cero: no lleva código, tablas ni la fuente de Krikzz.
 
-**Este repositorio no contiene** ningún firmware, OS, RBF ni código de Krikzz, ni ROMs. Para usar los
-RBF hace falta un N8 con su propio OS y tarjeta SD.
+**Este repositorio no contiene** ningún firmware, BIOS, OS, RBF ni código de Krikzz, ni ROMs. Para usar los
+RBF hace falta un N8 con su BIOS, su `255.RBF` de fábrica y su tarjeta SD; el OS puede ser el de fábrica o
+el propio.
 
 **EN**
 - The registers and behaviour of each mapper come from the public description (NESdev Wiki) and are
@@ -124,9 +210,13 @@ RBF hace falta un N8 con su propio OS y tarjeta SD.
   `docs/mappers-n8-oficial.md`.
 - Krikzz's public MIT-licensed N8 PRO reference was consulted to understand a few boards; no code was
   copied.
+- For our own OS, the cartridge BIOS and the OS v13 were studied locally (running them in an emulator and
+  observing their behaviour) only to learn the hardware interface. Our OS is written from scratch: it
+  contains no code, tables or font from Krikzz.
 
-**This repository does not contain** any firmware, OS, RBF or code from Krikzz, nor any ROMs. Using the
-RBF files requires an N8 with its own OS and SD card.
+**This repository does not contain** any firmware, BIOS, OS, RBF or code from Krikzz, nor any ROMs. Using
+the RBF files requires an N8 with its BIOS, its factory `255.RBF` and its SD card; the OS can be the factory
+one or ours.
 
 ## Estructura / Layout
 
@@ -136,6 +226,8 @@ RBF files requires an N8 with its own OS and SD card.
 | `hdl/sim/` | **ES** Bancos de simulación con iverilog (`make sim`). **EN** iverilog simulation testbenches (`make sim`). |
 | `hdl/tools/` | **ES** Generador de proyectos Quartus, `MAPROUT.BIN`, inventarios, pruebas de mutación. **EN** Quartus project generator, `MAPROUT.BIN`, inventories, mutation testing. |
 | `hdl/quartus/` | **ES** Plantilla del proyecto Quartus II 13.0sp1 (pines y tiempos). **EN** Quartus II 13.0sp1 project template (pins and timing). |
+| `os/` | **ES** OS propio: `src/` (arranque, SD, FAT, lanzador, menú), fuente y pruebas (`make -C os`). **EN** Our own OS: `src/` (boot, SD, FAT, launcher, menu), font and tests (`make -C os`). |
+| `tools/bios/` | **ES** Emulador del cartucho (CPU, CPLD, FPGA en modo OS y SD) que ejecuta la BIOS real para probar el OS. **EN** Cartridge emulator (CPU, CPLD, FPGA in OS mode and SD) that runs the real BIOS to test the OS. |
 | `tools/n8sim/` | **ES** Banco Mesen2 + Verilator: el RTL corre dentro de Mesen2 y se compara con su mapper (`difftest.py`, `fuzz/`). **EN** Mesen2 + Verilator bench: the RTL runs inside Mesen2 and is compared with its mapper (`difftest.py`, `fuzz/`). |
 | `tools/fm/` | **ES** Oráculo y prueba muestra a muestra del FM del VRC7. **EN** Oracle and sample-exact test of the VRC7 FM. |
 | `tools/consola/` | **ES** Pruebas automáticas en la consola real: mando emulado con Arduino, captura de vídeo y comparación. **EN** Automated tests on real hardware: Arduino-emulated controller, video capture and comparison. |
@@ -153,10 +245,10 @@ prebuilt version from [Releases](https://github.com/LuiskAycardi/OpenFirmware-Ev
 is all you need.
 
 **ES** — Requisitos: Icarus Verilog, Python 3, Quartus II 13.0sp1 (para los RBF), Verilator y .NET (para
-el banco Mesen2).
+el banco Mesen2), cc65 (para el OS) y mtools, mkfs.fat y sfdisk (para las pruebas del OS).
 
 **EN** — Requirements: Icarus Verilog, Python 3, Quartus II 13.0sp1 (for the RBF files), Verilator and
-.NET (for the Mesen2 bench).
+.NET (for the Mesen2 bench), cc65 (for the OS) and mtools, mkfs.fat and sfdisk (for the OS tests).
 
 ```sh
 make -C hdl sim                  # ES: todos los bancos de simulación / EN: all simulation testbenches
@@ -169,6 +261,11 @@ python3 -I tools/n8sim/difftest.py --instancias --clk-auto GAME.nes   # ES: jueg
                                                                       # EN: real game, N8 vs Mesen2
 python3 -I tools/n8sim/fuzz/fuzz.py 4 85 --semilla 1                  # ES: fuzz de los mappers 4 y 85
                                                                       # EN: fuzz mappers 4 and 85
+
+make -C os                       # os/build/OS.BIN (cc65)
+python3 -I os/herramientas/probar_os.py --bios BIOS.bin --rbf 255.RBF --trabajo /tmp/carpeta-nueva
+                                 # ES: el OS con la BIOS real en el emulador (volcado no incluido)
+                                 # EN: the OS with the real BIOS in the emulator (dump not included)
 ```
 
 **ES** — Para usar los RBF en el N8: copiar `hdl/out/1xx.RBF` a `EDFC/MAPS/` de la SD y generar el
