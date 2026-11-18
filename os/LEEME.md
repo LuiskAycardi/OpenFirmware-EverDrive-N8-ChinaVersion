@@ -373,4 +373,9 @@ nombre en la pantalla, sin depender del orden.
 - Visto en la consola y corregido después (probado en el banco): la fila de información seguía mostrando el juego
   anterior hasta que el cursor se quedaba quieto; ahora se vacía al moverlo.
 
+- **Fila en rojo y páginas solo con derecha/izquierda** (2026-11-18, segunda prueba): al encender vuelve a Tiny Toon
+  con su fila y el ▶ en rojo; abajo mantenido 1,5 s se para en la última fila de la página 2/3 (en rojo, la de antes
+  en blanco); derecha pasa a la 3/3 con el cursor en la última entrada (página más corta); Select+izquierda vuelve al
+  primer «2…» de la página 2.
+
 Pendiente: CRC del juego, modo banco.
