@@ -303,6 +303,11 @@ tarjeta que rechaza las escrituras.
 - Volver a lanzarlo, registrar «DEF» (solo en la RAM) y **apagar la NES 10 s sin RESET**: al encender, «frío (BIOS)»
   y **«Partida guardada»**; Zelda muestra ABC y DEF. **La PRG-RAM del clon tiene pila**: la marca del banco 8
   sobrevive al apagado, así que apagar dentro del juego tampoco pierde la partida.
+- **Apagado largo (30 minutos):** registrar «GHI» (solo en la RAM) y apagar a las 13:00; al encender a las 13:32,
+  «frío (BIOS)» y «Partida guardada», y Zelda muestra ABC, DEF y GHI. Antes ya había aguantado unos 10 minutos
+  (apagado con Zelda en marcha para sacar la SD). La pila se confirma: no hace falta guardar solo con RESET.
+- **Reset del kit Lava** (Select 2,5 s + Select+A 5 s) dentro de Zelda: vuelve como «vuelta de juego» (mismo camino
+  que el botón RESET, que guarda); los resets siguientes, ya en el menú, borran el mensaje de la fila 25.
 - La SD en el PC: `EDFC/SAVE/Legend of Zelda, The (USA).srm` (8192 bytes, con ABC y DEF) y `fsck.fat -n` sin
   errores (solo «Free cluster summary uninitialized», que es lo que deja el OS a propósito). El dispositivo se lee
   sin sudo con UDisks (`org.freedesktop.UDisks2.Block.OpenForBackup`).
