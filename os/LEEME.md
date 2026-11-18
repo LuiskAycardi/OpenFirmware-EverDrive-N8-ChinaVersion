@@ -420,6 +420,10 @@ pila y sin ella; B al menú, que se mantiene tras un reset; otra BANCO.TXT vuelv
   Castlevania II, Final Fantasy, Mega Man 2 y Metroid **ok**; Dragon Warrior IV **parecido** y Zelda **basura**:
   los dos tienen pila y cargan su partida de la SD (Zelda, la de las pruebas de la etapa 5), y Mesen2 arranca sin
   ella. Una tanda de 3 antes: 3 ok, y el PC volvió solo de la entrada 3 a la 1 con izquierda.
+- **Con `!ram=00`** (misma tanda): **5 ok y 1 parecido**. Dragon Warrior IV pasa a ok; Zelda, de basura a parecido:
+  solo difiere la primera escena (fotograma 120: en la consola ya está el título y en Mesen2 aún negro); las otras 4,
+  iguales. Probablemente la RAM interna de la consola (la de la CPU, que no se controla) arranca distinta de los
+  ceros de Mesen2 y Zelda tarda otro poco en arrancar. La partida de Zelda de la SD no se tocó.
 - Tras cada juego, el botón RESET por D2 vuelve a la pantalla de banco con la siguiente en unos 2 s.
 - La primera tanda se paró tras el primer juego: después del RESET no llegó imagen y el reset del kit Lava no vio
   LATCH (la consola, colgada o sin vídeo); hubo que apagar. No se repitió en tres tandas más (12 resets).
