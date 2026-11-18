@@ -10,6 +10,18 @@ clone of the EverDrive N8, built around an **Altera Cyclone II EP2C5** FPGA), fo
 Clean-room implementation, validated against the Mesen2 emulator with synthetic-ROM fuzzing, simulation
 testbenches and real games.
 
+> 🚀 **ES — Novedad (noviembre de 2026): primera compilación completa propia (beta).** Nuestro OS, nuestro
+> `255.RBF` y nuestros mappers: en la microSD ya no hace falta **ningún archivo de Krikzz ni de fábrica**; del
+> cartucho solo se usa su BIOS, que no se toca. Descárgala en
+> [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases) y sigue su
+> `LEEME.md` (copia de seguridad, formato FAT32 con clúster de 32 KB y copia). Todavía no guarda partidas.
+>
+> 🚀 **EN — News (November 2026): first complete own build (beta).** Our OS, our `255.RBF` and our mappers:
+> the microSD card no longer needs **any file from Krikzz or from the factory**; only the cartridge's BIOS is
+> used, and it is left untouched. Download it from
+> [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases) and follow its
+> `LEEME.md` (backup, FAT32 format with 32 KB clusters and copy). It does not save games yet.
+>
 > 🎉 **ES — Novedad (noviembre de 2026): ya tenemos nuestro primer `OS.BIN` propio funcional.** Arranca
 > desde la BIOS del cartucho, lee la microSD, recorre sus carpetas con nombres largos y **lanza juegos con nuestros RBF**: Super Mario
 > Bros. y Super Mario Bros. 3 funcionan en una NES real, y el botón RESET vuelve al menú con el cursor sobre
@@ -106,25 +118,27 @@ please tell us its board label and your results in an *issue*.
 
 ## Probar en tu cartucho / Test it on your cartridge
 
-> **ES** — **No hace falta compilar nada.** Si no quieres compilar todo el proyecto, descarga la versión
-> ya compilada desde [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases)
-> y reemplaza en tu SD los archivos de la carpeta `EDFC` (los RBF de `EDFC/MAPS/` y `EDFC/MAPROUT.BIN`),
-> siguiendo el `LEEME.md` del paquete. Haz antes una copia de seguridad de tu carpeta `EDFC`.
+> **ES** — **No hace falta compilar nada.** Descarga la compilación completa desde
+> [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases) y sigue el
+> `LEEME.md` del paquete: **copia de seguridad completa de tu SD**, formato **FAT32 con clúster de 32 KB** y
+> copia de la carpeta `EDFC` del paquete (la primera) y de tus juegos. Para seguir con el OS de fábrica y usar
+> solo nuestros mappers, el paquete anterior es la v0.3.0.
 >
-> **EN** — **You don't need to build anything.** If you don't want to build the whole project, download
-> the prebuilt version from [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases)
-> and replace the files of the `EDFC` folder on your SD card (the RBF files in `EDFC/MAPS/` and
-> `EDFC/MAPROUT.BIN`), following the package's `LEEME.md`. Back up your `EDFC` folder first.
+> **EN** — **You don't need to build anything.** Download the complete build from
+> [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases) and follow the
+> package's `LEEME.md`: **full backup of your SD card**, **FAT32 format with 32 KB clusters** and copy the
+> package's `EDFC` folder (first) and your games. To keep the factory OS and use only our mappers, the previous
+> package is v0.3.0.
 
 **ES** — En [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases)
-hay un paquete listo para la microSD (los RBF y un `MAPROUT.BIN`, con instrucciones en `LEEME.md`). Los
-resultados, buenos o malos, se agradecen como *issues*. El paquete se genera con `make -C hdl build` y
-`python3 -I release/make_release.py vX.Y.Z`.
+hay un paquete listo para la microSD: la carpeta `EDFC` completa (OS, `255.RBF`, mappers y `MAPROUT.BIN`), con
+instrucciones en `LEEME.md`. Los resultados, buenos o malos, se agradecen como *issues*. El paquete se genera
+con `make -C hdl build`, `make -C os` y `python3 -I release/make_release.py vX.Y.Z`.
 
 **EN** — The [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases)
-page has a package ready for the microSD card (the RBF files and a `MAPROUT.BIN`, with instructions in
-`LEEME.md`). Results, good or bad, are very welcome as *issues*. The package is built with
-`make -C hdl build` and `python3 -I release/make_release.py vX.Y.Z`.
+page has a package ready for the microSD card: the whole `EDFC` folder (OS, `255.RBF`, mappers and
+`MAPROUT.BIN`), with instructions in `LEEME.md`. Results, good or bad, are very welcome as *issues*. The package
+is built with `make -C hdl build`, `make -C os` and `python3 -I release/make_release.py vX.Y.Z`.
 
 ## OS propio / Own OS
 

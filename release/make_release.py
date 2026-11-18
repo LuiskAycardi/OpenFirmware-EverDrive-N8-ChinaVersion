@@ -1,23 +1,28 @@
 #!/usr/bin/env python3
-"""Empaqueta un release para la microSD: los RBF compilados (hdl/out), un MAPROUT.BIN generado desde
-n8_top.v, el OS propio (os/build/OS.BIN) y nuestro 255.RBF (hdl/out/255.RBF), opcionales para el usuario, las instrucciones (release/LEEME.md), la
-lista de mappers, la licencia y las sumas SHA-256.
+"""Empaqueta una compilación completa y propia para la microSD del EverDrive N8 China Version: todo lo que la
+BIOS del cartucho lee de la tarjeta sale de este repositorio (nada de Krikzz).
+
+  SD/EDFC/OS.BIN              el OS propio (os/build/OS.BIN)
+  SD/EDFC/MAPS/255.RBF        el RBF del modo OS (hdl/out/255.RBF), el que la BIOS carga al encender
+  SD/EDFC/MAPS/100-106.RBF    los mappers (hdl/out)
+  SD/EDFC/MAPROUT.BIN         mapper -> RBF, generado desde n8_top.v (sin FDS: no hay 254.RBF propio)
+  LEEME.md, MAPPERS.txt, LICENSE, SHA256SUMS.txt
 
   make -C hdl build
   make -C os
-  python3 -I release/make_release.py v0.1.0      -> release/out/OpenFirmware-N8-v0.1.0.zip
+  python3 -I release/make_release.py v0.4.0-beta   -> release/out/OpenFirmware-N8-v0.4.0-beta.zip
 
-Exige un árbol git limpio: el LEEME del paquete cita el commit del que salen los RBF (GPL: fuente
-correspondiente).
+Exige un árbol git limpio: el LEEME del paquete cita el commit del que sale todo (GPL: fuente correspondiente).
 """
 import hashlib
 import pathlib
+import shutil
 import subprocess
 import sys
 import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-RBFS = [100, 101, 102, 103, 104, 105, 106]
+RBFS = [100, 101, 102, 103, 104, 105, 106, 255]
 
 
 def git(*a):
@@ -34,35 +39,38 @@ def main():
     out = ROOT / "release/out"
     name = f"OpenFirmware-N8-{ver}"
     stage = out / name
-    (stage / "EDFC/MAPS").mkdir(parents=True, exist_ok=True)
+    if stage.exists():
+        shutil.rmtree(stage)
+    maps = stage / "SD/EDFC/MAPS"
+    maps.mkdir(parents=True)
+
+    top = (ROOT / "hdl/rtl/n8_top.v").stat().st_mtime
     for n in RBFS:
         src = ROOT / f"hdl/out/{n}.RBF"
         if not src.exists():
             sys.exit(f"falta {src}: make -C hdl build")
-        if src.stat().st_mtime < (ROOT / "hdl/rtl/n8_top.v").stat().st_mtime:
+        if src.stat().st_mtime < top:
             sys.exit(f"{src} es más antiguo que hdl/rtl/n8_top.v: recompila")
-        (stage / f"EDFC/MAPS/{n}.RBF").write_bytes(src.read_bytes())
-    os_bin = ROOT / "os/build/OS.BIN"           # OS propio, opcional
+        (maps / f"{n}.RBF").write_bytes(src.read_bytes())
+
+    os_bin = ROOT / "os/build/OS.BIN"
     fuentes = list((ROOT / "os/src").iterdir()) + [ROOT / "os/n8os.cfg", ROOT / "os/Makefile",
                                                     ROOT / "os/herramientas/fuente.py"]
     if not os_bin.exists() or os_bin.stat().st_mtime < max(p.stat().st_mtime for p in fuentes):
         sys.exit(f"{os_bin} falta o es más antiguo que sus fuentes: make -C os")
-    (stage / "OS-propio").mkdir(exist_ok=True)
-    (stage / "OS-propio/OS.BIN").write_bytes(os_bin.read_bytes())
-    rbf255 = ROOT / "hdl/out/255.RBF"           # nuestro RBF del modo OS, opcional
-    if not rbf255.exists() or rbf255.stat().st_mtime < (ROOT / "hdl/rtl/n8_top.v").stat().st_mtime:
-        sys.exit(f"{rbf255} falta o es más antiguo que hdl/rtl/n8_top.v: make -C hdl build")
-    (stage / "OS-propio/255.RBF").write_bytes(rbf255.read_bytes())
+    (stage / "SD/EDFC/OS.BIN").write_bytes(os_bin.read_bytes())
+
     lista = subprocess.run([sys.executable, "-I", str(ROOT / "hdl/tools/gen_maprout.py"),
-                            str(stage / "EDFC/MAPROUT.BIN"), "--fds", "--lista"],
+                            str(stage / "SD/EDFC/MAPROUT.BIN"), "--lista"],
                            capture_output=True, text=True, check=True).stdout
     (stage / "MAPPERS.txt").write_text(
         f"OpenFirmware-EverDrive-N8-ChinaVersion {ver} (commit {commit})\n"
-        "Mapper -> RBF. 254 = FDS: usa el 254.RBF que ya tiene tu SD / uses the 254.RBF already on your SD.\n\n"
+        "Mapper -> RBF. Sin FDS (254): no hay 254.RBF propio / No FDS (254): there is no own 254.RBF.\n\n"
         + "\n".join(l.strip() for l in lista.splitlines()[1:]) + "\n")
     leeme = (ROOT / "release/LEEME.md").read_text().replace("{VERSION}", ver).replace("{COMMIT}", commit)
     (stage / "LEEME.md").write_text(leeme)
     (stage / "LICENSE").write_text((ROOT / "LICENSE").read_text())
+
     files = sorted(p for p in stage.rglob("*") if p.is_file() and p.name != "SHA256SUMS.txt")
     sums = "".join(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(stage)}\n" for p in files)
     (stage / "SHA256SUMS.txt").write_text(sums)

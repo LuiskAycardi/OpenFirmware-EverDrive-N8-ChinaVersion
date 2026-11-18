@@ -1,202 +1,269 @@
-# OpenFirmware-EverDrive-N8-ChinaVersion — paquete de pruebas / test package {VERSION}
+# OpenFirmware-EverDrive-N8-ChinaVersion — compilación completa propia / complete own build {VERSION} (beta)
 
-**ES** — Mappers libres (GPL-3.0-or-later) para el **EverDrive N8 China Version** (clon chino con FPGA
-EP2C5) de **Famicom y NES**, listos para copiar a la microSD, y **nuestro primer OS propio**, experimental.
-**Versión de pruebas**: todos los mappers coinciden con el emulador Mesen2 en el banco de pruebas y una parte
-se ha probado en una NES real. Este paquete es para que quien tenga uno de estos cartuchos nos ayude a
-probarlos.
+**ES** — Firmware libre (GPL-3.0-or-later) para la microSD del **EverDrive N8 China Version** (clon chino con
+FPGA EP2C5, versión NO-PRO) de **Famicom y NES**. Es una **compilación completa y propia**: todo lo que el
+cartucho lee de la tarjeta sale de nuestro repositorio, **sin ningún archivo de Krikzz ni de fábrica**:
 
-**EN** — Free (GPL-3.0-or-later) mappers for the **EverDrive N8 China Version** (Chinese clone with an
-EP2C5 FPGA), **Famicom and NES** cartridges, ready to copy to the microSD card, and **our first own OS**,
-experimental. **Test release**: every mapper matches the Mesen2 emulator on our test bench and part of them
-have been tried on a real NES. This package is for anyone who owns one of these cartridges to help us test
-them.
+- nuestro **OS** (`EDFC/OS.BIN`): el menú, escrito desde cero;
+- nuestro **255.RBF** (`EDFC/MAPS/255.RBF`): lo que el FPGA carga al encender para que funcione el menú;
+- nuestros **mappers** (`EDFC/MAPS/100.RBF` … `106.RBF`, 194 mappers) y su tabla (`EDFC/MAPROUT.BIN`).
+
+Del cartucho solo se usa su **BIOS** (en la memoria flash del propio cartucho), que no se toca. **Es una
+beta**: funciona en una NES real, pero todavía le faltan cosas (sobre todo, **no guarda partidas**; ver
+«Qué falta»).
+
+**EN** — Free (GPL-3.0-or-later) firmware for the microSD card of the **EverDrive N8 China Version** (Chinese
+clone with an EP2C5 FPGA, NON-PRO version), **Famicom and NES** cartridges. It is a **complete own build**:
+everything the cartridge reads from the card comes from our repository, **with no file from Krikzz or from
+the factory**:
+
+- our **OS** (`EDFC/OS.BIN`): the menu, written from scratch;
+- our **255.RBF** (`EDFC/MAPS/255.RBF`): what the FPGA loads at power-on so that the menu works;
+- our **mappers** (`EDFC/MAPS/100.RBF` … `106.RBF`, 194 mappers) and their table (`EDFC/MAPROUT.BIN`).
+
+Only the cartridge's **BIOS** (in the cartridge's own flash memory) is used, and it is left untouched. **This
+is a beta**: it works on a real NES, but things are still missing (above all, **it does not save games**;
+see "What is missing").
 
 ## Qué contiene / Contents
 
 | Archivo / File | Para qué / Purpose |
 |---|---|
-| `EDFC/MAPS/100.RBF` … `106.RBF` | **ES** Los mappers (7 archivos; cada uno lleva un grupo de mappers). **EN** The mappers (7 files; each holds a group of mappers). |
-| `EDFC/MAPROUT.BIN` | **ES** Tabla que le dice al OS qué RBF usar para cada mapper. **EN** Table telling the OS which RBF to use for each mapper. |
-| `OS-propio/OS.BIN` | **ES** Nuestro OS propio, experimental y **opcional** (ver más abajo). **EN** Our own OS, experimental and **optional** (see below). |
-| `OS-propio/255.RBF` | **ES** Nuestro RBF del modo OS, **opcional**: sustituye al `255.RBF` de fábrica (solo con el OS propio). **EN** Our OS-mode RBF, **optional**: replaces the factory `255.RBF` (own OS only). |
-| `MAPPERS.txt` | **ES** Qué mappers hay en cada RBF. **EN** Which mappers each RBF contains. |
+| `SD/` | **ES** Lo que va en la raíz de la microSD: la carpeta `EDFC` completa. **EN** What goes in the root of the microSD card: the whole `EDFC` folder. |
+| `SD/EDFC/OS.BIN` | **ES** Nuestro OS (el menú). **EN** Our OS (the menu). |
+| `SD/EDFC/MAPS/255.RBF` | **ES** Nuestro RBF del modo OS: la BIOS lo carga al encender. **EN** Our OS-mode RBF: the BIOS loads it at power-on. |
+| `SD/EDFC/MAPS/100.RBF` … `106.RBF` | **ES** Los mappers (cada archivo lleva un grupo). **EN** The mappers (each file holds a group). |
+| `SD/EDFC/MAPROUT.BIN` | **ES** Qué RBF usa cada mapper. **EN** Which RBF each mapper uses. |
+| `MAPPERS.txt` | **ES** Lista de mappers por RBF. **EN** List of mappers per RBF. |
 | `SHA256SUMS.txt` | **ES** Sumas para comprobar que los archivos llegaron bien. **EN** Checksums to verify the files. |
 | `LICENSE` | **ES** Licencia GPL-3.0 (código fuente: commit `{COMMIT}` del repositorio). **EN** GPL-3.0 license (source code: repository commit `{COMMIT}`). |
-
-**ES** — **No contiene** el OS de fábrica, los RBF de fábrica ni ningún archivo de Krikzz: se usan los que
-ya tiene tu SD (o, si quieres, nuestro `OS.BIN` y nuestro `255.RBF`).
-
-**EN** — It **does not contain** the factory OS, the factory RBF files or any file from Krikzz: the ones
-already on your SD card are used (or, if you like, our `OS.BIN` and our `255.RBF`).
 
 ## Requisitos / Requirements
 
 **ES**
-- **EverDrive N8 China Version, versión NO-PRO** (clon chino con FPGA Cyclone II EP2C5, el que se vende
-  con la SD «de fábrica» de un pack vietnamita/chino), de Famicom o de NES. **No sirve para el EverDrive
-  N8 PRO.** Placas usadas en el desarrollo (etiqueta serigrafiada en el circuito impreso):
-  - NES (72 pines): `V2.0 2025-1`, `WB211982`.
-  - Famicom (60 pines): `V3.1 2024.07`.
-- Su **OS de fábrica**. ⚠️ **No instales los OS oficiales 1.24–1.26 de Krikzz en el clon**: llevan un
-  bloqueo contra clones.
+- **EverDrive N8 China Version, versión NO-PRO** (FPGA Cyclone II EP2C5), de NES o de Famicom. **No sirve para
+  el EverDrive N8 PRO ni para el N8 original de Krikzz.** Placas usadas en el desarrollo (etiqueta del circuito
+  impreso): NES (72 pines) `V2.0 2025-1`, `WB211982`; Famicom (60 pines) `V3.1 2024.07`.
+- Una **microSD SDHC de 4 a 32 GB** (también vale una SDSC de 2 GB o menos). Las de 64 GB o más vienen en exFAT:
+  sirven si se formatean en FAT32 (ver abajo), pero no hacen falta.
+- Un PC con lector de tarjetas.
+- Probado en una **NES NTSC**. En la Famicom los mappers ya se probaron con el OS de fábrica, pero nuestro OS y
+  nuestro 255 todavía no: si tienes una, cuéntanos cómo te va.
 
 **EN**
-- **EverDrive N8 China Version, NON-PRO version** (Chinese clone with a Cyclone II EP2C5 FPGA, the one
-  sold with a "factory" SD card from a Vietnamese/Chinese pack), Famicom or NES. **It does not work on
-  the EverDrive N8 PRO.** Boards used during development (label printed on the circuit board):
-  - NES (72 pins): `V2.0 2025-1`, `WB211982`.
-  - Famicom (60 pins): `V3.1 2024.07`.
-- Its **factory OS**. ⚠️ **Do not install Krikzz's official OS 1.24–1.26 on the clone**: they include a
-  lock against clones.
+- **EverDrive N8 China Version, NON-PRO version** (Cyclone II EP2C5 FPGA), NES or Famicom. **It does not work
+  on the EverDrive N8 PRO or on Krikzz's original N8.** Boards used during development (label on the circuit
+  board): NES (72 pins) `V2.0 2025-1`, `WB211982`; Famicom (60 pins) `V3.1 2024.07`.
+- An **SDHC microSD card from 4 to 32 GB** (an SDSC card of 2 GB or less also works). Cards of 64 GB or more
+  come formatted as exFAT: they work if formatted as FAT32 (see below), but they are not needed.
+- A PC with a card reader.
+- Tested on an **NTSC NES**. On the Famicom the mappers were already tested with the factory OS, but our OS and
+  our 255 have not been yet: if you have one, let us know how it goes.
 
 ## Instalación / Installation
 
-**ES**
-1. **Haz una copia de seguridad de la carpeta `EDFC` de tu microSD** (sobre todo `EDFC/MAPROUT.BIN` y
-   `EDFC/SAVE`).
-2. Copia `EDFC/MAPS/100.RBF` … `106.RBF` a la carpeta `EDFC/MAPS/` de tu SD. **No borres** los RBF que
-   ya están: el OS sigue usando `255.RBF` (el menú) y, para el Famicom Disk System, `254.RBF`.
-3. Sustituye `EDFC/MAPROUT.BIN` de tu SD por el de este paquete.
-4. Arranca un juego como siempre.
+### 1. Copia de seguridad completa de tu SD de fábrica / Full backup of your factory SD card
 
-**Para volver atrás**: restaura tu `MAPROUT.BIN` original (los RBF nuevos pueden quedarse, el OS de
-fábrica no los usa).
+**ES** — **Antes de nada, guarda todo lo que hay en tu microSD.** Ahí están el OS y el 255.RBF de fábrica (los
+necesitarás para volver atrás) y tus partidas guardadas (`EDFC/SAVE`), que este firmware todavía no usa.
+
+- **Lo mínimo:** copia **todo** el contenido de la tarjeta (todas las carpetas y archivos, incluida `EDFC`
+  entera) a una carpeta de tu PC, por ejemplo `N8-SD-original`. Comprueba que la copia ocupa lo mismo que la
+  tarjeta.
+- **Lo mejor:** además, haz una **imagen** de la tarjeta entera, que la deja exactamente como estaba:
+  - Windows: con un programa de imágenes de disco (por ejemplo Win32 Disk Imager, «Read»).
+  - Linux: `sudo dd if=/dev/sdX of=N8-SD-original.img bs=4M status=progress` (cambia `sdX` por tu tarjeta:
+    míralo con `lsblk`).
+  - macOS: `diskutil list` para ver el disco y `sudo dd if=/dev/rdiskN of=N8-SD-original.img bs=4m`.
+- Guarda la copia en un sitio seguro. Mejor aún: usa **otra microSD** para este firmware y deja la de fábrica
+  intacta.
+
+**EN** — **Before anything else, save everything on your microSD card.** It holds the factory OS and 255.RBF
+(you will need them to go back) and your saved games (`EDFC/SAVE`), which this firmware does not use yet.
+
+- **The minimum:** copy **all** the contents of the card (every folder and file, including the whole `EDFC`
+  folder) to a folder on your PC, for example `N8-SD-original`. Check that the copy is the same size as the
+  card's contents.
+- **Best:** also make an **image** of the whole card, which restores it exactly as it was:
+  - Windows: with a disk imaging program (for example Win32 Disk Imager, "Read").
+  - Linux: `sudo dd if=/dev/sdX of=N8-SD-original.img bs=4M status=progress` (replace `sdX` with your card:
+    check it with `lsblk`).
+  - macOS: `diskutil list` to find the disk and `sudo dd if=/dev/rdiskN of=N8-SD-original.img bs=4m`.
+- Keep the backup somewhere safe. Even better: use **another microSD card** for this firmware and leave the
+  factory one untouched.
+
+### 2. Formatear la SD / Format the SD card
+
+**ES** — Formatea la tarjeta en **FAT32** con **unidad de asignación (tamaño de clúster) de 32 KB** (32768
+bytes, 64 sectores), con la tabla de particiones normal de las tarjetas (MBR, una sola partición). ⚠️
+**Formatear borra todo lo que hay en la tarjeta**: haz antes la copia del paso 1 y asegúrate de elegir la
+tarjeta correcta.
+
+- **Windows** (tarjetas de hasta 32 GB): Explorador → clic derecho en la tarjeta → Formatear → Sistema de
+  archivos **FAT32**, Tamaño de la unidad de asignación **32 kilobytes**, Formato rápido. O en una consola:
+  `format X: /FS:FAT32 /A:32K /Q /V:N8` (cambia `X` por la letra de tu tarjeta).
+- **Linux:** `sudo mkfs.fat -F 32 -s 64 -n N8 /dev/sdX1` (la partición de la tarjeta: compruébalo con `lsblk`).
+- **macOS:** `diskutil list`, `diskutil unmountDisk /dev/diskN` y `sudo newfs_msdos -F 32 -c 64 -v N8
+  /dev/rdiskNs1`.
+- También vale el formateador oficial de la SD Association («SD Memory Card Formatter»): en tarjetas de 4 a 32 GB
+  usa FAT32 con 32 KB.
+
+Por qué así: la BIOS del cartucho solo lee **FAT16 y FAT32** (no exFAT ni NTFS), y los archivos del sistema
+(`OS.BIN` y los `.RBF`) tienen que quedar **contiguos** en la tarjeta, que es lo que pasa en una tarjeta recién
+formateada. 32 KB es el tamaño estándar para tarjetas SDHC. También funcionan otros tamaños: en la NES se probó
+una tarjeta de 4 GB con clúster de 4 KB, y en nuestro emulador del cartucho (con su BIOS real) FAT32 con 32 KB y
+512 bytes y FAT16.
+
+**EN** — Format the card as **FAT32** with a **32 KB allocation unit (cluster size)** (32768 bytes, 64 sectors),
+with the usual partition table of SD cards (MBR, a single partition). ⚠️ **Formatting erases everything on the
+card**: make the backup in step 1 first and make sure you pick the right card.
+
+- **Windows** (cards up to 32 GB): File Explorer → right-click the card → Format → File system **FAT32**,
+  Allocation unit size **32 kilobytes**, Quick format. Or in a console: `format X: /FS:FAT32 /A:32K /Q /V:N8`
+  (replace `X` with your card's drive letter).
+- **Linux:** `sudo mkfs.fat -F 32 -s 64 -n N8 /dev/sdX1` (the card's partition: check it with `lsblk`).
+- **macOS:** `diskutil list`, `diskutil unmountDisk /dev/diskN` and `sudo newfs_msdos -F 32 -c 64 -v N8
+  /dev/rdiskNs1`.
+- The SD Association's official formatter ("SD Memory Card Formatter") also works: on 4 to 32 GB cards it uses
+  FAT32 with 32 KB.
+
+Why: the cartridge's BIOS only reads **FAT16 and FAT32** (not exFAT or NTFS), and the system files (`OS.BIN`
+and the `.RBF` files) must be **contiguous** on the card, which is what happens on a freshly formatted card.
+32 KB is the standard size for SDHC cards. Other sizes work too: a 4 GB card with 4 KB clusters was tested on the
+NES, and FAT32 with 32 KB and 512 bytes and FAT16 in our emulator of the cartridge (with its real BIOS).
+
+### 3. Copiar la compilación / Copy the build
+
+**ES**
+1. Descomprime el zip.
+2. Con la tarjeta **recién formateada y vacía**, copia **primero** la carpeta `EDFC` que está dentro de `SD/`
+   a la **raíz** de la tarjeta (tiene que quedar `EDFC/OS.BIN`, `EDFC/MAPROUT.BIN` y `EDFC/MAPS/…` en la raíz).
+   Copiarla la primera es lo que garantiza que sus archivos queden contiguos.
+3. **Después**, copia tus juegos (`.nes`), en la raíz o en las carpetas que quieras. Con los nombres de siempre:
+   el menú muestra los nombres largos, con acentos.
+4. **No copies nada de la copia de seguridad** (ni el `OS.BIN`, ni los `.RBF`, ni `EDFC/SAVE` de fábrica).
+5. Expulsa la tarjeta de forma segura, ponla en el cartucho y enciende la consola. Debe salir el menú
+   **«OS propio N8»** con la lista de la tarjeta.
 
 **EN**
-1. **Back up the `EDFC` folder of your microSD card** (especially `EDFC/MAPROUT.BIN` and `EDFC/SAVE`).
-2. Copy `EDFC/MAPS/100.RBF` … `106.RBF` into your SD card's `EDFC/MAPS/` folder. **Do not delete** the
-   RBF files already there: the OS still uses `255.RBF` (the menu) and, for the Famicom Disk System,
-   `254.RBF`.
-3. Replace your SD card's `EDFC/MAPROUT.BIN` with the one in this package.
-4. Start a game as usual.
+1. Unzip the file.
+2. With the card **freshly formatted and empty**, copy the `EDFC` folder inside `SD/` **first**, to the **root**
+   of the card (you must end up with `EDFC/OS.BIN`, `EDFC/MAPROUT.BIN` and `EDFC/MAPS/…` in the root). Copying
+   it first is what keeps its files contiguous.
+3. **Then** copy your games (`.nes`), in the root or in any folders you like, with their usual names: the menu
+   shows long file names, with accents.
+4. **Do not copy anything from the backup** (not the factory `OS.BIN`, the `.RBF` files or `EDFC/SAVE`).
+5. Eject the card safely, put it in the cartridge and switch the console on. The **"OS propio N8"** menu should
+   appear with the card's list.
 
-**To roll back**: restore your original `MAPROUT.BIN` (the new RBF files can stay; the factory OS does
-not use them).
+### Si no arranca / If it does not boot
 
-## OS propio (opcional, experimental) / Own OS (optional, experimental)
+**ES**
+- **«ERROR:10», «ERROR:12» o «ERROR:13»** (lo pinta la BIOS): falta `EDFC`, `EDFC/OS.BIN` o
+  `EDFC/MAPS/255.RBF`. Revisa que `EDFC` esté en la raíz, no dentro de otra carpeta (por ejemplo `SD/EDFC`).
+- **Pantalla negra o gris al encender:** casi siempre es un archivo fragmentado. Vuelve a formatear y copia
+  `EDFC` la primera, antes que los juegos.
+- **«RBF fragmentado en la SD»** al lanzar un juego: igual, formatea y copia `EDFC` la primera.
 
-**ES** — `OS-propio/OS.BIN` es nuestro primer OS, escrito desde cero. **No hace falta para usar los RBF**: con
-el OS de fábrica funcionan igual (salvo el mapper 219, ver abajo).
-- **Qué hace:** arranca desde la BIOS del cartucho, lee la microSD (solo lectura), recorre sus carpetas con
-  nombres largos (A entra, B vuelve, Izquierda/Derecha cambian de página) y lanza los juegos con nuestros RBF. El botón RESET vuelve al menú con el cursor sobre el juego.
-- **Qué no hace todavía:** partidas con pila,
-  save states ni FDS. Una ROM de 384 KiB se carga en unos 3,8 s.
-- **Probado** en una NES real: Super Mario Bros. y Super Mario Bros. 3.
-- **Instalación:**
-  1. Haz copia de tu carpeta `EDFC`.
-  2. Renombra el `EDFC/OS.BIN` de tu SD a `EDFC/OS_V13.BIN`.
-  3. Copia `OS-propio/OS.BIN` como `EDFC/OS.BIN`. El archivo tiene que quedar contiguo en la tarjeta: lo más
-     seguro es usar una SD recién formateada. Si al encender la pantalla sale negra, es lo primero que hay
-     que mirar.
-  4. Funciona con el `EDFC/MAPS/255.RBF` de fábrica, que no se toca.
-  5. **Opcional, para no usar ningún archivo de Krikzz:** renombra `EDFC/MAPS/255.RBF` a `EDFC/MAPS/255FAB.RBF`
-     y copia `OS-propio/255.RBF` como `EDFC/MAPS/255.RBF` (también tiene que quedar contiguo). Es el RBF que la
-     BIOS carga al encender; el nuestro solo lleva el modo OS. **Con él, el OS de fábrica no arranca**: necesita
-     su propio 255. Probado en la NES: arranque, carpetas, juegos de los RBF 100 y 103, RESET y el kit Lava.
-- **Para volver al OS de fábrica:** borra `EDFC/OS.BIN` y renombra `EDFC/OS_V13.BIN` a `EDFC/OS.BIN` (y, si
-  cambiaste el 255, borra `EDFC/MAPS/255.RBF` y renombra `EDFC/MAPS/255FAB.RBF` a `EDFC/MAPS/255.RBF`).
-- **Con este OS no uses juegos con partida guardada que te importe:** todavía no guarda las partidas.
+**EN**
+- **"ERROR:10", "ERROR:12" or "ERROR:13"** (drawn by the BIOS): `EDFC`, `EDFC/OS.BIN` or `EDFC/MAPS/255.RBF` is
+  missing. Check that `EDFC` is in the root, not inside another folder (for example `SD/EDFC`).
+- **Black or grey screen at power-on:** almost always a fragmented file. Format again and copy `EDFC` first,
+  before the games.
+- **"RBF fragmentado en la SD"** when launching a game: the same, format and copy `EDFC` first.
 
-**EN** — `OS-propio/OS.BIN` is our first own OS, written from scratch. **It is not needed to use the RBF
-files**: they work the same with the factory OS (except mapper 219, see below).
-- **What it does:** it boots from the cartridge BIOS, reads the microSD card (read-only), browses its
-  folders with long file names (A enters, B goes back, Left/Right change page) and launches games with our RBF files. The RESET button returns to the menu with the cursor
-  on the game.
-- **What it does not do yet:** battery saves, save states or FDS. A 384 KiB ROM loads in about 3.8 s.
-- **Tested** on a real NES: Super Mario Bros. and Super Mario Bros. 3.
-- **Installation:**
-  1. Back up your `EDFC` folder.
-  2. Rename your SD card's `EDFC/OS.BIN` to `EDFC/OS_V13.BIN`.
-  3. Copy `OS-propio/OS.BIN` as `EDFC/OS.BIN`. The file must be contiguous on the card: the safest way is a
-     freshly formatted SD card. If the screen stays black at power-on, check this first.
-  4. It works with the factory `EDFC/MAPS/255.RBF`, which is left untouched.
-  5. **Optional, to use no file from Krikzz at all:** rename `EDFC/MAPS/255.RBF` to `EDFC/MAPS/255FAB.RBF` and
-     copy `OS-propio/255.RBF` as `EDFC/MAPS/255.RBF` (it must be contiguous too). It is the RBF the BIOS loads at
-     power-on; ours only contains the OS mode. **With it, the factory OS does not boot**: it needs its own 255.
-     Tested on a NES: boot, folders, games from RBF 100 and 103, RESET and the Lava kit.
-- **To go back to the factory OS:** delete `EDFC/OS.BIN` and rename `EDFC/OS_V13.BIN` to `EDFC/OS.BIN` (and,
-  if you replaced the 255, delete `EDFC/MAPS/255.RBF` and rename `EDFC/MAPS/255FAB.RBF` to `EDFC/MAPS/255.RBF`).
-- **Do not use games with a save you care about with this OS:** it does not save battery games yet.
+### Volver al firmware de fábrica / Going back to the factory firmware
+
+**ES** — Restaura la imagen del paso 1 (Win32 Disk Imager «Write», o `dd` al revés), o formatea la tarjeta y
+copia de vuelta **todo** lo que guardaste, empezando por la carpeta `EDFC`. El cartucho no se modifica en
+ningún momento: con tu SD de fábrica funciona exactamente igual que antes.
+
+**EN** — Restore the image from step 1 (Win32 Disk Imager "Write", or `dd` the other way round), or format the
+card and copy back **everything** you saved, starting with the `EDFC` folder. The cartridge is never modified:
+with your factory SD card it works exactly as before.
+
+## Uso / Usage
+
+**ES**
+- **Arriba/Abajo**: mover el cursor (al pasar del borde, a la página siguiente o anterior).
+- **Izquierda/Derecha**: cambiar de página (16 entradas por página).
+- **A o Start**: entrar en una carpeta o lanzar el juego.
+- **B**: volver a la carpeta de arriba.
+- **RESET** de la consola dentro de un juego: vuelve al menú, a la carpeta del juego y con el cursor sobre él.
+  Con el kit Lava RGB, mantener Select y luego Select+A unos segundos hace lo mismo.
+- La pantalla también muestra datos del arranque, de la tarjeta y del mando: es una beta y nos ayudan a
+  diagnosticar.
+
+**EN**
+- **Up/Down**: move the cursor (past the edge, to the next or previous page).
+- **Left/Right**: change page (16 entries per page).
+- **A or Start**: enter a folder or launch the game.
+- **B**: go back to the folder above.
+- Console **RESET** inside a game: returns to the menu, to the game's folder and with the cursor on it. With the
+  Lava RGB kit, holding Select and then Select+A for a few seconds does the same.
+- The screen also shows boot, card and controller data: this is a beta and they help us diagnose problems.
+
+## Qué falta / What is missing
+
+**ES**
+- ⚠️ **Partidas con pila** (Zelda, Final Fantasy…): **todavía no se guardan**. El juego arranca, pero lo que
+  guardes se pierde al apagar. Para esos juegos, usa tu SD de fábrica por ahora.
+- Save states, Famicom Disk System (FDS) y Game Genie.
+- Orden alfabético e información del juego en el menú (la lista sale en el orden en que se copiaron los
+  archivos).
+- **Sonido de expansión** (VRC6, VRC7, Sunsoft 5B, Namco 163, MMC5): solo se oye en la **Famicom**; la NES no
+  mezcla el audio del cartucho.
+
+**EN**
+- ⚠️ **Battery saves** (Zelda, Final Fantasy…): **not saved yet**. The game boots, but whatever you save is lost
+  at power-off. For those games, use your factory SD card for now.
+- Save states, Famicom Disk System (FDS) and Game Genie.
+- Alphabetical order and game information in the menu (the list follows the order in which files were copied).
+- **Expansion audio** (VRC6, VRC7, Sunsoft 5B, Namco 163, MMC5): only heard on the **Famicom**; the NES does not
+  mix the cartridge audio.
 
 ## Cosas que conviene saber / Good to know
 
 **ES**
-- **Mapper 219 (Toy Story) y el OS de fábrica:** los RBF reciben ahora el número de mapper tal cual está en la
-  cabecera de la ROM. El OS de fábrica cambia el 219 por 0 antes de pasarlo al FPGA, así que **con el OS de
-  fábrica el 219 vuelve a no arrancar** (en v0.1.3 el RBF deshacía ese cambio). Con el OS propio Toy Story
-  arranca (probado en la NES). Si necesitas Toy Story con el OS de fábrica, usa el
-  `105.RBF` de v0.1.3.
-- **Save states**: este paquete no los implementa (la tabla de save states va vacía). Con el OS de fábrica,
-  las partidas con pila (archivos `.SRM` de `EDFC/SAVE`) sí funcionan como siempre.
-- **Sonido de expansión** (VRC6, VRC7, Sunsoft 5B, Namco 163, MMC5): solo se oye en la **Famicom**; la NES
-  no mezcla el audio del cartucho.
-- **ROMs PAL** (Europe): en una consola NTSC pueden ir rápidas, con basura o colgarse aunque el mapper
-  esté bien. Para probar, mejor las versiones USA o Japón.
-- **Diferencias conocidas** con el emulador (detalle en `docs/fase4-mappers.md` del repositorio):
-  - MMC5 (mapper 5): el modo split vertical tiene limitaciones por el cableado de la SRAM.
-  - Kart Fighter (116): en Mesen2 recibe una IRQ que aquí no llega; puede comportarse distinto.
-  - Famicom Jump II (153): se cuelga si su partida empieza a cero (también en el emulador).
-  - Varios juegos con efectos de pantalla partida pueden diferir unos pocos píxeles en la línea del corte.
-- **Hardware real**: ya hay un banco de pruebas automático con una **NES NTSC real** (mando emulado,
-  capturadora y películas TAS de TASVideos comparadas escena a escena con Mesen2). Películas completas
-  verificadas, sin perder la sincronización: Super Mario Bros. (0), Nuts & Milk (0), Rainbow Islands (2),
-  Fire 'n Ice (4), Wizards & Warriors III (7) y Metal Force (156); además, tramos de Mighty Bomb Jack (3),
-  Captain Comic (11), Plummet/Arm Wrestling (30), Solitaire (79) y Goonies (87), y la IRQ del mapper 65
-  medida con una ROM de prueba (idéntica a Mesen2). Fire 'n Ice se repitió con el `100.RBF` de la v0.1.2
-  (protección de `$A001`): 40 de 40 escenas iguales a Mesen2. **RBF 103 a 106** (2026-11-15/16): 39 juegos
-  NTSC elegidos por cobertura, 20 segundos cada uno con botones de guion. Arrancan y coinciden con Mesen2
-  los del MMC5 (5), 56, 91, 105, 111, 117, 222, 234, 35, 59, 83, 90, 114, 116, 121, 176, 194, 209, 211,
-  215, 219 y el VRC7 (85). En los juegos de lucha la pelea puede seguir otro camino por unos fotogramas de
-  diferencia. Los fallos que salieron (35, 176 y 219) se corrigieron en v0.1.3; el arreglo del 219 se ha
-  retirado en esta versión (ver arriba).
+- **ROMs PAL** (Europe): en una consola NTSC pueden ir rápidas, con basura o colgarse aunque el mapper esté
+  bien. Mejor las versiones USA o Japón.
+- **Cabeceras:** el menú lee bien las cabeceras iNES y NES 2.0 (en v0.2.x el OS propio leía mal las NES 2.0 y
+  lanzaba esas ROMs con el mapper equivocado; corregido en v0.3.0).
+- **Diferencias conocidas** con el emulador Mesen2 (detalle en `docs/fase4-mappers.md` del repositorio): el
+  split vertical del MMC5 tiene limitaciones por el cableado de la SRAM; Kart Fighter (116) recibe en Mesen2 una
+  IRQ que aquí no llega; Famicom Jump II (153) se cuelga si su partida empieza a cero (también en el emulador);
+  algunos efectos de pantalla partida difieren unos píxeles en la línea del corte.
+- **Qué está probado en una NES real:**
+  - con este OS y este 255: arranque, carpetas y páginas, RESET y kit Lava, Super Mario Bros. (0), Super Mario
+    Bros. 3 (4), Akira (33), Wario Land 2 (35), Toy Story (219) y Aoki Ookami (MMC5);
+  - los mappers, con el OS de fábrica: 71 mappers entre las pruebas a mano, una tanda automática de 39 juegos
+    (RBF 103-106) y películas TAS de TASVideos comparadas con Mesen2. El resto, solo en el emulador. Lista en el
+    README del repositorio.
 
 **EN**
-- **Mapper 219 (Toy Story) and the factory OS:** the RBF files now get the mapper number exactly as written
-  in the ROM header. The factory OS turns 219 into 0 before passing it to the FPGA, so **with the factory OS,
-  mapper 219 no longer boots** (in v0.1.3 the RBF undid that change). With our own OS Toy Story boots
-  (tested on a NES). If you need Toy Story with the factory OS, use
-  v0.1.3's `105.RBF`.
-- **Save states**: not implemented in this package (the save state table is empty). With the factory OS,
-  battery saves (`.SRM` files in `EDFC/SAVE`) work as usual.
-- **Expansion audio** (VRC6, VRC7, Sunsoft 5B, Namco 163, MMC5): only heard on the **Famicom**; the NES
-  does not mix the cartridge audio.
-- **PAL ROMs** (Europe): on an NTSC console they may run fast, show garbage or hang even if the mapper is
-  fine. For testing, prefer the USA or Japan versions.
-- **Known differences** from the emulator (details in the repository's `docs/fase4-mappers.md`):
-  - MMC5 (mapper 5): the vertical split mode is limited by the SRAM wiring.
-  - Kart Fighter (116): in Mesen2 it receives an IRQ that does not arrive here; it may behave
-    differently.
-  - Famicom Jump II (153): hangs if its save starts zeroed (also in the emulator).
-  - Several games with split-screen effects may differ by a few pixels on the split line.
-- **Real hardware**: there is now an automated test bench with a **real NTSC NES** (emulated
-  controller, capture card and TASVideos TAS movies compared scene by scene against Mesen2). Full movies
-  verified without losing sync: Super Mario Bros. (0), Nuts & Milk (0), Rainbow Islands (2), Fire 'n Ice
-  (4), Wizards & Warriors III (7) and Metal Force (156); plus stretches of Mighty Bomb Jack (3), Captain
-  Comic (11), Plummet/Arm Wrestling (30), Solitaire (79) and Goonies (87), and the mapper 65 IRQ measured
-  with a test ROM (identical to Mesen2). Fire 'n Ice was rerun with v0.1.2's `100.RBF` (`$A001`
-  protection): 40 out of 40 scenes match Mesen2. **RBF 103 to 106** (2026-11-15/16): 39 NTSC games picked
-  by coverage, 20 seconds each with scripted buttons. The MMC5 (5), 56, 91, 105, 111, 117, 222, 234, 35, 59,
-  83, 90, 114, 116, 121, 176, 194, 209, 211, 215, 219 and VRC7 (85) games boot and match Mesen2. In
-  fighting games the fight may take another path because of a few frames of difference. The failures found
-  (35, 176 and 219) were fixed in v0.1.3; the 219 fix has been removed in this release (see above).
+- **PAL ROMs** (Europe): on an NTSC console they may run fast, show garbage or hang even if the mapper is fine.
+  Prefer the USA or Japan versions.
+- **Headers:** the menu reads iNES and NES 2.0 headers correctly (in v0.2.x our OS misread NES 2.0 headers and
+  launched those ROMs with the wrong mapper; fixed in v0.3.0).
+- **Known differences** from the Mesen2 emulator (details in the repository's `docs/fase4-mappers.md`): the MMC5
+  vertical split is limited by the SRAM wiring; Kart Fighter (116) receives an IRQ in Mesen2 that does not arrive
+  here; Famicom Jump II (153) hangs if its save starts zeroed (also in the emulator); some split-screen effects
+  differ by a few pixels on the split line.
+- **What has been tested on a real NES:**
+  - with this OS and this 255: boot, folders and pages, RESET and the Lava kit, Super Mario Bros. (0), Super
+    Mario Bros. 3 (4), Akira (33), Wario Land 2 (35), Toy Story (219) and Aoki Ookami (MMC5);
+  - the mappers, with the factory OS: 71 mappers across manual tests, an automated run of 39 games (RBF
+    103-106) and TASVideos TAS movies compared with Mesen2. The rest only in the emulator. List in the
+    repository README.
 
 ## Cómo informar / How to report
 
-**ES** — Abre un *issue* en https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/issues
-con:
-- consola (NES / Famicom, NTSC / PAL) y modelo del cartucho;
-- juego (nombre exacto de la ROM, mejor de No-Intro) y número de mapper;
-- qué pasa: arranca bien, pantalla negra o gris, gráficos rotos, parpadeo, se cuelga, sonido…;
-- si con tu SD de fábrica el mismo juego va bien o mal.
+**ES** — Abre un *issue* en https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/issues con:
+la consola (NES / Famicom, NTSC / PAL) y la placa del cartucho; la tarjeta (tamaño, formato y clúster); el juego
+(nombre exacto de la ROM, mejor de No-Intro) y su mapper; qué pasa (arranca bien, pantalla negra o gris, gráficos
+rotos, se cuelga, sonido…) y, si puedes, una foto del menú. Los informes de «funciona bien» también sirven mucho.
 
-Los informes de «funciona bien» también sirven mucho.
-
-**EN** — Open an *issue* at https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/issues
-with:
-- console (NES / Famicom, NTSC / PAL) and cartridge model;
-- game (exact ROM name, preferably No-Intro) and mapper number;
-- what happens: boots fine, black or grey screen, broken graphics, flicker, hang, sound…;
-- whether the same game works with your factory SD card.
-
-"Works fine" reports are very useful too.
+**EN** — Open an *issue* at https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/issues with:
+the console (NES / Famicom, NTSC / PAL) and the cartridge board; the card (size, format and cluster size); the
+game (exact ROM name, preferably No-Intro) and its mapper; what happens (boots fine, black or grey screen, broken
+graphics, hang, sound…) and, if you can, a photo of the menu. "It works" reports help a lot too.
