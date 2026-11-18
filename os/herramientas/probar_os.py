@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""probar_os.py --bios BIOS.bin --rbf 255.RBF --trabajo DIR — Prueba el OS (etapa 5) con la BIOS real en el modelo
+"""probar_os.py --bios BIOS.bin --rbf 255.RBF --trabajo DIR — Prueba el OS (etapa 6) con la BIOS real en el modelo
 de tools/bios: arranque y resets, mando, lectura de la SD (FAT16/FAT32, SDHC/SDSC, con y sin MBR, raíz con cadena
 de clústeres, reset a mitad de lectura, tarjeta muda) y lanzamiento de juegos (carga del RBF, PRG, CHR, registros,
 salto, vuelta al menú y errores), carpetas (entrar, volver, páginas, vuelta de un juego dentro de una carpeta) y
 nombres largos (acentos, cortados, ocultos, borrados) y partidas con pila (crear, cargar, guardar al volver y al
-encender, nombres largos, carpeta ampliada, FAT16, SDSC, tarjeta que no deja escribir). Comprueba que solo escribe
+encender, nombres largos, carpeta ampliada, FAT16, SDSC, tarjeta que no deja escribir), menú ordenado (carpetas primero, acentos, ñ), información del juego, repetición,
+saltos por letra y último juego al encender. Comprueba que solo escribe
 en la tarjeta las partidas (y lo que la FAT necesita para crearlas, validado con fsck.fat) y nunca en la flash."""
 import argparse, os, pathlib, shutil, subprocess, sys
 
@@ -92,7 +93,10 @@ def lista_raiz(pan):
     return (any(l.strip().startswith('Raíz') and l.rstrip().endswith('1/1') for l in filas)
             and [l.strip(' ▶') for l in filas if l.startswith(' ') and l.strip(' ▶') in
                  ('EDFC/', 'PRUEBAS/', 'IRQ65', 'Super Mario Bros. (World)', 'ZELDA', 'NOTAS.TXT')]
-            == ['EDFC/', 'PRUEBAS/', 'IRQ65', 'Super Mario Bros. (World)', 'ZELDA', 'NOTAS.TXT'])
+            == ['EDFC/', 'PRUEBAS/', 'IRQ65', 'NOTAS.TXT', 'Super Mario Bros. (World)', 'ZELDA'])
+
+def fila25(pan):
+    return next((l[3:].strip() for l in pan.split('\n') if l[:2] == '25'), '')
 
 def arrancar(img, sdhc=True, sd=None):
     m = Maquina(bios, sd or SD(pathlib.Path(img).read_bytes(), sdhc=sdhc))
@@ -129,12 +133,12 @@ comprobar(ok, 'la BIOS salta a $8000')
 r = m.correr(PASOS, nmi_cada=9000)
 pan = m.pantalla()
 comprobar(r == 'limite', 'el OS sigue corriendo (sin opcodes ilegales)')
-comprobar('OS propio N8 - etapa 5' in pan and 'Arranque: frío (BIOS)' in pan and contadores(m) == (1, 0, 0),
+comprobar('OS propio N8 - etapa 6' in pan and 'Arranque: frío (BIOS)' in pan and contadores(m) == (1, 0, 0),
           'encendido: FRIO, contadores 1/0/0')
 comprobar(m.ppu_mask & 0x08 and m.ppu_ctrl & 0x80, 'fondo visible y NMI activa')
 comprobar('SD: SDHC FAT32 clúster 01' in pan, 'tarjeta SDHC, FAT32')
-comprobar(lista_raiz(pan), 'la raíz: cabecera «Raíz 1/1» y las 6 entradas, en orden')
-comprobar(lista(pan) == ['EDFC/', 'PRUEBAS/', 'IRQ65', 'Super Mario Bros. (World)', 'ZELDA', 'NOTAS.TXT'],
+comprobar(lista_raiz(pan), 'la raíz: cabecera «Raíz 1/1» y las 6 entradas, en orden alfabético (carpetas primero)')
+comprobar(lista(pan) == ['EDFC/', 'PRUEBAS/', 'IRQ65', 'NOTAS.TXT', 'Super Mario Bros. (World)', 'ZELDA'],
           f'en la lista: {lista(pan)}')
 comprobar('▶EDFC/' in pan and '.NES' not in pan and '.nes' not in pan,
           'cursor en la primera entrada; sin la extensión .nes (nombre largo y 8.3)')
@@ -173,8 +177,9 @@ comprobar(all(e[1] in (2, 9) for e in cpld) and all(e[3] == 1 for e in cpld if e
           'del CPLD solo escribe el reg 2 (SD) y reg 9 = 01')
 otros = [e for e in m.log[m.n_log:] if e[0] in ('4402', 'ESCRITURA_EN_FLASH', 'USB_TX') or (e[0] == 'FPGA' and e[1] not in (129, 130))]
 comprobar(not otros, f'no toca la flash, $4402 ni otros registros del FPGA que el 129 (marca de partida) y el 130 ({otros[:3]})')
-comprobar(dict(m.escrituras_prgram) == m.prg_antes and bytes(m.prgram[:0x12000]) == m.partidas,
-          'no toca la PRG-RAM fuera de su imagen')
+tocados = {b for b, n in m.escrituras_prgram.items() if n != m.prg_antes.get(b, 0)}
+comprobar(tocados <= set(range(8)) | {9, 10, 11} and bytes(m.prgram[0x10000:0x12000]) == m.partidas[0x10000:0x12000],
+          f'en la PRG-RAM solo escribe el orden (claves en los bancos 0-7, posiciones en 9-11) y no toca el banco 8 ({sorted(tocados)})')
 comprobar(solo_lectura(m) and bytes(m.sd.img) == pathlib.Path(img32).read_bytes(), 'la imagen de la SD queda idéntica')
 
 # ------------------------------------------------------------------ otras tarjetas
@@ -271,14 +276,27 @@ def imagen3(nombre, fragmentar=False, fragmentar_roms=(), fat=32):
     return img
 
 
+def visto(nombre):
+    """Cómo sale un archivo en el menú: sin «.nes»."""
+    return nombre[:-4] if nombre.lower().endswith('.nes') else nombre
+
+def ir_a_nombre(m, texto, maximo=80):
+    """Baja el cursor (dando la vuelta) hasta la fila `texto`. No depende del orden de la lista."""
+    for _ in range(maximo):
+        if cursor_en(m.pantalla(), texto):
+            return True
+        toca(m, 0x04)
+        m.correr(60_000, nmi_cada=9000)
+    return cursor_en(m.pantalla(), texto)
+
 def menu3(img, nombre):
-    """Arranca, baja el cursor hasta `nombre` (2 carpetas delante) y devuelve la máquina."""
+    """Arranca, baja el cursor hasta `nombre` y devuelve la máquina."""
     m, ok = arrancar(img)
     m.correr(PASOS, nmi_cada=9000)
     m.pc_en_config.clear()
     m.n_cfg = len(m.fpga_cfgs)
-    for _ in range(2 + [n for n, _ in ROMS].index(nombre)):
-        toca(m, 0x04)
+    ir_a_nombre(m, visto(nombre))
+    m.n_cfg = len(m.fpga_cfgs)
     return m
 
 def lanzar(m, boton=0x80):
@@ -334,7 +352,7 @@ m.correr(PASOS, nmi_cada=9000)
 lanzo = lanzar(m)
 m.correr(1_000_000, nmi_cada=9000)
 pan = m.pantalla()
-comprobar(not lanzo and cabecera(pan) == 'EDFC 1/1' and lista(pan) == ['MAPS/', 'SAVE/', 'OS.BIN', 'MAPROUT.BIN']
+comprobar(not lanzo and cabecera(pan) == 'EDFC 1/1' and lista(pan) == ['MAPS/', 'SAVE/', 'MAPROUT.BIN', 'OS.BIN']
           and cursor_en(pan, 'MAPS/') and m.ppu_mask & 0x08, f'A sobre EDFC: entra en la carpeta ({lista(pan)})')
 pulsa(m, 0x40, 1_000_000)
 pan = m.pantalla()
@@ -390,9 +408,8 @@ img4 = imagen4('e4.img')
 m, ok = arrancar(img4)
 m.correr(PASOS, nmi_cada=9000)
 pan = m.pantalla()
-comprobar(lista(pan)[-1] == 'Juegos/', 'la carpeta «Juegos» (nombre largo con minúsculas) al final de la raíz')
-for _ in range(2 + len(ROMS)):            # EDFC, PRUEBAS y las ROMs: Juegos va detrás
-    toca(m, 0x04)
+comprobar(lista(pan)[:3] == ['EDFC/', 'Juegos/', 'PRUEBAS/'], 'la carpeta «Juegos» (nombre largo con minúsculas), con las carpetas')
+ir_a_nombre(m, 'Juegos/')
 comprobar(cursor_en(m.pantalla(), 'Juegos/'), 'el cursor llega a Juegos/')
 pulsa(m, 0x80, 2_000_000)
 pan = m.pantalla()
@@ -421,10 +438,11 @@ comprobar(cursor_en(m.pantalla(), 'Vacía/') and cabecera(m.pantalla()) == 'Jueg
 toca(m, 0x08)
 pulsa(m, 0x80, 1_000_000)
 pan = m.pantalla()
-comprobar(cabecera(pan) == 'Mapper 4 (MMC3) 1/1' and cursor_en(pan, 'Súper Prueba ñ (España)'), 'nombre largo con ú y ñ')
-comprobar(lista(pan) == ['Súper Prueba ñ (España)', 'Un nombre larguísimo que no…', 'zelda', 'Olcü aeiou CAO'],
+comprobar(cabecera(pan) == 'Mapper 4 (MMC3) 1/1' and 'Súper Prueba ñ (España)' in lista(pan), 'nombre largo con ú y ñ')
+comprobar(lista(pan) == ['Olcü aeiou CAO', 'Súper Prueba ñ (España)', 'Un nombre larguísimo que no…', 'zelda'],
           f'sin «._» de macOS ni ocultos; cortado con «…»; «zelda» (8.3 en minúsculas); otros acentos sin acento: {lista(pan)}')
 comprobar(solo_lectura(m), 'navegar por carpetas: solo lectura')
+ir_a_nombre(m, 'Súper Prueba ñ (España)')
 m.n_cfg = len(m.fpga_cfgs)
 _, prg, chr_ = dict(ROMS)['MMC3.NES']
 ok = lanzar(m)
@@ -487,9 +505,8 @@ def encender(img_bytes, prgram=None, sdhc=True, sd=None):
     return m, ok
 
 def ir_a(m, nombre):
-    """Desde el arranque (cursor en EDFC), baja hasta la ROM `nombre` de PILA."""
-    for _ in range(2 + len(ROMS) + [n for n, _ in PILA].index(nombre)):
-        toca(m, 0x04)
+    """Baja hasta la ROM `nombre` de PILA."""
+    ir_a_nombre(m, visto(nombre))
 
 def suma_marca(r):
     """La suma de partida.s: $A5 + bytes 17..0 con ADC (el acarreo se arrastra)."""
@@ -574,8 +591,7 @@ pan = volver(m)
 comprobar('Partida guardada' in pan and leer_archivo(m, 'EDFC/SAVE/Grande NES 2.0.srm') == PAT32 and fsck(m) == [],
           'los 32 KiB se guardan al volver')
 m, ok = encender(pathlib.Path(img5).read_bytes())
-for _ in range(2 + [n for n, _ in ROMS].index('MMC3.NES')):
-    toca(m, 0x04)
+ir_a_nombre(m, 'MMC3')
 ok = lanzar(m)
 comprobar(ok and 'MMC3.SRM' in nombres_save(m) and leer_archivo(m, 'EDFC/SAVE/MMC3.SRM') == FF8 and fsck(m) == [],
           'ROM con nombre 8.3 (MMC3.NES): su partida es MMC3.SRM, sin nombre largo')
@@ -637,6 +653,8 @@ m.prgram[:0x2000] = PAT
 m.sd.__class__ = SDprotegida
 pan = volver(m)
 comprobar('Partida no guardada: 0B' in pan and marca(m), 'tarjeta que no deja escribir: «Partida no guardada: 0B» y la marca se queda')
+comprobar(lista(pan)[:4] == ['EDFC/', 'PRUEBAS/', 'JUEGO', 'CHRRAM'] and bytes(m.prgram[:0x2000]) == PAT,
+          'con la partida sin guardar en la RAM, la lista sale en el orden de la FAT (sin claves en la PRG-RAM)')
 toca(m, 0x08)                                # arriba: a NOTAS.TXT... el cursor está en el juego; subir y bajar
 toca(m, 0x04)
 m.n_cfg = len(m.fpga_cfgs)
@@ -655,6 +673,93 @@ lanzo = lanzar(m)
 m.correr(200_000, nmi_cada=9000)
 comprobar(not lanzo and 'Error al escribir la SD 0B' in m.pantalla() and not m.fpga_cfgs[m.n_cfg:],
           'no se puede crear la partida: «Error al escribir la SD 0B» y no lanza')
+
+# ------------------------------------------------------------------ etapa 6: menú ordenado, información y último juego
+def imagen6(nombre):
+    img = imagen3(nombre)
+    dest = f'{img}@@{8192 * 512}'
+    subprocess.run(['mmd', '-i', dest, '::zeta', '::Ábaco'], check=True)
+    for n, datos in (('Ñandú.nes', rom(16, 16, 4, semilla=21)[0]), ('nube.nes', rom(1, 1, 2, semilla=22)[0]),
+                     ('Final Fantasy II.nes', rom(2, 1, 1, byte6=2, semilla=23)[0]),
+                     ('Final Fantasy.nes', rom(2, 1, 1, byte6=2, semilla=24)[0]),
+                     ('Ábaco/Sin pila.nes', rom(2, 1, 0, semilla=25)[0])):
+        f = t / 'tmp.bin'
+        f.write_bytes(datos)
+        subprocess.run(['mcopy', '-i', dest, str(f), f'::{n}'], check=True)
+    return img
+
+ORDEN6 = ['Ábaco/', 'EDFC/', 'PRUEBAS/', 'zeta/', 'CHRRAM', 'DUDE', 'FALTA', 'Final Fantasy', 'Final Fantasy II',
+          'JUEGO', 'M219', 'MMC3', 'NES20', 'NOTAS.TXT', 'nube', 'Ñandú', 'SINRBF', 'TRAINER']
+img6 = imagen6('e6.img')
+m, ok = arrancar(img6)
+m.correr(PASOS, nmi_cada=9000)
+pan = m.pantalla()
+comprobar(cabecera(pan) == 'Raíz 1/2' and lista(pan) == ORDEN6[:16],
+          f'orden alfabético: carpetas primero, sin mayúsculas ni acentos, «Final Fantasy» < «II», ñ tras la n: {lista(pan)}')
+pulsa(m, 0x01)
+comprobar(cabecera(m.pantalla()) == 'Raíz 2/2' and lista(m.pantalla()) == ORDEN6[16:], 'página 2 del orden')
+pulsa(m, 0x02)
+m.correr(300_000, nmi_cada=9000)
+comprobar(fila25(m.pantalla()) == '', 'cursor sobre una carpeta: la fila de información queda vacía')
+for nombre, info in (('Final Fantasy II', 'Mapper 1  32K+8K  pila'), ('CHRRAM', 'Mapper 0  16K+RAM'),
+                     ('Ñandú', 'Mapper 4  256K+128K'), ('NOTAS.TXT', 'No es una ROM iNES'), ('M219', 'Mapper 219  64K+16K')):
+    ir_a_nombre(m, nombre)
+    m.correr(300_000, nmi_cada=9000)
+    comprobar(fila25(m.pantalla()) == info, f'información de {nombre}: «{fila25(m.pantalla())}»')
+comprobar(solo_lectura(m), 'el orden y la información no escriben en la tarjeta')
+
+m, ok = arrancar(img6)                      # repetición: abajo mantenido
+m.correr(PASOS, nmi_cada=9000)
+m.pad = 0x04
+m.correr(60 * 9000, nmi_cada=9000)
+m.pad = 0
+m.correr(200_000, nmi_cada=9000)
+fila = next((i for i, l in enumerate(lista(m.pantalla())) if cursor_en(m.pantalla(), l)), 0)
+comprobar(fila >= 6, f'abajo mantenido un segundo: el cursor se repite (fila {fila})')
+
+def con_select(m, boton):
+    m.pad = 0x20
+    m.correr(20_000, nmi_cada=9000)
+    m.pad = 0x20 | boton
+    m.correr(30_000, nmi_cada=9000)
+    m.pad = 0x20
+    m.correr(30_000, nmi_cada=9000)
+    m.pad = 0
+    m.correr(300_000, nmi_cada=9000)
+m, ok = arrancar(img6)
+m.correr(PASOS, nmi_cada=9000)
+con_select(m, 0x01)
+comprobar(cursor_en(m.pantalla(), 'EDFC/'), 'Select+derecha en «Ábaco/»: a la siguiente letra («EDFC/»)')
+ir_a_nombre(m, 'FALTA')
+con_select(m, 0x01)
+comprobar(cursor_en(m.pantalla(), 'JUEGO'), 'Select+derecha en «FALTA»: salta las F y va a «JUEGO»')
+ir_a_nombre(m, 'Final Fantasy II')
+con_select(m, 0x02)
+comprobar(cursor_en(m.pantalla(), 'FALTA'), 'Select+izquierda en «Final Fantasy II»: al principio de la F')
+con_select(m, 0x02)
+comprobar(cursor_en(m.pantalla(), 'DUDE'), 'Select+izquierda otra vez: a la letra anterior («DUDE»)')
+ir_a_nombre(m, 'SINRBF')
+con_select(m, 0x01)
+con_select(m, 0x01)
+comprobar(cursor_en(m.pantalla(), 'Ábaco/') and cabecera(m.pantalla()) == 'Raíz 1/2',
+          'Select+derecha en la última letra: vuelve al principio (y cambia de página)')
+
+m, ok = arrancar(img6)                      # último juego: al encender con la RAM con pila
+m.correr(PASOS, nmi_cada=9000)
+ir_a_nombre(m, 'Ábaco/')
+pulsa(m, 0x80, 1_000_000)
+ir_a_nombre(m, 'Sin pila')
+ok = lanzar(m)
+ram = bytearray(m.prgram)
+ram[0x12000:] = bytes(len(ram) - 0x12000)
+m2, ok2 = encender(bytes(m.sd.img), prgram=ram)
+pan = m2.pantalla()
+comprobar(ok and 'Arranque: frío (BIOS)' in pan and cabecera(pan) == 'Ábaco 1/1' and cursor_en(pan, 'Sin pila'),
+          'al encender (RAM con pila): abre la carpeta del último juego con el cursor sobre él')
+pulsa(m2, 0x40, 1_000_000)
+comprobar(cabecera(m2.pantalla()) == 'Raíz 1/2' and cursor_en(m2.pantalla(), 'Ábaco/'), 'y B vuelve a la raíz con el cursor sobre la carpeta')
+m3, ok3 = encender(bytes(m.sd.img))
+comprobar(cabecera(m3.pantalla()) == 'Raíz 1/2' and cursor_en(m3.pantalla(), 'Ábaco/'), 'con la RAM a cero: la raíz')
 
 print('pantalla del caso FAT32:')
 m, ok = arrancar(img32)

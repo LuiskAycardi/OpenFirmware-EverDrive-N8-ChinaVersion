@@ -173,7 +173,11 @@ Qué hace hoy:
 
 Carga rápida: SMB3 (384 KiB) se carga en unos 3,8 s (antes 9,5 s).
 
-Qué falta: menú completo (orden alfabético, información del juego). **Es experimental**: pruébalo en una microSD de pruebas.
+- **Menú ordenado** (en `main`, todavía sin release): orden alfabético con las carpetas primero, información del
+  juego bajo el cursor (mapper, tamaños, pila), repetición al mantener, Select+◀▶ salta de letra en letra y, al
+  encender, vuelve al último juego.
+
+Qué falta: modo banco y CRC del juego. **Es experimental**: pruébalo en una microSD de pruebas.
 
 Para probarlo:
 1. `make -C os` (necesita cc65 y Python 3).
@@ -208,7 +212,11 @@ What it does today:
 
 Fast loading: SMB3 (384 KiB) loads in about 3.8 s (it used to take 9.5 s).
 
-Still missing: a full menu (alphabetical order, game information). **It is experimental**: try it on a spare microSD card.
+- **Sorted menu** (in `main`, not released yet): alphabetical order with folders first, game information under the
+  cursor (mapper, sizes, battery), key repeat, Select+◀▶ jumps from letter to letter and, at power-on, it goes back
+  to the last game.
+
+Still missing: test-bench mode and the game CRC. **It is experimental**: try it on a spare microSD card.
 
 To try it:
 1. `make -C os` (needs cc65 and Python 3).

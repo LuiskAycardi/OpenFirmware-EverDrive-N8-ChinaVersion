@@ -1,12 +1,15 @@
-; principal.s — OS propio del EverDrive N8 clon, etapa 4: carpetas, nombres largos y lanzar un juego.
+; principal.s — OS propio del EverDrive N8 clon, etapa 6: menú ordenado, información del juego y último juego.
 ; GPL-3.0-or-later. La entrada y el tipo de arranque están en arranque.s; la SD en sd.s; la FAT en fat.s; el
 ; lanzador en lanzar.s.
 ;
 ; Con la pantalla apagada: inicializa la tarjeta, monta la FAT y recorre la carpeta actual una vez (cuenta las
 ; entradas y guarda dónde empieza cada página de 16). Después enciende la pantalla. Arriba y abajo mueven el
 ; cursor (al pasar del borde se cambia de página), derecha e izquierda cambian de página, A o Start abren la
-; entrada (una carpeta se recorre; un juego se lanza) y B vuelve a la carpeta de arriba. Con Select pulsado no se
-; hace nada: Select y luego Select+A es el reset del kit Lava. No escribe nunca en la tarjeta.
+; entrada (una carpeta se recorre; un juego se lanza) y B vuelve a la carpeta de arriba. Mantener una dirección la
+; repite. Con Select pulsado solo valen derecha e izquierda (saltan a la letra siguiente o anterior): Select y luego
+; Select+A es el reset del kit Lava. La lista va en orden alfabético (orden.s), con las carpetas primero; con el
+; cursor quieto, la fila 25 muestra el mapper, los tamaños y si el juego tiene pila. La carpeta y el juego del último
+; lanzamiento se guardan en la PRG-RAM con pila (banco 8): al encender, el menú vuelve a ellos.
 ;
 ; Los nombres: el largo (LFN) si lo hay, si no el 8.3 (con las minúsculas que marca Windows en el byte 12); sin la
 ; extensión «.nes»; las carpetas acaban en «/»; si no cabe, «…». No se listan «.», «..», lo oculto ni lo que
@@ -25,7 +28,11 @@
         .import fat_montar, dir_abrir_raiz, dir_abrir_c, dir_siguiente, dir_guardar, dir_restaurar, ent_clus
         .import fat_error, fat_tipo, fat_spc, lfn_buf, lfn_val
         .import lanzar, l_error, nombre_rbf, ultimo_juego
-        .import partida_pendiente, pt_err
+        .import partida_pendiente, pt_err, banco_marca
+        .import orden_ini, orden_clave, orden_fin, orden_k, orden_letra, ord_ok, orden_pos_ptr, orden_pos_traer
+        .import orden_puesto
+        .importzp ord_src, ord_k, ord_n
+        .import leer_cabecera, l_prg16, l_chr8, l_cfg, arch_abrir, arch_leer
         .importzp l_mapper
         .importzp dir_ent, dir_pos, clus
 
@@ -63,10 +70,21 @@ resto:      .res 1
 dig:        .res 1
 impreso:    .res 1
 msj_ini:    .res 1              ; mensaje al encender la pantalla (lo que pasó con la partida pendiente)
+w16:        .res 2              ; puesto o k en curso
+cuenta2:    .res 1
+info_pag:   .res 1              ; dónde estaba el cursor la última vez (fila 25: información del juego)
+info_fila:  .res 1
+info_cnt:   .res 1              ; fotogramas que faltan para leer la información (0 = ya está o no toca)
+rep_dir:    .res 1              ; dirección mantenida y fotogramas que lleva (repetición)
+rep_cnt:    .res 1
+sel_k:      .res 2              ; k (orden de la FAT) de la entrada del cursor (buscar_sel)
+cur_k:      .res 2              ; k donde hay que poner el cursor después de recorrer la carpeta
+cur_k_ok:   .res 1
+ini_p:      .res 2              ; letra_ant: puesto de partida
 
         .segment "GRANDE"
 pag_pos:    .res 12 * MAX_PAG   ; posición del recorrido al principio de cada página (fat.s: dir_guardar)
-filas_txt:  .res (FILAS + 1) * ANCHO    ; fila 0: cabecera (carpeta y página); 1-16: la lista
+filas_txt:  .res (FILAS + 2) * ANCHO    ; fila 0: cabecera (carpeta y página); 1-16: la lista; 17: información
 filas_dir:  .res FILAS          ; $10 = la fila es una carpeta
 corto_buf:  .res 14             ; nombre 8.3 como texto
 num_buf:    .res 8
@@ -75,6 +93,7 @@ ruta_clus:  .res 4 * PROF       ; clúster de cada carpeta de la ruta
 ruta_pag:   .res PROF           ; página y fila del cursor en la carpeta de arriba (para volver con B)
 ruta_fila:  .res PROF
 ruta_nom:   .res NOM * PROF     ; nombre de cada carpeta (para la cabecera)
+RUTA_TAM = 1 + 4 * PROF + PROF + PROF + NOM * PROF      ; ruta_n ... ruta_nom, seguidos
 
 ; ------------------------------------------------------------------------------------------------ código
         .segment "CODE"
@@ -117,24 +136,35 @@ principal:
         sta     ruta_n
 @no_frio:
         jsr     sd_iniciar
-        bcs     @error_sd
-        jsr     fat_montar
-        bcs     @error_fat
-        jsr     datos_tarjeta
+        bcc     :+
+        jmp     @error_sd
+:       jsr     fat_montar
+        bcc     :+
+        jmp     @error_fat
+:       jsr     datos_tarjeta
         jsr     partida_pendiente       ; la partida del último juego (vuelta de juego o encendido con pila)
         sta     msj_ini
         lda     #0
         sta     pagina
         sta     fila_c
-        lda     tipo_arranque           ; al volver de un juego: su página y su fila
+        lda     tipo_arranque           ; al encender: la carpeta y el juego del último lanzamiento
+        bne     @no_frio2
+        jsr     cargar_ultimo
+        jmp     @abrir
+@no_frio2:
+        lda     tipo_arranque           ; al volver de un juego: el cursor sobre él (su k en la carpeta)
         cmp     #TIPO_VUELTA
         bne     @abrir
         lda     ultimo_juego
-        sta     pagina
+        sta     cur_k
         lda     ultimo_juego+1
-        sta     fila_c
+        sta     cur_k+1
+        lda     #1
+        sta     cur_k_ok
 @abrir: jsr     escanear
         bcc     @bien
+        lda     #0
+        sta     cur_k_ok
         lda     ruta_n                  ; la carpeta guardada no se lee: a la raíz
         beq     @error_fat
         lda     #0
@@ -143,7 +173,35 @@ principal:
         sta     fila_c
         jsr     escanear
         bcs     @error_fat
-@bien:  lda     #1
+@bien:  lda     cur_k_ok                ; k -> su puesto en el orden de ahora: página y fila
+        beq     @sin_k
+        lda     cur_k
+        ldx     cur_k+1
+        jsr     orden_puesto
+        sta     w16
+        stx     w16+1
+        lda     w16
+        cmp     entradas
+        lda     w16+1
+        sbc     entradas+1
+        bcs     @sin_k                  ; ya no está (otra tarjeta): al principio
+        lda     w16
+        and     #FILAS - 1
+        sta     fila_c
+        lda     w16+1
+        asl
+        asl
+        asl
+        asl
+        sta     tmp
+        lda     w16
+        lsr
+        lsr
+        lsr
+        lsr
+        ora     tmp
+        sta     pagina
+@sin_k: lda     #1
         sta     sd_bien
         jsr     leer_pagina
         ldx     #FILAS + 1
@@ -167,6 +225,7 @@ principal:
         lda     #$FF
         sta     sel_ant
         sta     antes                   ; lo que esté pulsado al encender la pantalla no cuenta
+        sta     info_pag                ; ($FF) la información del juego, cuando el cursor se quede quieto
         lda     msj_ini
         beq     encender
         jmp     mensaje
@@ -194,6 +253,7 @@ bucle:
         jsr     cursor
         jsr     sin_scroll
         jsr     entrada
+        jsr     info_tick
         jmp     bucle
 
 ; Pinta el cursor si ha cambiado de fila (durante el VBlank). Sin entradas, no hay cursor.
@@ -266,11 +326,21 @@ entrada:
         sta     nuevos
         lda     botones
         sta     antes
+        jsr     repetir
         lda     sd_bien
         beq     @fin
         lda     botones
         and     #%00100000
-        bne     @fin
+        beq     @sin_sel
+        lda     nuevos                  ; Select + derecha / izquierda: letra siguiente / anterior
+        and     #%00000001
+        beq     :+
+        jmp     letra_sig
+:       lda     nuevos
+        and     #%00000010
+        beq     @fin
+        jmp     letra_ant
+@sin_sel:
         lda     nuevos
         and     #%00000100
         beq     @n1
@@ -304,6 +374,31 @@ entrada:
         jmp     volver
 @abrir: jmp     abrir_sel
 @fin:   rts
+
+; Mantener una dirección: a los 20 fotogramas se repite cada 4 (como si se volviera a pulsar).
+repetir:
+        lda     botones
+        and     #%00001111
+        beq     @cero
+        cmp     rep_dir
+        beq     @mismo
+        sta     rep_dir
+        lda     #0
+        sta     rep_cnt
+        rts
+@mismo: inc     rep_cnt
+        lda     rep_cnt
+        cmp     #20
+        bcc     @fin
+        lda     #16
+        sta     rep_cnt
+        lda     rep_dir
+        ora     nuevos
+        sta     nuevos
+@fin:   rts
+@cero:  sta     rep_dir
+        sta     rep_cnt
+        rts
 
 abajo:  lda     filas_pag
         beq     @fin
@@ -459,22 +554,70 @@ cambiar_carpeta:
         ldx     #FILAS + 1
         jsr     subir_filas
         jsr     borrar_msj
+        lda     #$FF                    ; carpeta nueva: información del juego cuando el cursor se quede quieto
+        sta     info_pag
         jmp     reencender
 
-; dir_ent = entrada de la fila del cursor (vuelve a la página y avanza). Acarreo = 1 si falla.
+; dir_ent = entrada de la fila del cursor. Acarreo = 1 si falla.
 buscar_sel:
-        lda     pagina
+        lda     fila_c
+        jsr     puesto
+        jsr     orden_k
+        sta     sel_k
+        stx     sel_k+1
+; dir_ent = entrada k (A bajo, X alto) en el orden de la FAT: vuelve al principio de su página de 16 (pag_pos) y
+; avanza. Acarreo = 1 si falla.
+traer_k:
+        sta     w16
+        stx     w16+1
+        sta     ord_k
+        stx     ord_k+1
+        jsr     orden_pos_traer         ; carpeta ordenada: su posición exacta
+        bcs     @pagina
+        jsr     dir_restaurar
+        jmp     ent_sig
+@pagina:
+        lda     w16+1                   ; página = k / 16
+        asl
+        asl
+        asl
+        asl
+        sta     tmp
+        lda     w16
+        lsr
+        lsr
+        lsr
+        lsr
+        ora     tmp
         jsr     pos_pagina
         jsr     dir_restaurar
-        ldx     fila_c
-@b:     stx     cuenta
+        lda     w16
+        and     #FILAS - 1
+        tax
+@b:     stx     cuenta2
         jsr     ent_sig
         bcs     @fin
-        ldx     cuenta
+        ldx     cuenta2
         dex
         bpl     @b
         clc
 @fin:   rts
+
+; A:X = puesto de la fila A de la página a la vista (pagina x 16 + A).
+puesto: sta     tmp
+        lda     pagina
+        sta     w16
+        lda     #0
+        sta     w16+1
+        ldx     #4
+@x:     asl     w16
+        rol     w16+1
+        dex
+        bne     @x
+        lda     w16
+        ora     tmp
+        ldx     w16+1
+        rts
 
 ; Lanza la entrada de la fila del cursor. Si no se puede, muestra por qué y vuelve al menú.
 lanzar_sel:
@@ -484,19 +627,28 @@ lanzar_sel:
         sta     PPUCTRL
         jsr     buscar_sel
         bcs     @error_sd
-        lda     pagina
+        lda     sel_k
         sta     ultimo_juego
-        lda     fila_c
+        lda     sel_k+1
         sta     ultimo_juego+1
+        jsr     guardar_ultimo
         jsr     lanzar                  ; solo vuelve si falla
         lda     l_error
+        pha
+        jsr     escanear                ; la partida pudo pisar las claves del orden (PRG-RAM): se rehacen
+        pla
         bne     mensaje
 @error_sd:
         lda     #L_SD
 ; Muestra el mensaje A (L_* o M_*) con la pantalla apagada y vuelve al bucle.
 mensaje:
         pha
+        lda     pagina                  ; que la información del juego no tape el mensaje hasta que se mueva el cursor
+        sta     info_pag
+        lda     fila_c
+        sta     info_fila
         lda     #0
+        sta     info_cnt
         sta     PPUMASK
         lda     #REG_CHR                ; la fuente: el lanzador puede haber movido el banco de la CHR
         sta     REG_SEL
@@ -596,6 +748,7 @@ ent_sig:
 
 ; Recorre la carpeta actual: cuenta las entradas y guarda dónde empieza cada página. Acarreo = 1 si falla.
 escanear:
+        jsr     orden_ini
         lda     #0
         sta     fat_error
         sta     entradas
@@ -620,13 +773,26 @@ escanear:
         bcs     @fin
         jsr     pos_pagina
         jsr     dir_guardar
-@leer:  jsr     ent_sig
+@leer:  lda     entradas                ; posición antes de la entrada (para leerla luego directamente)
+        sta     ord_k
+        lda     entradas+1
+        sta     ord_k+1
+        jsr     orden_pos_ptr
+        bcs     :+
+        jsr     dir_guardar
+:       jsr     ent_sig
         bcs     @fin
+        jsr     clave_ent
         inc     entradas
         bne     @sig
         inc     entradas+1
         jmp     @sig
-@fin:   clc                             ; páginas = (entradas + 15) / 16
+@fin:   lda     entradas
+        sta     ord_n
+        lda     entradas+1
+        sta     ord_n+1
+        jsr     orden_fin
+        clc                             ; páginas = (entradas + 15) / 16
         lda     entradas
         adc     #FILAS - 1
         sta     tmp
@@ -647,6 +813,26 @@ escanear:
         lda     fat_error
         cmp     #1                      ; acarreo = 1 si hubo error
         rts
+
+; Clave del orden de la entrada dir_ent, que es la número `entradas` de la carpeta.
+clave_ent:
+        lda     entradas
+        sta     ord_k
+        lda     entradas+1
+        sta     ord_k+1
+        jsr     nombre_src
+        lda     src
+        sta     ord_src
+        lda     src+1
+        sta     ord_src+1
+        ldy     #11
+        lda     (dir_ent),y
+        and     #$10
+        beq     @arch
+        lda     #0
+        jmp     orden_clave
+@arch:  lda     #1
+        jmp     orden_clave
 
 ; dir_pos = pag_pos + 12 * A
 pos_pagina:
@@ -683,15 +869,45 @@ leer_pagina:
         bcc     @pag
         lda     #0
         sta     pagina
-@pag:   lda     pagina
+@pag:   lda     #0
+        sta     filas_pag
+        lda     ord_ok
+        beq     @fat
+        ldx     #0                      ; en orden: cada fila es la entrada k = ord_idx[puesto]
+@ro:    stx     cuenta
+        txa
+        jsr     puesto
+        cpx     entradas+1              ; puesto >= entradas: filas vacías
+        bcc     @dentro
+        bne     @vac
+        cmp     entradas
+        bcs     @vac
+@dentro:
+        jsr     orden_k
+        jsr     traer_k
+        bcs     @vac
+        jsr     @poner
+        ldx     cuenta
+        inx
+        cpx     #FILAS
+        bne     @ro
+        beq     @vacia
+@vac:   jmp     @vacias
+@fat:   lda     pagina                  ; sin orden: las 16 seguidas desde el principio de la página
         jsr     pos_pagina
         jsr     dir_restaurar
-        lda     #0
-        sta     filas_pag
         ldx     #0
 @r:     stx     cuenta
         jsr     ent_sig
         bcs     @vacias
+        jsr     @poner
+        ldx     cuenta
+        inx
+        cpx     #FILAS
+        bne     @r
+        beq     @vacia
+; Texto y tipo de la fila `cuenta` con la entrada dir_ent.
+@poner:
         ldx     cuenta
         inx
         jsr     fila_dst
@@ -702,11 +918,7 @@ leer_pagina:
         sta     filas_dir,x
         jsr     nombre_en_fila
         inc     filas_pag
-        ldx     cuenta
-        inx
-        cpx     #FILAS
-        bne     @r
-        beq     @vacia
+        rts
 @vacias:
         ldx     cuenta
 @v:     stx     cuenta
@@ -842,20 +1054,7 @@ dec_a:  sta     resto
 
 ; Escribe en (dst) el nombre de la entrada dir_ent, ANCHO caracteres con relleno.
 nombre_en_fila:
-        lda     lfn_val
-        beq     @corto
-        lda     #<lfn_buf
-        sta     src
-        lda     #>lfn_buf
-        sta     src+1
-        jmp     @ext
-@corto: jsr     corto
-@ext:   ldy     #11
-        lda     (dir_ent),y
-        and     #$10
-        bne     @copiar
-        jsr     quitar_nes
-@copiar:
+        jsr     nombre_src
         ldy     #0
 @c:     lda     (src),y
         beq     @fin_nom
@@ -891,6 +1090,23 @@ nombre_en_fila:
         iny
         cpy     #ANCHO
         bne     @r
+@fin:   rts
+
+; src = el nombre que se ve de la entrada dir_ent: el largo o el 8.3, sin «.nes» si es un archivo.
+nombre_src:
+        lda     lfn_val
+        beq     @corto
+        lda     #<lfn_buf
+        sta     src
+        lda     #>lfn_buf
+        sta     src+1
+        jmp     @ext
+@corto: jsr     corto
+@ext:   ldy     #11
+        lda     (dir_ent),y
+        and     #$10
+        bne     @fin
+        jmp     quitar_nes
 @fin:   rts
 
 ; Nombre 8.3 de dir_ent como texto en corto_buf (src apunta a él). Bits 3 y 4 del byte 12: base y extensión en
@@ -989,6 +1205,384 @@ quitar_nes:
         bne     @no
         lda     #0
         sta     (src),y
+@no:    rts
+
+; ------------------------------------------------------------------------------------------------ información
+; Con el cursor quieto 12 fotogramas (y la página ya subida), la fila 25 dice el mapper, los tamaños y si tiene pila.
+info_tick:
+        lda     sd_bien
+        beq     @fin
+        lda     pagina
+        cmp     info_pag
+        bne     @mov
+        lda     fila_c
+        cmp     info_fila
+        bne     @mov
+        lda     info_cnt
+        beq     @fin
+        lda     filas_pend
+        bne     @fin
+        dec     info_cnt
+        bne     @fin
+        jmp     mostrar_info
+@mov:   lda     pagina
+        sta     info_pag
+        lda     fila_c
+        sta     info_fila
+        lda     #12
+        sta     info_cnt
+@fin:   rts
+
+; Prepara la fila de información (filas_txt 17) de la entrada del cursor y la marca para subirla.
+FILA_INFO = FILAS + 1
+mostrar_info:
+        ldx     #FILA_INFO
+        jsr     fila_dst
+        jsr     fila_blanca
+        lda     filas_pag
+        beq     @nada
+        ldx     fila_c
+        lda     filas_dir,x
+        bne     @nada                   ; carpeta: nada
+        jsr     buscar_sel
+        bcs     @nada
+        jsr     arch_abrir
+        jsr     arch_leer
+        bcc     :+
+@nada:  jmp     @sube
+:       jsr     leer_cabecera
+        bcc     @rom
+        tax                             ; no se puede lanzar: el mismo texto que al intentarlo
+        lda     mensajes_lo-1,x
+        sta     src
+        lda     mensajes_hi-1,x
+        sta     src+1
+        ldy     #0
+        jsr     copia_src
+        jmp     @sube
+@rom:   ldy     #0                      ; «Mapper N  PRGK+CHRK  pila»
+        lda     #<t_mapper
+        sta     src
+        lda     #>t_mapper
+        sta     src+1
+        jsr     copia_src
+        lda     l_mapper
+        sta     w16
+        lda     #0
+        sta     w16+1
+        jsr     dec16
+        lda     #' '
+        sta     (dst),y
+        iny
+        sta     (dst),y
+        iny
+        lda     l_prg16                 ; x 16 KiB
+        sta     w16
+        lda     #0
+        sta     w16+1
+        ldx     #4
+@p:     asl     w16
+        rol     w16+1
+        dex
+        bne     @p
+        jsr     dec16
+        lda     #'K'
+        sta     (dst),y
+        iny
+        lda     #'+'
+        sta     (dst),y
+        iny
+        lda     l_chr8
+        bne     @chr
+        lda     #<t_ram
+        sta     src
+        lda     #>t_ram
+        sta     src+1
+        jsr     copia_src
+        jmp     @pila
+@chr:   sta     w16                     ; x 8 KiB
+        lda     #0
+        sta     w16+1
+        ldx     #3
+@c:     asl     w16
+        rol     w16+1
+        dex
+        bne     @c
+        jsr     dec16
+        lda     #'K'
+        sta     (dst),y
+        iny
+@pila:  lda     l_cfg
+        and     #$02
+        beq     @sube
+        lda     #<t_pila
+        sta     src
+        lda     #>t_pila
+        sta     src+1
+        jsr     copia_src
+@sube:  lda     #FILA_INFO
+        sta     fila_sub
+        lda     #1
+        sta     filas_pend
+        rts
+
+; Copia la cadena (src) a (dst) desde la columna Y (Y avanza; como mucho hasta ANCHO).
+copia_src:
+        sty     tmp
+        ldy     #0
+@c:     lda     (src),y
+        beq     @fin
+        sty     tmp2
+        ldy     tmp
+        cpy     #ANCHO
+        bcs     @fin
+        sta     (dst),y
+        inc     tmp
+        ldy     tmp2
+        iny
+        bne     @c
+@fin:   ldy     tmp
+        rts
+
+; w16 (0-999) en decimal, sin ceros delante, en (dst) desde la columna Y (Y avanza).
+dec16:  lda     #0
+        sta     impreso
+        ldx     #2
+@d:     lda     #'0'
+        sta     dig
+@s:     lda     w16                     ; ¿w16 >= 10^x?
+        cmp     pot10,x
+        lda     w16+1
+        sbc     pot10_hi,x
+        bcc     @pon
+        lda     w16
+        sbc     pot10,x                 ; acarreo = 1
+        sta     w16
+        lda     w16+1
+        sbc     pot10_hi,x
+        sta     w16+1
+        inc     dig
+        jmp     @s
+@pon:   lda     dig
+        cmp     #'0'
+        bne     @si
+        lda     impreso
+        bne     @si
+        cpx     #0
+        bne     @sig
+@si:    lda     dig
+        sta     (dst),y
+        iny
+        lda     #1
+        sta     impreso
+@sig:   dex
+        bpl     @d
+        rts
+
+; ------------------------------------------------------------------------------------------------ saltos por letra
+; Select + derecha: al primer puesto con otra letra (o al principio, desde la última). Solo con la carpeta ordenada.
+letra_sig:
+        lda     ord_ok
+        beq     @fin
+        lda     filas_pag
+        beq     @fin
+        lda     fila_c
+        jsr     puesto
+        sta     w16
+        stx     w16+1
+        jsr     orden_letra
+        sta     tmp2                    ; letra actual
+@b:     inc     w16
+        bne     :+
+        inc     w16+1
+:       lda     w16                     ; ¿al final? al principio
+        cmp     entradas
+        lda     w16+1
+        sbc     entradas+1
+        bcs     @cero
+        lda     w16
+        ldx     w16+1
+        jsr     orden_letra
+        cmp     tmp2
+        beq     @b
+        jmp     ir_puesto
+@cero:  lda     #0
+        sta     w16
+        sta     w16+1
+        jmp     ir_puesto
+@fin:   rts
+
+; Select + izquierda: al principio de la letra actual o, si ya se está en él, al de la anterior.
+letra_ant:
+        lda     ord_ok
+        beq     @fin
+        lda     filas_pag
+        beq     @fin
+        lda     fila_c
+        jsr     puesto
+        sta     w16
+        stx     w16+1
+        jsr     inicio_letra
+        lda     w16                     ; ¿se ha movido?
+        cmp     ini_p                   ; (ini_p guarda el puesto de partida)
+        bne     @ir
+        lda     w16+1
+        cmp     ini_p+1
+        bne     @ir
+        lda     w16                     ; ya al principio: la letra anterior (o la última, desde el 0)
+        ora     w16+1
+        bne     @atras
+        lda     entradas
+        sta     w16
+        lda     entradas+1
+        sta     w16+1
+@atras: lda     w16
+        bne     :+
+        dec     w16+1
+:       dec     w16
+        jsr     inicio_letra
+@ir:    jmp     ir_puesto
+@fin:   rts
+
+; w16 = primer puesto de la racha de letras de w16 (hacia atrás). Deja en ini_p el puesto de partida.
+inicio_letra:
+        lda     w16
+        sta     ini_p
+        lda     w16+1
+        sta     ini_p+1
+        lda     w16
+        ldx     w16+1
+        jsr     orden_letra
+        sta     tmp2
+@b:     lda     w16
+        ora     w16+1
+        beq     @fin
+        lda     w16                     ; ¿la de antes tiene la misma letra?
+        sec
+        sbc     #1
+        pha
+        lda     w16+1
+        sbc     #0
+        tax
+        pla
+        pha
+        stx     tmp
+        jsr     orden_letra
+        cmp     tmp2
+        bne     @fin2
+        pla
+        sta     w16
+        lda     tmp
+        sta     w16+1
+        jmp     @b
+@fin2:  pla
+@fin:   rts
+
+; Lleva el cursor al puesto w16 (página y fila) y pide la página.
+ir_puesto:
+        lda     w16
+        and     #FILAS - 1
+        sta     fila_c
+        lda     w16+1
+        asl
+        asl
+        asl
+        asl
+        sta     tmp
+        lda     w16
+        lsr
+        lsr
+        lsr
+        lsr
+        ora     tmp
+        sta     pagina
+        jmp     leer_pagina
+
+; ------------------------------------------------------------------------------------------------ último juego
+; Guarda en el banco 8 (PRG-RAM con pila, detrás de la marca de partida) la ruta y el cursor del juego que se lanza.
+ULT = $6040
+guardar_ultimo:
+        jsr     banco_marca
+        ldx     #3
+@f:     lda     firma_ult,x
+        sta     ULT,x
+        dex
+        bpl     @f
+        lda     #$5A
+        sta     tmp
+        ldx     #0
+@r:     lda     ruta_n,x
+        sta     ULT+4,x
+        clc
+        adc     tmp
+        sta     tmp
+        inx
+        cpx     #RUTA_TAM
+        bne     @r
+        lda     sel_k                   ; el juego: su k en la carpeta
+        sta     ULT+4+RUTA_TAM
+        clc
+        adc     tmp
+        sta     tmp
+        lda     sel_k+1
+        sta     ULT+5+RUTA_TAM
+        clc
+        adc     tmp
+        sta     ULT+6+RUTA_TAM
+        rts
+
+; Al encender: si el banco 8 tiene un último juego válido y su carpeta sigue ahí, lo pone en la ruta y el cursor.
+cargar_ultimo:
+        jsr     banco_marca
+        ldx     #3
+@f:     lda     ULT,x
+        cmp     firma_ult,x
+        bne     @no
+        dex
+        bpl     @f
+        lda     #$5A
+        ldx     #0
+@s:     clc
+        adc     ULT+4,x
+        inx
+        cpx     #RUTA_TAM + 2
+        bne     @s
+        cmp     ULT+6+RUTA_TAM
+        bne     @no
+        lda     ULT+4                   ; profundidad
+        cmp     #PROF + 1
+        bcs     @no
+        ldx     #0
+@c:     lda     ULT+4,x
+        sta     ruta_n,x
+        inx
+        cpx     #RUTA_TAM
+        bne     @c
+        lda     ULT+4+RUTA_TAM
+        sta     cur_k
+        lda     ULT+5+RUTA_TAM
+        sta     cur_k+1
+        lda     #1
+        sta     cur_k_ok
+        lda     ruta_n                  ; la carpeta tiene que seguir siendo una carpeta: su primera entrada es «.»
+        beq     @si
+        jsr     abrir_actual
+        jsr     dir_siguiente
+        bcs     @raiz
+        ldy     #10
+@p:     lda     (dir_ent),y
+        cmp     n_punto,y
+        bne     @raiz
+        dey
+        bpl     @p
+        ldy     #11
+        lda     (dir_ent),y
+        and     #$10
+        beq     @raiz
+@si:    rts
+@raiz:  lda     #0
+        sta     ruta_n
+        sta     cur_k_ok
 @no:    rts
 
 ; NMI: lee el mando una vez por fotograma, como el v13 (puerto 1 y el de expansión de la Famicom: bits 0 y 1 de
@@ -1225,7 +1819,7 @@ FILA_MANDO = NT + 27 * 32
 .endmacro
 
 textos:
-        texto   FILA_TIT + 2,       "OS propio N8 - etapa 5"
+        texto   FILA_TIT + 2,       "OS propio N8 - etapa 6"
         texto   FILA_ARR + 2,       "Arranque:"
         texto   FILA_ARR + 32 + 2,  "Ent/res/vue:"
         texto   FILA_SD + 2,        "SD:"
@@ -1247,6 +1841,10 @@ t_error:    .byte "error ", 0
 t_r1:       .byte " R1=", 0
 t_raiz:     .byte "Ra", C_i, "z", 0
 t_vacia:    .byte "(carpeta vac", C_i, "a)", 0
+t_mapper:   .byte "Mapper ", 0
+t_pila:     .byte "  pila", 0
+t_ram:      .byte "RAM", 0
+firma_ult:  .byte "N8UL"
 
 ; fila de la lista -> dirección de la PPU de su cursor (columna 1)
 cur_lo:
@@ -1263,17 +1861,19 @@ sub_lo:
         .repeat FILAS, i
         .byte   <(FILA_LISTA + 32 * i)
         .endrepeat
+        .byte   <(FILA_MSJ + 2)
 sub_hi:
         .byte   >FILA_RUTA
         .repeat FILAS, i
         .byte   >(FILA_LISTA + 32 * i)
         .endrepeat
+        .byte   >(FILA_MSJ + 2)
 txt_lo:
-        .repeat FILAS + 1, i
+        .repeat FILAS + 2, i
         .byte   <(filas_txt + ANCHO * i)
         .endrepeat
 txt_hi:
-        .repeat FILAS + 1, i
+        .repeat FILAS + 2, i
         .byte   >(filas_txt + ANCHO * i)
         .endrepeat
 nom_desp:
@@ -1281,6 +1881,8 @@ nom_desp:
         .byte   NOM * i
         .endrepeat
 pot10:  .byte   1, 10, 100
+pot10_hi: .byte 0, 0, 0
+n_punto: .byte  ".          "
 
 ; mensajes del lanzador (L_* de lanzar.s) y M_PROF
 M_PROF = 9

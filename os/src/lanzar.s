@@ -18,7 +18,7 @@
         .setcpu "6502"
         .include "os.inc"
 
-        .export lanzar, l_error, l_rbf, nombre_rbf
+        .export lanzar, l_error, l_rbf, nombre_rbf, leer_cabecera, l_prg16, l_chr8, l_cfg
         .exportzp l_mapper
         .import dir_abrir_raiz, dir_abrir, dir_buscar
         .import arch_abrir, arch_leer, arch_contiguo
@@ -99,66 +99,9 @@ lanzar:
         copia4  r_ini, arch_ini
         jsr     arch_leer
         bcs     falla_sd
-        ldx     #3
-@firma: lda     sector,x
-        cmp     firma_ines,x
-        beq     @ok
-        lda     #L_NOINES
-        bne     falla
-@ok:    dex
-        bpl     @firma
-        lda     sector+4
-        sta     l_prg16
-        beq     @tam
-        cmp     #33
-        bcs     @tam
-        lda     sector+5
-        sta     l_chr8
-        cmp     #65
-        bcc     @cab
-@tam:   lda     #L_TAM
-        bne     falla
-@cab:   lda     sector+6
-        and     #$1B
-        sta     l_cfg
-        lda     sector+6
-        and     #$04
-        sta     l_trainer
-        lda     sector+6
-        lsr
-        lsr
-        lsr
-        lsr
-        sta     l_mapper
-        ; Byte 7 (nibble alto del mapper), según el formato de la cabecera (regla de nesdev.org):
-        ;   bits 3-2 = 10: NES 2.0. Vale siempre, aunque los bytes 12-15 tengan datos (región, mando...). Los
-        ;     bits 8-11 del mapper (byte 8) y los de tamaño (byte 9) tienen que ser 0: no hay RBF ni sitio para más.
-        ;   bits 3-2 = 00 y bytes 12-15 a cero: iNES. Vale.
-        ;   lo demás: cabecera antigua con basura en 7-15 («DiskDude!»): solo el nibble bajo.
-        lda     sector+7
-        and     #$0C
-        cmp     #$08
-        bne     @ines
-        lda     sector+9
-        beq     @n20
-        lda     #L_TAM
-        jmp     falla
-@n20:   lda     sector+8
-        and     #$0F
-        beq     @alto
-        lda     #L_SINMAPPER
-        jmp     falla
-@ines:  cmp     #0
-        bne     @mapper
-        lda     sector+12
-        ora     sector+13
-        ora     sector+14
-        ora     sector+15
-        bne     @mapper
-@alto:  lda     sector+7
-        and     #$F0
-        ora     l_mapper
-        sta     l_mapper
+        jsr     leer_cabecera
+        bcc     @mapper
+        jmp     falla                   ; A = L_*
 @mapper:
         ; ---- 1b. partidas
         jsr     tam_partida             ; con la cabecera aún en `sector`
@@ -451,6 +394,76 @@ tam_partida:
         lda     #64
 @fin:   sta     pt_sect_nueva
 @ya:    rts
+
+; Cabecera iNES / NES 2.0 que hay en `sector`: l_prg16, l_chr8, l_cfg (byte 6 & $1B), l_trainer y l_mapper.
+; Acarreo = 1 si no se puede lanzar (A = L_NOINES, L_TAM o L_SINMAPPER). La usa también el menú (información).
+leer_cabecera:
+        ldx     #3
+@firma: lda     sector,x
+        cmp     firma_ines,x
+        beq     @ok
+        lda     #L_NOINES
+        sec
+        rts
+@ok:    dex
+        bpl     @firma
+        lda     sector+4
+        sta     l_prg16
+        beq     @tam
+        cmp     #33
+        bcs     @tam
+        lda     sector+5
+        sta     l_chr8
+        cmp     #65
+        bcc     @cab
+@tam:   lda     #L_TAM
+        sec
+        rts
+@cab:   lda     sector+6
+        and     #$1B
+        sta     l_cfg
+        lda     sector+6
+        and     #$04
+        sta     l_trainer
+        lda     sector+6
+        lsr
+        lsr
+        lsr
+        lsr
+        sta     l_mapper
+        ; Byte 7 (nibble alto del mapper), según el formato de la cabecera (regla de nesdev.org):
+        ;   bits 3-2 = 10: NES 2.0. Vale siempre, aunque los bytes 12-15 tengan datos (región, mando...). Los
+        ;     bits 8-11 del mapper (byte 8) y los de tamaño (byte 9) tienen que ser 0: no hay RBF ni sitio para más.
+        ;   bits 3-2 = 00 y bytes 12-15 a cero: iNES. Vale.
+        ;   lo demás: cabecera antigua con basura en 7-15 («DiskDude!»): solo el nibble bajo.
+        lda     sector+7
+        and     #$0C
+        cmp     #$08
+        bne     @ines
+        lda     sector+9
+        beq     @n20
+        lda     #L_TAM
+        sec
+        rts
+@n20:   lda     sector+8
+        and     #$0F
+        beq     @alto
+        lda     #L_SINMAPPER
+        sec
+        rts
+@ines:  cmp     #0
+        bne     @ya
+        lda     sector+12
+        ora     sector+13
+        ora     sector+14
+        ora     sector+15
+        bne     @ya
+@alto:  lda     sector+7
+        and     #$F0
+        ora     l_mapper
+        sta     l_mapper
+@ya:    clc
+        rts
 
 ; Abre EDFC desde la raíz. Acarreo = 1 si no está.
 abrir_edfc:

@@ -23,6 +23,7 @@
         .include "os.inc"
 
         .export partida_nombre, partida_preparar, partida_marcar, partida_pendiente, pt_err, pt_sect_nueva
+        .export partida_hay_marca, banco_marca
         .import dir_abrir_raiz, dir_abrir, dir_abrir_c, dir_buscar, dir_siguiente, ent_clus
         .import arch_abrir, arch_avanzar, arch_lba
         .import fat_error, fat_spc, fat_desp, sector, lfn_val, lfn_crudo, lfn_crudo_n
@@ -1231,23 +1232,9 @@ suma_marca:
 ;   acarreo = 0, A = M_PERDIDA      la marca no coincide con ningún archivo: se borra sin escribir
 ;   acarreo = 1, A = M_NOGUARDADA   error de la tarjeta (pt_err): la marca se queda para otro intento
 partida_pendiente:
-        jsr     banco_marca
-        ldx     #MARCA_TAM - 1
-@l:     lda     VENT,x
-        sta     pt_marca,x
-        dex
-        bpl     @l
-        ldx     #4
-@f:     lda     pt_marca,x
-        cmp     firma_marca,x
-        bne     @nada
-        dex
-        bpl     @f
-        jsr     suma_marca
-        cmp     pt_marca+18
-        beq     @vale
-@nada:  lda     #0
-        clc
+        jsr     partida_hay_marca
+        bcs     @vale
+        lda     #0
         rts
 @vale:  ldx     #3
 @c:     lda     pt_marca+5,x
@@ -1294,6 +1281,28 @@ partida_pendiente:
 @hecho: jsr     borrar_marca
         lda     #M_GUARDADA
         clc
+        rts
+
+; Lee la marca del banco 8 en pt_marca. Acarreo = 1 si es válida (hay una partida pendiente en la PRG-RAM).
+partida_hay_marca:
+        jsr     banco_marca
+        ldx     #MARCA_TAM - 1
+@l:     lda     VENT,x
+        sta     pt_marca,x
+        dex
+        bpl     @l
+        ldx     #4
+@f:     lda     pt_marca,x
+        cmp     firma_marca,x
+        bne     @no
+        dex
+        bpl     @f
+        jsr     suma_marca
+        cmp     pt_marca+18
+        bne     @no
+        sec
+        rts
+@no:    clc
         rts
 
 borrar_marca:

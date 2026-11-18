@@ -1,4 +1,4 @@
-# OS propio del EverDrive N8 clon — etapa 5: partidas con pila
+# OS propio del EverDrive N8 clon — etapa 6: menú ordenado, información del juego y último juego
 
 `OS.BIN` propio (GPL-3.0-or-later): arranca desde la BIOS del cartucho, lee la microSD, recorre sus carpetas con
 nombres largos, lanza los juegos con nuestros RBF y guarda las partidas con pila en `EDFC/SAVE` (ver
@@ -312,4 +312,40 @@ tarjeta que rechaza las escrituras.
   errores (solo «Free cluster summary uninitialized», que es lo que deja el OS a propósito). El dispositivo se lee
   sin sudo con UDisks (`org.freedesktop.UDisks2.Block.OpenForBackup`).
 
-Pendiente: menú completo (orden alfabético, información del juego), modo banco.
+## Etapa 6: menú ordenado, información del juego y último juego (`src/orden.s`, `src/principal.s`)
+
+**Mando:** como en la etapa 4, y además: mantener una dirección la repite (a los 20 fotogramas, cada 4);
+**Select+Derecha** salta a la primera entrada con otra inicial (desde la última, al principio) y **Select+Izquierda**
+al principio de la inicial actual o, si ya está ahí, al de la anterior. No choca con el reset del kit Lava (Select y
+luego Select+A).
+
+**Orden alfabético:** carpetas primero; sin distinguir mayúsculas; los acentos cuentan como la letra sin acento y la
+ñ va entre la n y la o; un nombre que es el principio de otro va antes («Final Fantasy» < «Final Fantasy II»). Se
+compara lo que se ve (el nombre largo sin `.nes`), hasta 31 caracteres; con claves iguales manda el orden de la FAT.
+- Al recorrer la carpeta, cada entrada deja su **clave** (32 bytes) en la PRG-RAM de las partidas, bancos 0-7, y la
+  **posición del recorrido** antes de ella (12 bytes) en los bancos 9-11. Esa RAM está libre en el menú: la partida
+  del último juego se guarda al arrancar y la del siguiente se vuelve a cargar desde la SD al lanzarlo (si el
+  lanzamiento falla, la carpeta se vuelve a recorrer para rehacer las claves).
+- El índice (2 bytes por entrada) va en la imagen del OS (`$D000-$DFFF`) y se ordena con *heapsort*. Cada fila se lee
+  directamente desde su posición guardada: una o dos lecturas de la SD.
+- Sin orden (orden de la FAT, como antes): si queda una partida sin guardar en la RAM o la carpeta tiene más de
+  **2046** entradas.
+
+**Información del juego** (fila 25): con el cursor quieto 12 fotogramas se lee la cabecera del archivo (la misma
+rutina que el lanzador, `leer_cabecera`): «Mapper 4  256K+128K  pila» (PRG + CHR, o `+RAM` con CHR-RAM). Si no se
+puede lanzar, el mismo texto que daría el lanzador («No es una ROM iNES»…). En una carpeta, nada. Un mensaje
+(«Partida guardada»…) se queda hasta que se mueve el cursor.
+
+**Último juego:** al lanzar, la ruta (carpetas y cursor de cada una) y el número del juego en su carpeta se guardan
+en el banco 8 (PRG-RAM con pila, en `$6040`, con firma `N8UL` y suma). Al encender, el menú abre esa carpeta con el
+cursor sobre el juego, si su primera entrada sigue siendo «.» (si no, la raíz). Al volver de un juego, el cursor se
+pone por el número de la entrada en la FAT, no por la página y la fila, así que cae sobre el juego aunque cambie el
+orden.
+
+**Pruebas** (`herramientas/probar_os.py`, 178 casos en total): orden con carpetas, acentos, ñ y nombres que empiezan
+igual, en dos páginas; información de un MMC1 con pila, CHR-RAM, un MMC3 grande, un archivo que no es ROM y una
+carpeta; repetición; saltos por letra en los dos sentidos y dando la vuelta; último juego al encender con la RAM con
+pila y sin ella; orden de la FAT con una partida sin guardar. Las pruebas anteriores buscan las entradas por su
+nombre en la pantalla, sin depender del orden.
+
+Pendiente: CRC del juego, modo banco.
