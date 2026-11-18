@@ -1,15 +1,16 @@
 # OpenFirmware-EverDrive-N8-ChinaVersion — paquete de pruebas / test package {VERSION}
 
 **ES** — Mappers libres (GPL-3.0-or-later) para el **EverDrive N8 China Version** (clon chino con FPGA
-EP2C5) de **Famicom y NES**, listos para copiar a la microSD. **Versión de pruebas**: todos los mappers
-coinciden con el emulador Mesen2 en el banco de pruebas, pero **casi nada se ha probado aún en la consola
-real**. Para eso es este paquete: para que quien tenga uno de estos cartuchos nos ayude a probarlos.
+EP2C5) de **Famicom y NES**, listos para copiar a la microSD, y **nuestro primer OS propio**, experimental.
+**Versión de pruebas**: todos los mappers coinciden con el emulador Mesen2 en el banco de pruebas y una parte
+se ha probado en una NES real. Este paquete es para que quien tenga uno de estos cartuchos nos ayude a
+probarlos.
 
 **EN** — Free (GPL-3.0-or-later) mappers for the **EverDrive N8 China Version** (Chinese clone with an
-EP2C5 FPGA), **Famicom and NES** cartridges, ready to copy to the microSD card. **Test release**: every
-mapper matches the Mesen2 emulator on our test bench, but **almost nothing has been tried on real
-hardware yet**. That is what this package is for: so that anyone who owns one of these cartridges can
-help us test them.
+EP2C5 FPGA), **Famicom and NES** cartridges, ready to copy to the microSD card, and **our first own OS**,
+experimental. **Test release**: every mapper matches the Mesen2 emulator on our test bench and part of them
+have been tried on a real NES. This package is for anyone who owns one of these cartridges to help us test
+them.
 
 ## Qué contiene / Contents
 
@@ -17,15 +18,16 @@ help us test them.
 |---|---|
 | `EDFC/MAPS/100.RBF` … `106.RBF` | **ES** Los mappers (7 archivos; cada uno lleva un grupo de mappers). **EN** The mappers (7 files; each holds a group of mappers). |
 | `EDFC/MAPROUT.BIN` | **ES** Tabla que le dice al OS qué RBF usar para cada mapper. **EN** Table telling the OS which RBF to use for each mapper. |
+| `OS-propio/OS.BIN` | **ES** Nuestro OS propio, experimental y **opcional** (ver más abajo). **EN** Our own OS, experimental and **optional** (see below). |
 | `MAPPERS.txt` | **ES** Qué mappers hay en cada RBF. **EN** Which mappers each RBF contains. |
 | `SHA256SUMS.txt` | **ES** Sumas para comprobar que los archivos llegaron bien. **EN** Checksums to verify the files. |
 | `LICENSE` | **ES** Licencia GPL-3.0 (código fuente: commit `{COMMIT}` del repositorio). **EN** GPL-3.0 license (source code: repository commit `{COMMIT}`). |
 
-**ES** — **No contiene** el OS, los RBF de fábrica ni ningún archivo de Krikzz: se usan los que ya tiene
-tu SD.
+**ES** — **No contiene** el OS de fábrica, los RBF de fábrica ni ningún archivo de Krikzz: se usan los que
+ya tiene tu SD.
 
-**EN** — It **does not contain** the OS, the factory RBF files or any file from Krikzz: the ones already
-on your SD card are used.
+**EN** — It **does not contain** the factory OS, the factory RBF files or any file from Krikzz: the ones
+already on your SD card are used.
 
 ## Requisitos / Requirements
 
@@ -71,11 +73,52 @@ fábrica no los usa).
 **To roll back**: restore your original `MAPROUT.BIN` (the new RBF files can stay; the factory OS does
 not use them).
 
+## OS propio (opcional, experimental) / Own OS (optional, experimental)
+
+**ES** — `OS-propio/OS.BIN` es nuestro primer OS, escrito desde cero. **No hace falta para usar los RBF**: con
+el OS de fábrica funcionan igual (salvo el mapper 219, ver abajo).
+- **Qué hace:** arranca desde la BIOS del cartucho, lee la microSD (solo lectura), muestra la raíz y lanza los
+  juegos de la raíz con nuestros RBF. El botón RESET vuelve al menú con el cursor sobre el juego.
+- **Qué no hace todavía:** carpetas, nombres largos (se ven los cortos, `SUPERM~1.NES`), partidas con pila,
+  save states ni FDS. La carga es lenta: unos 9,5 s para una ROM de 384 KiB.
+- **Probado** en una NES real: Super Mario Bros. y Super Mario Bros. 3.
+- **Instalación:**
+  1. Haz copia de tu carpeta `EDFC`.
+  2. Renombra el `EDFC/OS.BIN` de tu SD a `EDFC/OS_V13.BIN`.
+  3. Copia `OS-propio/OS.BIN` como `EDFC/OS.BIN`. El archivo tiene que quedar contiguo en la tarjeta: lo más
+     seguro es usar una SD recién formateada. Si al encender la pantalla sale negra, es lo primero que hay
+     que mirar.
+  4. Necesita el `EDFC/MAPS/255.RBF` de fábrica, que no se toca.
+- **Para volver al OS de fábrica:** borra `EDFC/OS.BIN` y renombra `EDFC/OS_V13.BIN` a `EDFC/OS.BIN`.
+- **Con este OS no uses juegos con partida guardada que te importe:** todavía no guarda las partidas.
+
+**EN** — `OS-propio/OS.BIN` is our first own OS, written from scratch. **It is not needed to use the RBF
+files**: they work the same with the factory OS (except mapper 219, see below).
+- **What it does:** it boots from the cartridge BIOS, reads the microSD card (read-only), shows the root
+  folder and launches the games in it with our RBF files. The RESET button returns to the menu with the cursor
+  on the game.
+- **What it does not do yet:** folders, long file names (short names such as `SUPERM~1.NES` are shown),
+  battery saves, save states or FDS. Loading is slow: about 9.5 s for a 384 KiB ROM.
+- **Tested** on a real NES: Super Mario Bros. and Super Mario Bros. 3.
+- **Installation:**
+  1. Back up your `EDFC` folder.
+  2. Rename your SD card's `EDFC/OS.BIN` to `EDFC/OS_V13.BIN`.
+  3. Copy `OS-propio/OS.BIN` as `EDFC/OS.BIN`. The file must be contiguous on the card: the safest way is a
+     freshly formatted SD card. If the screen stays black at power-on, check this first.
+  4. It needs the factory `EDFC/MAPS/255.RBF`, which is left untouched.
+- **To go back to the factory OS:** delete `EDFC/OS.BIN` and rename `EDFC/OS_V13.BIN` to `EDFC/OS.BIN`.
+- **Do not use games with a save you care about with this OS:** it does not save battery games yet.
+
 ## Cosas que conviene saber / Good to know
 
 **ES**
-- **Save states**: este paquete no los implementa (la tabla de save states va vacía). Las partidas con
-  pila (archivos `.SRM` de `EDFC/SAVE`) sí funcionan como siempre.
+- **Mapper 219 (Toy Story) y el OS de fábrica:** los RBF reciben ahora el número de mapper tal cual está en la
+  cabecera de la ROM. El OS de fábrica cambia el 219 por 0 antes de pasarlo al FPGA, así que **con el OS de
+  fábrica el 219 vuelve a no arrancar** (en v0.1.3 el RBF deshacía ese cambio). Con el OS propio el número
+  llega bien, pero aún no se ha probado en la consola. Si necesitas Toy Story con el OS de fábrica, usa el
+  `105.RBF` de v0.1.3.
+- **Save states**: este paquete no los implementa (la tabla de save states va vacía). Con el OS de fábrica,
+  las partidas con pila (archivos `.SRM` de `EDFC/SAVE`) sí funcionan como siempre.
 - **Sonido de expansión** (VRC6, VRC7, Sunsoft 5B, Namco 163, MMC5): solo se oye en la **Famicom**; la NES
   no mezcla el audio del cartucho.
 - **ROMs PAL** (Europe): en una consola NTSC pueden ir rápidas, con basura o colgarse aunque el mapper
@@ -95,11 +138,17 @@ not use them).
   NTSC elegidos por cobertura, 20 segundos cada uno con botones de guion. Arrancan y coinciden con Mesen2
   los del MMC5 (5), 56, 91, 105, 111, 117, 222, 234, 35, 59, 83, 90, 114, 116, 121, 176, 194, 209, 211,
   215, 219 y el VRC7 (85). En los juegos de lucha la pelea puede seguir otro camino por unos fotogramas de
-  diferencia. Los fallos que salieron (35, 176 y 219) están corregidos en esta versión.
+  diferencia. Los fallos que salieron (35, 176 y 219) se corrigieron en v0.1.3; el arreglo del 219 se ha
+  retirado en esta versión (ver arriba).
 
 **EN**
-- **Save states**: not implemented in this package (the save state table is empty). Battery saves
-  (`.SRM` files in `EDFC/SAVE`) work as usual.
+- **Mapper 219 (Toy Story) and the factory OS:** the RBF files now get the mapper number exactly as written
+  in the ROM header. The factory OS turns 219 into 0 before passing it to the FPGA, so **with the factory OS,
+  mapper 219 no longer boots** (in v0.1.3 the RBF undid that change). With our own OS the number arrives
+  correctly, but this has not been tested on the console yet. If you need Toy Story with the factory OS, use
+  v0.1.3's `105.RBF`.
+- **Save states**: not implemented in this package (the save state table is empty). With the factory OS,
+  battery saves (`.SRM` files in `EDFC/SAVE`) work as usual.
 - **Expansion audio** (VRC6, VRC7, Sunsoft 5B, Namco 163, MMC5): only heard on the **Famicom**; the NES
   does not mix the cartridge audio.
 - **PAL ROMs** (Europe): on an NTSC console they may run fast, show garbage or hang even if the mapper is
@@ -120,7 +169,7 @@ not use them).
   by coverage, 20 seconds each with scripted buttons. The MMC5 (5), 56, 91, 105, 111, 117, 222, 234, 35, 59,
   83, 90, 114, 116, 121, 176, 194, 209, 211, 215, 219 and VRC7 (85) games boot and match Mesen2. In
   fighting games the fight may take another path because of a few frames of difference. The failures found
-  (35, 176 and 219) are fixed in this release.
+  (35, 176 and 219) were fixed in v0.1.3; the 219 fix has been removed in this release (see above).
 
 ## Cómo informar / How to report
 

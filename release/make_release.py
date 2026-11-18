@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Empaqueta un release para la microSD: los RBF compilados (hdl/out), un MAPROUT.BIN generado desde
-n8_top.v, las instrucciones (release/LEEME.md), la lista de mappers, la licencia y las sumas SHA-256.
+n8_top.v, el OS propio (os/build/OS.BIN, opcional para el usuario), las instrucciones (release/LEEME.md), la
+lista de mappers, la licencia y las sumas SHA-256.
 
   make -C hdl build
+  make -C os
   python3 -I release/make_release.py v0.1.0      -> release/out/OpenFirmware-N8-v0.1.0.zip
 
 Exige un árbol git limpio: el LEEME del paquete cita el commit del que salen los RBF (GPL: fuente
@@ -40,6 +42,13 @@ def main():
         if src.stat().st_mtime < (ROOT / "hdl/rtl/n8_top.v").stat().st_mtime:
             sys.exit(f"{src} es más antiguo que hdl/rtl/n8_top.v: recompila")
         (stage / f"EDFC/MAPS/{n}.RBF").write_bytes(src.read_bytes())
+    os_bin = ROOT / "os/build/OS.BIN"           # OS propio, opcional
+    fuentes = list((ROOT / "os/src").iterdir()) + [ROOT / "os/n8os.cfg", ROOT / "os/Makefile",
+                                                    ROOT / "os/herramientas/fuente.py"]
+    if not os_bin.exists() or os_bin.stat().st_mtime < max(p.stat().st_mtime for p in fuentes):
+        sys.exit(f"{os_bin} falta o es más antiguo que sus fuentes: make -C os")
+    (stage / "OS-propio").mkdir(exist_ok=True)
+    (stage / "OS-propio/OS.BIN").write_bytes(os_bin.read_bytes())
     lista = subprocess.run([sys.executable, "-I", str(ROOT / "hdl/tools/gen_maprout.py"),
                             str(stage / "EDFC/MAPROUT.BIN"), "--fds", "--lista"],
                            capture_output=True, text=True, check=True).stdout
