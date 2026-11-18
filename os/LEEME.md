@@ -406,4 +406,16 @@ siguiente con nombre largo y ñ en UTF-8 y carpetas; archivo que falta; Start so
 qué); «Lista terminada»; dar la vuelta con derecha e izquierda; 8.3 en minúsculas; puesto tras apagar con la RAM con
 pila y sin ella; B al menú, que se mantiene tras un reset; otra BANCO.TXT vuelve a la primera.
 
+### Resultados en la NES (2026-11-18, `prueba.py ejecutar --modo-banco`, capturadora y Nano)
+
+- Pantalla de banco en la consola: «Modo banco 3/7», la ruta en dos filas, «Mapper 1  512K+RAM  pila» y el código,
+  que `banco.py` lee bien en la captura real (bloques ~203 de luminancia, huecos 0).
+- Tanda de `PRUEBAS/1 MMC1` (6 juegos, 900 fotogramas cada uno, unos 20 s por juego, sin navegar por el menú):
+  Castlevania II, Final Fantasy, Mega Man 2 y Metroid **ok**; Dragon Warrior IV **parecido** y Zelda **basura**:
+  los dos tienen pila y cargan su partida de la SD (Zelda, la de las pruebas de la etapa 5), y Mesen2 arranca sin
+  ella. Una tanda de 3 antes: 3 ok, y el PC volvió solo de la entrada 3 a la 1 con izquierda.
+- Tras cada juego, el botón RESET por D2 vuelve a la pantalla de banco con la siguiente en unos 2 s.
+- La primera tanda se paró tras el primer juego: después del RESET no llegó imagen y el reset del kit Lava no vio
+  LATCH (la consola, colgada o sin vídeo); hubo que apagar. No se repitió en tres tandas más (12 resets).
+
 Pendiente: CRC del juego.
