@@ -161,3 +161,17 @@ nn», «El FPGA no se configura», «Carpetas: en otra etapa».
 
 Límites de esta etapa: solo la raíz y nombres 8.3; la copia de la PRG va byte a byte por un búfer (lenta con ROMs
 grandes); no hay partidas guardadas (un juego con pila arranca con lo que haya en la PRG-RAM).
+
+### Resultados en la NES (2026-11-17, con la capturadora y el Nano)
+
+- **Super Mario Bros.** (mapper 0, 40 KiB): se lanza con A, juega con el 100.RBF; carga en 1,7 s.
+- **Super Mario Bros. 3** (mapper 4/MMC3, 384 KiB): título y menú correctos; carga en unos 9,5 s (unos 40 KiB/s).
+- **Botón RESET dentro de un juego:** vuelve al menú como «vuelta de juego», con el cursor sobre el juego.
+- **Reset por el mando (Lava) en el menú:** 4 resets, los mismos en el Nano y en la pantalla.
+- A sobre una carpeta: «Carpetas: en otra etapa».
+- Una vez se vio SMB3 con los gráficos revueltos tras un reset; lo más probable es un reset corto del Lava dentro
+  del juego (el juego vuelve a arrancar sin pasar por el menú, igual que con el v13). No se ha reproducido.
+- Al enchufar el Nano con la consola encendida, la consola quedó colgada y el botón RESET no la recuperó: hubo que
+  apagar. Probablemente los pulsos de la línea de datos lanzaron algo a medias.
+
+Pendiente: carga más rápida (lectura múltiple y copia directa a `$4800`), carpetas, nombres largos, partidas.
