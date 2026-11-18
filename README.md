@@ -11,12 +11,12 @@ Clean-room implementation, validated against the Mesen2 emulator with synthetic-
 testbenches and real games.
 
 > 🎉 **ES — Novedad (noviembre de 2026): ya tenemos nuestro primer `OS.BIN` propio funcional.** Arranca
-> desde la BIOS del cartucho, lee la microSD, lista la raíz y **lanza juegos con nuestros RBF**: Super Mario
+> desde la BIOS del cartucho, lee la microSD, recorre sus carpetas con nombres largos y **lanza juegos con nuestros RBF**: Super Mario
 > Bros. y Super Mario Bros. 3 funcionan en una NES real, y el botón RESET vuelve al menú con el cursor sobre
 > el juego. Es una versión temprana y experimental; ver [OS propio](#os-propio--own-os).
 >
 > 🎉 **EN — News (November 2026): we now have our first working `OS.BIN` of our own.** It boots from the
-> cartridge BIOS, reads the microSD card, lists the root folder and **launches games with our RBF files**:
+> cartridge BIOS, reads the microSD card, browses its folders with long file names and **launches games with our RBF files**:
 > Super Mario Bros. and Super Mario Bros. 3 run on a real NES, and the RESET button returns to the menu with
 > the cursor on the game. It is an early, experimental version; see [Own OS](#os-propio--own-os).
 
@@ -136,13 +136,14 @@ Qué hace hoy:
 - Arranca desde la BIOS y distingue el encendido, un reset en el menú y la vuelta desde un juego. Aguanta el
   botón RESET y el reset por mando del kit Lava RGB.
 - Lee la microSD con un controlador propio, **solo lectura**: FAT16 y FAT32, SDHC y SDSC, con o sin MBR.
-- Muestra la lista de la raíz con una fuente propia, pensada para televisores CRT y con caracteres españoles.
+- Recorre las carpetas de la tarjeta (16 entradas por página; A entra, B vuelve) y muestra los nombres largos con una
+  fuente propia, pensada para televisores CRT y con caracteres españoles.
 - **Lanza juegos**: lee la cabecera iNES, busca el RBF en `EDFC/MAPROUT.BIN`, carga el RBF en el FPGA, copia la
   PRG y la CHR y salta al juego con el número de mapper de la cabecera, sin traducirlo.
 
 Carga rápida: SMB3 (384 KiB) se carga en unos 3,8 s (antes 9,5 s).
 
-Qué falta: carpetas, nombres largos, partidas guardadas y menú completo. **Es experimental**: pruébalo en una microSD de pruebas.
+Qué falta: partidas guardadas y menú completo (orden alfabético, información del juego). **Es experimental**: pruébalo en una microSD de pruebas.
 
 Para probarlo:
 1. `make -C os` (necesita cc65 y Python 3).
@@ -165,13 +166,14 @@ What it does today:
   the RESET button and the Lava RGB kit's controller reset.
 - It reads the microSD card with its own driver, **read-only**: FAT16 and FAT32, SDHC and SDSC, with or
   without an MBR.
-- It shows the root folder with its own font, designed for CRT TVs and with Spanish characters.
+- It browses the card's folders (16 entries per page; A enters, B goes back) and shows long file names with its
+  own font, designed for CRT TVs and with Spanish characters.
 - **It launches games**: it reads the iNES header, looks up the RBF in `EDFC/MAPROUT.BIN`, loads the RBF into
   the FPGA, copies the PRG and CHR data and jumps to the game with the header's mapper number, untranslated.
 
 Fast loading: SMB3 (384 KiB) loads in about 3.8 s (it used to take 9.5 s).
 
-Still missing: folders, long file names, battery saves and a full menu. **It is experimental**: try it on a spare microSD card.
+Still missing: battery saves and a full menu (alphabetical order, game information). **It is experimental**: try it on a spare microSD card.
 
 To try it:
 1. `make -C os` (needs cc65 and Python 3).

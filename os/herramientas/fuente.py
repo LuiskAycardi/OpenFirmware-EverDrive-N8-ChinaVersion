@@ -10,6 +10,8 @@ OS los sube al patrón 0 a partir del tile $20, así que el número de tile es e
   $20-$7E  ASCII (mayúsculas, minúsculas, cifras y signos)
   $80-$91  español: á é í ó ú ñ ü Á É Í Ó Ú Ñ Ü ¿ ¡ º ª   (constantes en src/os.inc)
   $92      cursor del menú
+  $93      flecha a la izquierda (ayuda: cambiar de página)
+  $94      puntos suspensivos (nombre cortado)
 Cada glifo: hasta 8 filas de 7 columnas ('#' = punto encendido); la columna 8 queda libre como separación. Las
 mayúsculas ocupan las filas 0-6; las minúsculas, las filas 2-6 con ascendentes desde la 0 y descendentes hasta la 7.
 """
@@ -17,6 +19,8 @@ import sys
 
 ESPANOL = 'áéíóúñüÁÉÍÓÚÑÜ¿¡ºª'           # códigos $80...
 CURSOR = '▶'                        # $92
+IZQUIERDA = '◀'                     # $93
+PUNTOS = '…'                        # $94
 
 G = {}
 
@@ -144,6 +148,8 @@ g('¡', "..##... ....... ..##... ..##... ..##... ..##... ..##...")
 g('º', ".###... ##.##.. ##.##.. .###... ....... #####..")
 g('ª', ".###... ...##.. .####.. ##.##.. .####.. ....... #####..")
 g(CURSOR, "##..... ####... ######. ####### ######. ####... ##.....")
+g(IZQUIERDA, ".....## ...#### .###### ####### .###### ...#### .....##")
+g(PUNTOS, "....... ....... ....... ....... ....... ##.##.# ##.##.#")
 
 
 def codigo(car):
@@ -152,6 +158,10 @@ def codigo(car):
         return 0x80 + ESPANOL.index(car)
     if car == CURSOR:
         return 0x92
+    if car == IZQUIERDA:
+        return 0x93
+    if car == PUNTOS:
+        return 0x94
     return ord(car)
 
 

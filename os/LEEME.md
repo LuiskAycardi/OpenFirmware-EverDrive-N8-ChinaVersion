@@ -1,10 +1,11 @@
-# OS propio del EverDrive N8 clon — etapa 3: lanzar juegos
+# OS propio del EverDrive N8 clon — etapa 4: carpetas y nombres largos
 
-Primer `OS.BIN` propio (GPL-3.0-or-later). Todavía no lanza juegos: arranca, pinta una pantalla con una fuente
-propia y mide lo que falta saber del hardware (ver [docs/os-propio-viabilidad.md](../docs/os-propio-viabilidad.md)
-§6 y [docs/bios-n8-clon.md](../docs/bios-n8-clon.md)). Funciona con el `255.RBF` de fábrica.
+`OS.BIN` propio (GPL-3.0-or-later): arranca desde la BIOS del cartucho, lee la microSD (solo lectura), recorre sus
+carpetas con nombres largos y lanza los juegos con nuestros RBF (ver
+[docs/os-propio-viabilidad.md](../docs/os-propio-viabilidad.md) y [docs/bios-n8-clon.md](../docs/bios-n8-clon.md)).
+Funciona con el `255.RBF` de fábrica.
 
-**Qué no hace**, a propósito: no toca la flash de la BIOS, no lee ni escribe la SD y no toca la PRG-RAM de las
+**Qué no hace**, a propósito: no toca la flash de la BIOS, no escribe en la SD y no toca la PRG-RAM de las
 partidas ni el estado del OS de fábrica. Solo escribe en la RAM de la CPU, en su propia imagen (`$8000-$FFFF`), en
 la PPU, en el reg 130 del FPGA (banco de la CHR, igual que el v13) y, al arrancar, reg 9 = 01 en el CPLD (el valor
 que deja la BIOS).
@@ -72,13 +73,19 @@ encendido.
 
 | Fila | Qué es |
 |---|---|
-| ARRANQUE | tipo del último arranque |
-| ENTRADAS, RESETS, VUELTAS | contadores desde el último encendido |
-| A X Y S P | registros de la CPU al entrar (la BIOS deja `01 FF 00 FB 35`) |
-| R2 R9 RA 8A 8B 8C 4403 | registros 2, 9, 10, 138, 139 y 140 y el estado `$4403`, leídos al entrar |
-| REG2 REG9 R138 4403 (AHORA) | los mismos, en vivo |
-| MANDO | botones: A B S(elect) T (Start) U (arriba) D (abajo) L (izquierda) R (derecha) |
-| FOTOGRAMAS | contador que avanza |
+| 2 | título y etapa |
+| 3 `Arranque:` | tipo del último arranque: frío (BIOS), reset o vuelta de juego |
+| 4 `Ent/res/vue:` | contadores desde el último encendido: entradas, resets y vueltas de un juego |
+| 5 `SD:` | SDHC o SDSC, FAT16 o FAT32 y sectores por clúster (o `error nn R1=xx`) |
+| 7 | carpeta actual («Raíz» o su nombre) y, a la derecha, página/páginas |
+| 9-24 | la lista: 16 entradas por página |
+| 25 | mensajes (por qué no se puede lanzar algo) |
+| 26 | ayuda: `A abrir  B volver  ◀▶ página` |
+| 27 `Mando:` | botones en vivo: A B S(elect) T (Start) U (arriba) D (abajo) L (izquierda) R (derecha) |
+
+Los registros de la CPU y del CPLD al entrar se siguen guardando en el estado (`e_*` de `arranque.s`), pero ya no se
+ven en pantalla. Las primeras etapas también mostraban la partición, la zona de datos y una medida de lectura de
+32 KiB; se quitaron para dejar sitio a la lista (y el arranque es unos 0,3 s más rápido).
 
 ## Resultados en la NES (2026-11-16, con la capturadora y el Nano)
 
@@ -137,7 +144,7 @@ python3 -I os/herramientas/fuente.py /tmp/fuente.chr /tmp/fuente.png
 
 ## Etapa 3: lanzar un juego (`src/lanzar.s`)
 
-En la lista de la raíz, arriba y abajo mueven el cursor y **A o Start** lanzan la entrada. Con Select pulsado no se
+En la lista, **A o Start** sobre un juego lo lanzan (las carpetas: etapa 4). Con Select pulsado no se
 lanza nada: Select y luego Select+A es el reset del kit Lava.
 
 1. **Cabecera iNES:** PRG (hasta 512 KiB), CHR (hasta 512 KiB), mapper y byte 6. Si hay «trainer», se salta.
@@ -161,9 +168,9 @@ cursor sobre el juego.
 
 Si algo falla, lo dice en pantalla y el menú sigue: «No es una ROM iNES», «Tamaño de ROM no admitido», «Falta
 EDFC/MAPROUT.BIN», «Mapper sin RBF: nn», «No encuentro el RBF nnn», «RBF fragmentado en la SD», «Error de lectura
-nn», «El FPGA no se configura», «Carpetas: en otra etapa».
+nn», «El FPGA no se configura».
 
-Límites de esta etapa: solo la raíz y nombres 8.3; no hay partidas guardadas (un juego con pila arranca con lo que haya en la PRG-RAM).
+Límites: no hay partidas guardadas (un juego con pila arranca con lo que haya en la PRG-RAM).
 
 ### Resultados en la NES (2026-11-17, con la capturadora y el Nano)
 
@@ -173,10 +180,59 @@ Límites de esta etapa: solo la raíz y nombres 8.3; no hay partidas guardadas (
   9,5 s) y SMB en **1,5 s** (antes 1,7 s). Descontando lo fijo (RBF y arranque, ~1,2 s), unos 145 KiB/s.
 - **Botón RESET dentro de un juego:** vuelve al menú como «vuelta de juego», con el cursor sobre el juego.
 - **Reset por el mando (Lava) en el menú:** 4 resets, los mismos en el Nano y en la pantalla.
-- A sobre una carpeta: «Carpetas: en otra etapa».
+- A sobre una carpeta: «Carpetas: en otra etapa» (hasta la etapa 4).
 - Una vez se vio SMB3 con los gráficos revueltos tras un reset; lo más probable es un reset corto del Lava dentro
   del juego (el juego vuelve a arrancar sin pasar por el menú, igual que con el v13). No se ha reproducido.
 - Al enchufar el Nano con la consola encendida, la consola quedó colgada y el botón RESET no la recuperó: hubo que
   apagar. Probablemente los pulsos de la línea de datos lanzaron algo a medias.
 
-Pendiente: carga más rápida (lectura múltiple y copia directa a `$4800`), carpetas, nombres largos, partidas.
+## Etapa 4: carpetas y nombres largos (`src/principal.s`, `src/fat.s`)
+
+**Mando:** arriba y abajo mueven el cursor (al pasar del borde, a la página siguiente o anterior, dando la vuelta);
+derecha e izquierda cambian de página; **A o Start** abren la entrada: una carpeta se recorre y un juego se lanza;
+**B** vuelve a la carpeta de arriba con el cursor donde estaba. Con Select pulsado no se hace nada (Select y luego
+Select+A es el reset del kit Lava).
+
+**Nombres:**
+- El nombre largo (LFN) si lo hay y es válido: sus trozos se juntan en `dir_siguiente` y valen si la suma de
+  comprobación coincide con la del nombre 8.3 que los sigue. Se guardan los primeros 64 caracteres.
+- Los caracteres UCS-2 pasan a la fuente: ASCII tal cual; á é í ó ú ñ ü Á É Í Ó Ú Ñ Ü ¿ ¡ º ª con su dibujo; otros
+  acentos latinos (à ö ç…) en la letra sin acento; lo demás, «?».
+- Sin nombre largo, el 8.3, con las minúsculas que marca Windows en el byte 12 (`zelda.nes`).
+- Sin la extensión `.nes`; las carpetas acaban en «/»; si no cabe en 28 columnas, «…» al final.
+- No se listan «.», «..», lo oculto ni lo que empieza por punto (como los `._juego.nes` que deja macOS).
+
+**Cómo:** al entrar en una carpeta, el OS la recorre una vez con la pantalla apagada: cuenta las entradas y guarda
+dónde empieza cada página (12 bytes por página: sector, clúster, sectores que quedan, entrada y estado; `dir_guardar`
+de `fat.s`). Cambiar de página es volver a esa posición (`dir_restaurar`) y leer 16 entradas, con la pantalla
+encendida: el texto se prepara en la RAM y se sube a la PPU a dos filas por fotograma. Caben 255 páginas (4080
+entradas por carpeta) y 8 carpetas de profundidad («Demasiadas carpetas»).
+
+**Memoria:** la caché de páginas, el texto de la lista y la ruta (clúster, página y fila del cursor y nombre de cada
+carpeta) están en el segmento `GRANDE` (`$E000-$FAFF`), dentro de la imagen del OS en la PRG-RAM: la BIOS lo deja a
+cero al encender y sobrevive a los resets y a la vuelta de un juego. Por eso, al volver de un juego con RESET, el menú
+abre su carpeta con el cursor sobre él; un reset estando en el menú se queda en la carpeta.
+
+**Pruebas** (`herramientas/probar_os.py`): raíz de 62 entradas en 4 páginas (FAT16 y FAT32) con izquierda y derecha
+dando la vuelta; entrar en EDFC y volver con B; una carpeta con 40 juegos de nombre largo con acentos (3 páginas,
+cambio de página por el borde), una carpeta vacía, un archivo borrado con nombre largo, un `._` de macOS, un archivo
+oculto, un nombre cortado, un 8.3 en minúsculas, otros acentos; lanzar un juego MMC3 a dos carpetas de profundidad y
+volver a él con RESET; volver a la raíz con B.
+
+### Resultados en la NES (2026-11-17, con la capturadora y el Nano, SD de pruebas de 4 GB)
+
+- Raíz y `PRUEBAS` (26 entradas, 2 páginas): nombres largos, «/» en las carpetas, «…» en los que no caben; Derecha
+  pasa a la página 2/2.
+- Entrar en `PRUEBAS/5 Fase 3a` y lanzar Akira (mapper 33): arranca. **RESET** vuelve a `5 Fase 3a` («vuelta de
+  juego») con el cursor sobre Akira; **B** sube a `PRUEBAS` con el cursor sobre `5 Fase 3a`, y otro B a la raíz con
+  el cursor sobre `PRUEBAS`.
+- `PRUEBAS/14 RBF 105` (45 entradas, 3 páginas): Arriba en la primera fila lleva a la 3/3 con el cursor en la última.
+- **Reset por el mando (Lava) dentro de una carpeta:** 4 resets en el Nano y en la pantalla (`Ent/res/vue: 06 04
+  01`); el menú se queda en la carpeta.
+- ⚠️ **Toy Story (mapper 219, `219 Toy Story (Asia) (En) (Pirate).nes`) no arranca con el OS propio:** pantalla en
+  negro (más de 20 s, también tras pulsar Start). RESET vuelve al menú con el cursor sobre él. Con el OS de fábrica
+  y el `105.RBF` de v0.1.3 sí arrancaba: queda por investigar qué hace distinto el v13 (o el apaño del RBF) al
+  lanzarlo.
+
+Pendiente: Toy Story (219) con el OS propio, partidas guardadas, menú completo (orden alfabético, información del
+juego), modo banco.

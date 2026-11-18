@@ -41,6 +41,8 @@ C_UD = $8D                      ; Ü
 C_INT = $8E                     ; ¿
 C_EXC = $8F                     ; ¡
 C_CURSOR = $92                  ; cursor del menú
+C_IZQ = $93                     ; ◀
+C_PUNTOS = $94                  ; … (nombre cortado)
 
 ; motivos por los que no se puede lanzar un juego (lanzar.s)
 L_NOINES    = 1                 ; no empieza por "NES" $1A

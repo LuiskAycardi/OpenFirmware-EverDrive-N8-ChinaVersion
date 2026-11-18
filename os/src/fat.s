@@ -10,7 +10,13 @@
 ;   arch_contiguo     acarreo = 0 si los clústeres del archivo abierto van seguidos en la tarjeta
 ;   tramo_ini/_sig    recorre el archivo abierto por tramos de clústeres seguidos (para lecturas múltiples)
 ;   dir_siguiente     siguiente entrada de verdad (salta nombres largos, borrados y la etiqueta): deja dir_ent
-;                     apuntando a sus 32 bytes; acarreo = 1 cuando no hay más (o hubo error: fat_error)
+;                     apuntando a sus 32 bytes; acarreo = 1 cuando no hay más (o hubo error: fat_error). Por el
+;                     camino junta el nombre largo (LFN): si es válido para la entrada (suma de comprobación del
+;                     nombre 8.3), lfn_val = 1 y lfn_buf tiene sus primeros 64 caracteres ya en códigos de la fuente
+;                     (terminado en 0 si es más corto)
+;   dir_abrir_c       abre la carpeta del clúster `clus` (0 = la raíz)
+;   dir_guardar       guarda en (dir_pos) 12 bytes con la posición del recorrido (después de la última entrada)
+;   dir_restaurar     vuelve a esa posición: el siguiente dir_siguiente sigue desde ahí
 ; Límites de esta etapa: sectores de 512 bytes; FAT12 no; se decide FAT16/FAT32 por «sectores por FAT de 16 bits»
 ; distinto de cero (lo normal en tarjetas SD).
 
@@ -22,7 +28,8 @@
         .export fat_error, fat_tipo, fat_spc, fat_part, fat_datos, sector
         .export arch_lba, arch_tam, arch_clus, arch_ini
         .export tramo_ini, tramo_sig, tr_lba, tr_n, tr_fin, fat_desp
-        .exportzp dir_ent, nombre
+        .export dir_abrir_c, dir_guardar, dir_restaurar, ent_clus, lfn_buf, lfn_val
+        .exportzp dir_ent, nombre, clus, dir_pos
         .import sd_leer_sector
         .importzp sd_lba, sd_ptr
 
@@ -36,6 +43,7 @@ E_FIN   = 9                     ; el archivo se acaba antes de lo que dice su ta
 dir_ent:    .res 2              ; entrada actual (dentro de `sector`)
 nombre:     .res 2              ; nombre 8.3 (11 bytes) que busca dir_buscar
 clus:       .res 4              ; clúster de trabajo
+dir_pos:    .res 2              ; dir_guardar / dir_restaurar: dónde van los 12 bytes
 t32:        .res 4
 t32b:       .res 4
 
@@ -55,11 +63,21 @@ fat_ini:    .res 4              ; primer sector de la FAT
 fat_datos:  .res 4              ; primer sector de la zona de datos (clúster 2)
 fat_raiz:   .res 4              ; FAT32: clúster de la raíz; FAT16: primer sector de la raíz
 fat_raiz_n: .res 2              ; FAT16: sectores de la raíz
+; dir_lba ... dir_estado: 12 bytes seguidos (dir_guardar los copia tal cual)
 dir_lba:    .res 4              ; sector actual del directorio
 dir_clus:   .res 4              ; clúster actual (0 = raíz fija de FAT16)
 dir_quedan: .res 2              ; sectores que quedan en el tramo, contando el actual
 dir_idx:    .res 1              ; entrada dentro del sector (0-15)
-dir_estado: .res 1              ; 0 = hay que leer el sector; 1 = sector leído; 2 = hay que avanzar antes
+dir_estado: .res 1              ; 0 = hay que leer el sector; 1 = sector leído; 2 = hay que avanzar antes;
+                                ; 3 = hay que leer el sector, apuntar a dir_idx y avanzar (tras dir_restaurar)
+LFN_MAX = 64
+lfn_buf:    .res LFN_MAX        ; nombre largo en códigos de la fuente
+lfn_ok:     .res 1              ; 1 = se está juntando un nombre largo
+lfn_ck:     .res 1              ; su suma de comprobación
+lfn_val:    .res 1              ; 1 = la entrada devuelta tiene nombre largo válido
+lfn_t:      .res 1
+lfn_j:      .res 1
+lfn_lo:     .res 1
 arch_lba:   .res 4              ; sector actual del archivo abierto
 arch_clus:  .res 4              ; su clúster
 arch_quedan: .res 1             ; sectores que quedan en el clúster, contando el actual
@@ -384,6 +402,7 @@ clus_siguiente:
 dir_abrir_raiz:
         lda     #0
         sta     dir_estado
+        sta     lfn_ok
         lda     fat_tipo
         cmp     #32
         beq     @f32
@@ -457,7 +476,8 @@ dir_siguiente:
         sta     dir_estado
 @sin_avanzar:
         lda     dir_estado
-        bne     @mirar
+        cmp     #1
+        beq     @mirar
         copia32 sd_lba, dir_lba
         jsr     leer
         bcc     @leido
@@ -465,7 +485,32 @@ dir_siguiente:
         sta     fat_error
 @fin:   sec
         rts
-@leido: lda     #<sector
+@leido: lda     dir_estado
+        cmp     #3
+        bne     @nuevo
+        lda     dir_idx                 ; reanudar: dir_ent = sector + 32 * dir_idx, y avanzar
+        lsr
+        lsr
+        lsr
+        clc
+        adc     #>sector
+        sta     dir_ent+1
+        lda     dir_idx
+        and     #7
+        asl
+        asl
+        asl
+        asl
+        asl
+        clc
+        adc     #<sector
+        sta     dir_ent
+        bcc     @r
+        inc     dir_ent+1
+@r:     lda     #2
+        sta     dir_estado
+        jmp     @otra
+@nuevo: lda     #<sector
         sta     dir_ent
         lda     #>sector
         sta     dir_ent+1
@@ -477,16 +522,177 @@ dir_siguiente:
         lda     (dir_ent),y
         beq     @fin                    ; $00: no hay más entradas
         cmp     #$E5
-        beq     @otra                   ; borrada
+        beq     @borrada
         ldy     #11
         lda     (dir_ent),y
         and     #$3F
         cmp     #$0F
-        beq     @otra                   ; trozo de nombre largo
+        beq     @largo                  ; trozo de nombre largo
         and     #$08
-        bne     @otra                   ; etiqueta del volumen
+        bne     @borrada                ; etiqueta del volumen
+        jsr     lfn_cierra
         clc
         rts
+@borrada:
+        lda     #0
+        sta     lfn_ok
+        jmp     @otra
+@largo: jsr     lfn_trozo
+        jmp     @otra
+
+; Trozo de nombre largo en dir_ent: 13 caracteres UCS-2 en la posición (orden - 1) * 13. El trozo con el bit $40
+; es el último del nombre y el primero que aparece en el directorio: empieza un nombre nuevo.
+lfn_trozo:
+        ldy     #0
+        lda     (dir_ent),y
+        and     #$40
+        beq     @medio
+        ldx     #LFN_MAX
+        lda     #0
+@borra: sta     lfn_buf-1,x
+        dex
+        bne     @borra
+        lda     #1
+        sta     lfn_ok
+        ldy     #13
+        lda     (dir_ent),y
+        sta     lfn_ck
+        jmp     @guarda
+@medio: lda     lfn_ok
+        beq     @fin
+        ldy     #13
+        lda     (dir_ent),y
+        cmp     lfn_ck
+        bne     @mal
+@guarda:
+        ldy     #0
+        lda     (dir_ent),y
+        and     #$1F
+        beq     @mal
+        sec
+        sbc     #1
+        cmp     #5                      ; más allá de 64 caracteres: no se guarda
+        bcs     @fin
+        tax
+        lda     lfn_pos,x
+        tax
+        lda     #0
+        sta     lfn_j
+@c:     ldy     lfn_j
+        lda     lfn_offs,y
+        tay
+        lda     (dir_ent),y
+        sta     lfn_lo
+        iny
+        lda     (dir_ent),y
+        jsr     ucs_a_fuente
+        cpx     #LFN_MAX
+        bcs     @fin
+        sta     lfn_buf,x
+        inx
+        inc     lfn_j
+        lda     lfn_j
+        cmp     #13
+        bne     @c
+@fin:   rts
+@mal:   lda     #0
+        sta     lfn_ok
+        rts
+
+; Carácter UCS-2 (A = byte alto, lfn_lo = bajo) -> código de la fuente. 0 = fin del nombre ($0000 y el relleno
+; $FFFF). Lo que la fuente no tiene sale como «?». No toca X.
+ucs_a_fuente:
+        cmp     #0
+        bne     @alto
+        lda     lfn_lo
+        beq     @ya
+        cmp     #$20
+        bcc     @raro
+        cmp     #$7F
+        bcc     @ya
+        ldy     #LATIN1_N - 1
+@t:     cmp     latin1,y
+        beq     @hay
+        dey
+        bpl     @t
+@raro:  lda     #'?'
+@ya:    rts
+@hay:   lda     latin1_cod,y
+        rts
+@alto:  cmp     #$FF
+        bne     @raro
+        lda     lfn_lo
+        cmp     #$FF
+        bne     @raro
+        lda     #0
+        rts
+
+; Entrada 8.3 en dir_ent: el nombre largo que se juntaba vale si su suma de comprobación es la de este nombre.
+lfn_cierra:
+        lda     #0
+        sta     lfn_val
+        lda     lfn_ok
+        beq     @fin
+        lda     #0
+        sta     lfn_ok
+        sta     lfn_t
+        ldy     #0
+@c:     lda     lfn_t
+        lsr
+        bcc     @s
+        ora     #$80
+@s:     clc
+        adc     (dir_ent),y
+        sta     lfn_t
+        iny
+        cpy     #11
+        bne     @c
+        cmp     lfn_ck
+        bne     @fin
+        lda     lfn_buf
+        beq     @fin
+        lda     #1
+        sta     lfn_val
+@fin:   rts
+
+; Guarda la posición del recorrido en (dir_pos): 12 bytes.
+dir_guardar:
+        ldy     #0
+@b:     lda     dir_lba,y
+        sta     (dir_pos),y
+        iny
+        cpy     #12
+        bne     @b
+        rts
+
+; Vuelve a la posición guardada en (dir_pos).
+dir_restaurar:
+        ldy     #11
+@b:     lda     (dir_pos),y
+        sta     dir_lba,y
+        dey
+        bpl     @b
+        lda     #0
+        sta     lfn_ok
+        lda     dir_estado
+        beq     @ya
+        lda     #3
+        sta     dir_estado
+@ya:    rts
+
+; Abre la carpeta del clúster `clus` (0 = la raíz, como en las entradas «..»).
+dir_abrir_c:
+        lda     clus
+        ora     clus+1
+        ora     clus+2
+        ora     clus+3
+        bne     @sub
+        jmp     dir_abrir_raiz
+@sub:   copia32 dir_clus, clus
+        lda     #0
+        sta     dir_estado
+        sta     lfn_ok
+        jmp     clus_a_lba
 
 ; Abre la carpeta de la entrada dir_ent.
 dir_abrir:
@@ -494,6 +700,7 @@ dir_abrir:
         copia32 dir_clus, clus
         lda     #0
         sta     dir_estado
+        sta     lfn_ok
         jmp     clus_a_lba
 
 ; clus = primer clúster de la entrada dir_ent (en FAT16 la parte alta no se usa).
@@ -670,3 +877,15 @@ tramo_sig:
         rts
 @mal:   sec
         rts
+
+        .segment "RODATA"
+lfn_pos:    .byte   0, 13, 26, 39, 52
+lfn_offs:   .byte   1, 3, 5, 7, 9, 14, 16, 18, 20, 22, 24, 28, 30
+; Latin-1 -> fuente: los caracteres españoles tienen su dibujo; otros acentos se quedan en la letra sin acento.
+latin1:     .byte   $E1, $E9, $ED, $F3, $FA, $F1, $FC, $C1, $C9, $CD, $D3, $DA, $D1, $DC, $BF, $A1, $BA, $AA
+            .byte   $E0, $E2, $E4, $E5, $E8, $EA, $EB, $EC, $EE, $EF, $F2, $F4, $F6, $F9, $FB, $E7
+            .byte   $C0, $C2, $C4, $C5, $C8, $CA, $CB, $CC, $CE, $CF, $D2, $D4, $D6, $D9, $DB, $C7
+latin1_cod: .byte   C_a, C_e, C_i, C_o, C_u, C_n, C_ud, C_A, C_E, C_I, C_O, C_U, C_N, C_UD, C_INT, C_EXC, $90, $91
+            .byte   "aaaaeeeiiiooouuc"
+            .byte   "AAAAEEEIIIOOOUUC"
+LATIN1_N = * - latin1_cod

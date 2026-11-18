@@ -271,7 +271,7 @@ class Maquina:
         return self.pal[a & 0x1F]
 
     # tiles $80-$92 de la fuente del OS propio (os/herramientas/fuente.py)
-    EXTRA = {0x80 + i: c for i, c in enumerate('áéíóúñüÁÉÍÓÚÑÜ¿¡ºª\u25b6')}
+    EXTRA = {0x80 + i: c for i, c in enumerate('áéíóúñüÁÉÍÓÚÑÜ¿¡ºª\u25b6\u25c0\u2026')}
 
     def pantalla(self):
         """Nametable 0 como texto (la BIOS y el v13 usan tiles con código ASCII; el OS propio, además, $80-$92)."""

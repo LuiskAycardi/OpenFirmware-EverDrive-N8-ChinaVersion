@@ -77,9 +77,9 @@ not use them).
 
 **ES** — `OS-propio/OS.BIN` es nuestro primer OS, escrito desde cero. **No hace falta para usar los RBF**: con
 el OS de fábrica funcionan igual (salvo el mapper 219, ver abajo).
-- **Qué hace:** arranca desde la BIOS del cartucho, lee la microSD (solo lectura), muestra la raíz y lanza los
-  juegos de la raíz con nuestros RBF. El botón RESET vuelve al menú con el cursor sobre el juego.
-- **Qué no hace todavía:** carpetas, nombres largos (se ven los cortos, `SUPERM~1.NES`), partidas con pila,
+- **Qué hace:** arranca desde la BIOS del cartucho, lee la microSD (solo lectura), recorre sus carpetas con
+  nombres largos (A entra, B vuelve, Izquierda/Derecha cambian de página) y lanza los juegos con nuestros RBF. El botón RESET vuelve al menú con el cursor sobre el juego.
+- **Qué no hace todavía:** partidas con pila,
   save states ni FDS. Una ROM de 384 KiB se carga en unos 3,8 s.
 - **Probado** en una NES real: Super Mario Bros. y Super Mario Bros. 3.
 - **Instalación:**
@@ -94,11 +94,10 @@ el OS de fábrica funcionan igual (salvo el mapper 219, ver abajo).
 
 **EN** — `OS-propio/OS.BIN` is our first own OS, written from scratch. **It is not needed to use the RBF
 files**: they work the same with the factory OS (except mapper 219, see below).
-- **What it does:** it boots from the cartridge BIOS, reads the microSD card (read-only), shows the root
-  folder and launches the games in it with our RBF files. The RESET button returns to the menu with the cursor
+- **What it does:** it boots from the cartridge BIOS, reads the microSD card (read-only), browses its
+  folders with long file names (A enters, B goes back, Left/Right change page) and launches games with our RBF files. The RESET button returns to the menu with the cursor
   on the game.
-- **What it does not do yet:** folders, long file names (short names such as `SUPERM~1.NES` are shown),
-  battery saves, save states or FDS. A 384 KiB ROM loads in about 3.8 s.
+- **What it does not do yet:** battery saves, save states or FDS. A 384 KiB ROM loads in about 3.8 s.
 - **Tested** on a real NES: Super Mario Bros. and Super Mario Bros. 3.
 - **Installation:**
   1. Back up your `EDFC` folder.
