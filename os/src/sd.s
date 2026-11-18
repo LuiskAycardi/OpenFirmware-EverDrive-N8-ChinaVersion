@@ -1,10 +1,11 @@
-; sd.s — tarjeta SD por el SPI del CPLD del N8 clon. SOLO LECTURA: no hay ninguna orden de escritura (CMD24/25).
+; sd.s — tarjeta SD por el SPI del CPLD del N8 clon. Lee sectores (CMD17/18) y escribe de uno en uno (CMD24): lo
+; único que escribe el OS son las partidas (partida.s) y lo que necesita la FAT para crearlas (fat.s).
 ; GPL-3.0-or-later. Código propio, escrito a partir de los registros descritos en docs/bios-n8-clon.md §2:
 ;   reg 0 por $4401   dato SPI: escribir envía un byte; leer devuelve el último recibido o, en ráfaga, saca otro
 ;   reg 2             bit 0 = lo pone la BIOS tras inicializar (¿SPI rápido?), bit 1 = /CS (1 = tarjeta libre),
 ;                     bit 2 = ráfaga (cada lectura de $4401 saca un byte nuevo), bit 3 = «la tarjeta es SDHC»
 ;   $4403 bit 0       SPI libre
-; Protocolo: SD en modo SPI (CMD0, CMD8, ACMD41, CMD58, CMD16, CMD17, CMD18, CMD12).
+; Protocolo: SD en modo SPI (CMD0, CMD8, ACMD41, CMD58, CMD16, CMD17, CMD18, CMD12 y CMD24).
 ;
 ; La BIOS deja la tarjeta a mitad de una lectura múltiple (CMD18 sin CMD12), y un reset puede cortar una lectura
 ; nuestra: por eso sd_iniciar empieza con CMD12 y vuelve a inicializar la tarjeta desde CMD0.
@@ -12,7 +13,7 @@
         .setcpu "6502"
         .include "os.inc"
 
-        .export sd_iniciar, sd_leer_sector, sd_rapido, sd_multi_ini, sd_parar, sd_base
+        .export sd_iniciar, sd_leer_sector, sd_escribir_sector, sd_rapido, sd_multi_ini, sd_parar, sd_base
         .export sd_error, sd_r1, sd_sdhc
         .exportzp sd_lba, sd_ptr
 
@@ -27,7 +28,10 @@ E_ACMD41 = 2                    ; no sale del estado de reposo
 E_CMD58  = 3
 E_CMD17  = 4                    ; la orden de lectura da error (sd_r1)
 E_DATOS  = 5                    ; no llega el testigo de datos
-        .export E_CMD0, E_ACMD41, E_CMD58, E_CMD17, E_DATOS
+E_CMD24  = 10                   ; la orden de escritura da error (sd_r1)
+E_RECHAZO = 11                  ; la tarjeta no acepta el bloque (protegida contra escritura o CRC)
+E_OCUPADA = 12                  ; la tarjeta no termina de grabar
+        .export E_CMD0, E_ACMD41, E_CMD58, E_CMD17, E_DATOS, E_CMD24, E_RECHAZO, E_OCUPADA
 
         .segment "ZEROPAGE"
 sd_lba:     .res 4              ; sector a leer (byte bajo primero)
@@ -365,5 +369,66 @@ sd_leer_sector:
         lda     REG_DAT
         jsr     cs_bajo                 ; fin de la ráfaga
         jsr     sd_fin
+        clc
+        rts
+
+; ---------------------------------------------------------------------------------------------- escritura
+; Escribe en el sector sd_lba los 512 bytes de (sd_ptr), con CMD24. No cambia sd_lba ni sd_ptr. Acarreo = 1 y
+; sd_error si falla. Los 512 bytes van seguidos por $4401, sin esperar al SPI, igual que en la BIOS (con el bit 0 del
+; reg 2 el SPI va más rápido que la CPU); las órdenes y la respuesta sí esperan (spi).
+sd_escribir_sector:
+        jsr     arg_lba
+        lda     #24
+        sta     sd_c
+        jsr     cs_bajo
+        jsr     sd_cmd
+        beq     @datos
+        jsr     sd_fin
+        lda     #E_CMD24
+        jmp     error
+@datos: lda     #$FF                    ; un byte de separación y el testigo de bloque único
+        jsr     spi
+        lda     #$FE
+        jsr     spi
+        ldy     #0
+@p1:    lda     (sd_ptr),y
+        sta     REG_DAT
+        iny
+        bne     @p1
+        inc     sd_ptr+1
+@p2:    lda     (sd_ptr),y
+        sta     REG_DAT
+        iny
+        bne     @p2
+        dec     sd_ptr+1
+        lda     #$FF                    ; CRC (no se comprueba en modo SPI)
+        jsr     spi
+        lda     #$FF
+        jsr     spi
+        lda     #$FF                    ; respuesta de datos: xxx0 0101 = aceptado
+        jsr     spi
+        sta     sd_r1
+        and     #$1F
+        cmp     #$05
+        beq     @ocupada
+        jsr     sd_fin
+        lda     #E_RECHAZO
+        jmp     error
+@ocupada:                               ; mientras graba, la tarjeta contesta $00; hasta 65536 intentos (~1,5 s)
+        lda     #0
+        sta     sd_n
+        sta     sd_n+1
+@o:     lda     #$FF
+        jsr     spi
+        cmp     #$FF
+        beq     @libre
+        dec     sd_n
+        bne     @o
+        dec     sd_n+1
+        bne     @o
+        jsr     sd_fin
+        lda     #E_OCUPADA
+        jmp     error
+@libre: jsr     sd_fin
         clc
         rts

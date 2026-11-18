@@ -1,4 +1,6 @@
-; fat.s — FAT16 y FAT32 de solo lectura para el OS del N8 clon. GPL-3.0-or-later, código propio.
+; fat.s — FAT16 y FAT32 para el OS del N8 clon. GPL-3.0-or-later, código propio. Lee todo; escribe solo lo que
+; hace falta para crear las partidas (partida.s): entradas de la FAT (las dos copias), la FSInfo y huecos nuevos en
+; una carpeta. Nunca borra ni cambia de tamaño un archivo.
 ;
 ;   fat_montar        lee el sector 0 (MBR o sector de arranque sin particiones) y la BPB
 ;   dir_abrir_raiz    prepara el recorrido del directorio raíz
@@ -17,6 +19,15 @@
 ;   dir_abrir_c       abre la carpeta del clúster `clus` (0 = la raíz)
 ;   dir_guardar       guarda en (dir_pos) 12 bytes con la posición del recorrido (después de la última entrada)
 ;   dir_restaurar     vuelve a esa posición: el siguiente dir_siguiente sigue desde ahí
+;   (escritura)
+;   fat_libres        busca lib_k clústeres libres seguidos (desde la pista de la FSInfo): lib_ini
+;   fat_poner         FAT[clus] = fat_v en el búfer de la FAT (se graba al cambiar de sector o con fat_grabar)
+;   fat_grabar        graba el sector de la FAT modificado en todas las copias
+;   fat_info_pista    FSInfo: libres = desconocido y siguiente libre = clus
+;   dir_huecos        busca hc_n entradas libres seguidas en la carpeta abierta (la amplía con un clúster si hace
+;                     falta): sus posiciones en hc_lba/hc_idx
+;   leer_sector / grabar_sector   sector sd_lba <-> `sector`
+; Además, dir_siguiente guarda el nombre largo en bruto (UCS-2) en lfn_crudo: lfn_crudo_n trozos de 13 caracteres.
 ; Límites de esta etapa: sectores de 512 bytes; FAT12 no; se decide FAT16/FAT32 por «sectores por FAT de 16 bits»
 ; distinto de cero (lo normal en tarjetas SD).
 
@@ -29,15 +40,19 @@
         .export arch_lba, arch_tam, arch_clus, arch_ini
         .export tramo_ini, tramo_sig, tr_lba, tr_n, tr_fin, fat_desp
         .export dir_abrir_c, dir_guardar, dir_restaurar, ent_clus, lfn_buf, lfn_val
+        .export fat_libres, fat_poner, fat_grabar, fat_info_pista, dir_huecos, leer_sector, grabar_sector
+        .export lib_k, lib_ini, fat_v, hc_n, hc_lba, hc_idx, lfn_crudo, lfn_crudo_n
+        .export dir_lba, dir_idx, dir_clus, clus_a_lba
         .exportzp dir_ent, nombre, clus, dir_pos
-        .import sd_leer_sector
+        .import sd_leer_sector, sd_escribir_sector
         .importzp sd_lba, sd_ptr
 
 E_FIRMA = 6                     ; el sector 0 no acaba en 55 AA
 E_BPB   = 7                     ; sector de arranque no válido (o sectores que no son de 512 bytes)
 E_SPC   = 8                     ; sectores por clúster no es potencia de 2
 E_FIN   = 9                     ; el archivo se acaba antes de lo que dice su tamaño
-        .export E_FIRMA, E_BPB, E_SPC, E_FIN
+E_LLENA = 13                    ; no quedan clústeres libres (o la carpeta no se puede ampliar)
+        .export E_FIRMA, E_BPB, E_SPC, E_FIN, E_LLENA
 
         .segment "ZEROPAGE"
 dir_ent:    .res 2              ; entrada actual (dentro de `sector`)
@@ -46,6 +61,7 @@ clus:       .res 4              ; clúster de trabajo
 dir_pos:    .res 2              ; dir_guardar / dir_restaurar: dónde van los 12 bytes
 t32:        .res 4
 t32b:       .res 4
+fat_p:      .res 2              ; entrada de la FAT dentro de fat_buf (fat_ent_ptr)
 
         .segment "BSS"
 sector:     .res 512            ; búfer de sector (directorios, cabeceras)
@@ -63,6 +79,23 @@ fat_ini:    .res 4              ; primer sector de la FAT
 fat_datos:  .res 4              ; primer sector de la zona de datos (clúster 2)
 fat_raiz:   .res 4              ; FAT32: clúster de la raíz; FAT16: primer sector de la raíz
 fat_raiz_n: .res 2              ; FAT16: sectores de la raíz
+fat_n:      .res 1              ; copias de la FAT
+fat_sz:     .res 4              ; sectores de cada FAT
+fat_max:    .res 4              ; último clúster válido
+fat_info:   .res 4              ; sector de la FSInfo (FAT32); 0 = no hay
+fat_sucio:  .res 1              ; 1 = fat_buf tiene cambios sin grabar
+fat_pide:   .res 4
+fat_k:      .res 1
+fat_v:      .res 4              ; fat_poner: valor
+lib_k:      .res 1              ; fat_libres: clústeres que hacen falta (1-255)
+lib_n:      .res 1
+lib_ini:    .res 4              ; fat_libres: el primero del tramo libre
+lib_0:      .res 4              ; donde empezó la búsqueda
+lib_vuelta: .res 1
+hc_n:       .res 1              ; dir_huecos: entradas que hacen falta (1-21)
+hc_k:       .res 1
+hc_fin:     .res 1
+hc_i:       .res 1
 ; dir_lba ... dir_estado: 12 bytes seguidos (dir_guardar los copia tal cual)
 dir_lba:    .res 4              ; sector actual del directorio
 dir_clus:   .res 4              ; clúster actual (0 = raíz fija de FAT16)
@@ -78,6 +111,15 @@ lfn_val:    .res 1              ; 1 = la entrada devuelta tiene nombre largo vá
 lfn_t:      .res 1
 lfn_j:      .res 1
 lfn_lo:     .res 1
+
+        .segment "GRANDE"
+LFN_TROZOS = 20                 ; 20 x 13 = 260 caracteres: cabe cualquier nombre largo (255)
+lfn_crudo:  .res LFN_TROZOS * 26
+lfn_crudo_n: .res 1             ; trozos del último nombre largo empezado
+HC_MAX = 21
+hc_lba:     .res 4 * HC_MAX
+hc_idx:     .res HC_MAX
+        .segment "BSS"
 arch_lba:   .res 4              ; sector actual del archivo abierto
 arch_clus:  .res 4              ; su clúster
 arch_quedan: .res 1             ; sectores que quedan en el clúster, contando el actual
@@ -126,6 +168,11 @@ fat_montar:
         lda     #$FF                    ; caché de la FAT vacía
         sta     fat_buf_lba+3
         lda     #0
+        sta     fat_sucio
+        sta     fat_info
+        sta     fat_info+1
+        sta     fat_info+2
+        sta     fat_info+3
         sta     fat_error
         sta     sd_lba
         sta     sd_lba+1
@@ -193,7 +240,10 @@ fat_montar:
         lda     #32
         sta     fat_tipo
         copia32 t32, sector+36
-@tam:   copia32 fat_datos, fat_ini      ; saltar las FAT (normalmente 2)
+@tam:   copia32 fat_sz, t32
+        lda     sector+16
+        sta     fat_n
+        copia32 fat_datos, fat_ini      ; saltar las FAT (normalmente 2)
         ldx     sector+16
 @fats:  suma32  fat_datos, t32
         dex
@@ -203,8 +253,25 @@ fat_montar:
         cmp     #32
         bne     @f16
         copia32 fat_raiz, sector+44     ; FAT32: la raíz es una cadena de clústeres
-        clc
-        rts
+        lda     sector+48               ; FSInfo (sector relativo; 0 o $FFFF = no hay)
+        ora     sector+49
+        beq     @sin_info
+        lda     sector+48
+        and     sector+49
+        cmp     #$FF
+        bne     @info
+@sin_info:
+        jmp     @geom
+@info:  lda     sector+48
+        sta     t32
+        lda     sector+49
+        sta     t32+1
+        lda     #0
+        sta     t32+2
+        sta     t32+3
+        copia32 fat_info, fat_part
+        suma32  fat_info, t32
+        jmp     @geom
 @f16:   copia32 fat_raiz, fat_datos     ; FAT16: raíz fija entre las FAT y los datos
         clc                             ; sectores = (entradas + 15) / 16
         lda     sector+17
@@ -226,7 +293,52 @@ fat_montar:
         sta     t32+2
         sta     t32+3
         suma32  fat_datos, t32
-        clc
+        ; clústeres = (sectores de la partición - (fat_datos - fat_part)) >> desp; fat_max = clústeres + 1
+@geom:  lda     sector+19
+        sta     t32b
+        lda     sector+20
+        sta     t32b+1
+        ora     t32b
+        beq     @tot32
+        lda     #0
+        sta     t32b+2
+        sta     t32b+3
+        beq     @resta
+@tot32: copia32 t32b, sector+32
+@resta: sec
+        ldx     #0
+        ldy     #4
+@r:     lda     fat_datos,x
+        sbc     fat_part,x
+        sta     t32,x
+        inx
+        dey
+        bne     @r
+        sec
+        ldx     #0
+        ldy     #4
+@r2:    lda     t32b,x
+        sbc     t32,x
+        sta     fat_max,x
+        inx
+        dey
+        bne     @r2
+        ldx     fat_desp
+        beq     @mas1
+@d:     lsr     fat_max+3
+        ror     fat_max+2
+        ror     fat_max+1
+        ror     fat_max
+        dex
+        bne     @d
+@mas1:  inc     fat_max
+        bne     @ya
+        inc     fat_max+1
+        bne     @ya
+        inc     fat_max+2
+        bne     @ya
+        inc     fat_max+3
+@ya:    clc
         rts
 
 error_sd:
@@ -290,31 +402,23 @@ clus_a_lba:
 ; clus = clúster siguiente a `clus` según la FAT. Acarreo = 1 si era el último (o error de lectura: fat_error).
 ; Lee la FAT en su propio búfer (fat_buf), con caché de un sector: no toca `sector`.
 clus_siguiente:
+        jsr     fat_ent_ptr
+        bcc     :+
+        rts
+:
+        ldy     #0
+        lda     (fat_p),y
+        sta     clus
+        iny
+        lda     (fat_p),y
+        sta     clus+1
         lda     fat_tipo
         cmp     #32
         beq     @f32
-        ; FAT16: sector = fat_ini + clus/256; posición = (clus mod 256) x 2
-        lda     clus+1
-        sta     t32
         lda     #0
-        sta     t32+1
-        sta     t32+2
-        sta     t32+3
-        jsr     @leer_fat
-        bcs     @fin
-        lda     clus
-        asl
-        tay
-        bcs     @alta16
-        lda     fat_buf,y
-        sta     clus
-        lda     fat_buf+1,y
-        jmp     @v16
-@alta16:
-        lda     fat_buf+256,y
-        sta     clus
-        lda     fat_buf+257,y
-@v16:   sta     clus+1
+        sta     clus+2
+        sta     clus+3
+        lda     clus+1
         cmp     #$FF                    ; >= $FFF8: fin de la cadena
         bne     @sigue
         lda     clus
@@ -325,41 +429,12 @@ clus_siguiente:
 @ultimo:
         sec
         rts
-
-        ; FAT32: sector = fat_ini + clus/128; posición = (clus mod 128) x 4
-@f32:   copia32 t32, clus
-        ldx     #7
-@d7:    lsr     t32+3
-        ror     t32+2
-        ror     t32+1
-        ror     t32
-        dex
-        bne     @d7
-        jsr     @leer_fat
-        bcs     @fin
-        lda     clus
-        and     #$7F
-        asl
-        asl
-        tay
-        bcs     @alta32
-        lda     fat_buf,y
-        sta     clus
-        lda     fat_buf+1,y
-        sta     clus+1
-        lda     fat_buf+2,y
+@f32:   iny
+        lda     (fat_p),y
         sta     clus+2
-        lda     fat_buf+3,y
-        jmp     @v32
-@alta32:
-        lda     fat_buf+256,y
-        sta     clus
-        lda     fat_buf+257,y
-        sta     clus+1
-        lda     fat_buf+258,y
-        sta     clus+2
-        lda     fat_buf+259,y
-@v32:   and     #$0F
+        iny
+        lda     (fat_p),y
+        and     #$0F
         sta     clus+3
         cmp     #$0F                    ; >= $0FFFFFF8: fin de la cadena
         bne     @sigue
@@ -372,31 +447,484 @@ clus_siguiente:
         bcs     @ultimo
         bcc     @sigue
 
-@leer_fat:
+; fat_p = dirección en fat_buf de la entrada del clúster `clus` (lee su sector de la FAT, con caché). Acarreo = 1 si
+; falla (fat_error).
+fat_ent_ptr:
+        lda     fat_tipo
+        cmp     #32
+        beq     @f32
+        ; FAT16: sector = fat_ini + clus/256; posición = (clus mod 256) x 2
+        lda     clus+1
+        sta     t32
+        lda     #0
+        sta     t32+1
+        sta     t32+2
+        sta     t32+3
+        jsr     leer_fat
+        bcc     :+
+        rts
+:
+        lda     clus
+        asl
+        jmp     @ptr
+        ; FAT32: sector = fat_ini + clus/128; posición = (clus mod 128) x 4
+@f32:   copia32 t32, clus
+        ldx     #7
+@d7:    lsr     t32+3
+        ror     t32+2
+        ror     t32+1
+        ror     t32
+        dex
+        bne     @d7
+        jsr     leer_fat
+        bcc     :+
+        rts
+:
+        lda     clus
+        and     #$7F
+        asl
+        asl
+@ptr:   sta     fat_p                   ; acarreo = la mitad alta del sector
+        lda     #>fat_buf
+        adc     #0
+        sta     fat_p+1
+        lda     fat_p
+        clc
+        adc     #<fat_buf
+        sta     fat_p
+        bcc     :+
+        inc     fat_p+1
+:       clc
+@fin:   rts
+
+; fat_buf = sector fat_ini + t32 de la FAT (si no está ya). Si el que había tiene cambios, primero lo graba.
+leer_fat:
         copia32 sd_lba, fat_ini
         suma32  sd_lba, t32
         ldx     #3                      ; ¿es el que ya está en fat_buf?
 @cache: lda     sd_lba,x
         cmp     fat_buf_lba,x
-        bne     @lee
+        bne     @otro
         dex
         bpl     @cache
         clc
         rts
+@otro:  lda     fat_sucio
+        beq     @lee
+        copia32 fat_pide, sd_lba        ; el que se pide
+        jsr     fat_grabar
+        bcs     @mal
+        copia32 sd_lba, fat_pide
 @lee:   lda     #<fat_buf
         sta     sd_ptr
         lda     #>fat_buf
         sta     sd_ptr+1
         jsr     sd_leer_sector
         bcc     @bien
-        lda     #$FF                    ; búfer a medias: sin caché
-        sta     fat_buf_lba+3
         lda     sd_error
         sta     fat_error
+@mal:   lda     #$FF                    ; búfer a medias: sin caché
+        sta     fat_buf_lba+3
         sec
         rts
 @bien:  copia32 fat_buf_lba, sd_lba
         rts
+
+; ---------------------------------------------------------------------------------------------- escritura
+; Graba fat_buf (si tiene cambios) en su sector y en el mismo sector de las demás copias de la FAT. Acarreo = 1 si
+; falla (fat_error). Cambia sd_lba.
+fat_grabar:
+        lda     fat_sucio
+        bne     @si
+        clc
+        rts
+@si:    copia32 sd_lba, fat_buf_lba
+        lda     fat_n
+        sta     fat_k
+@copia: lda     #<fat_buf
+        sta     sd_ptr
+        lda     #>fat_buf
+        sta     sd_ptr+1
+        jsr     sd_escribir_sector
+        bcs     @mal
+        dec     fat_k
+        beq     @hecho
+        suma32  sd_lba, fat_sz
+        jmp     @copia
+@hecho: lda     #0
+        sta     fat_sucio
+        clc
+        rts
+@mal:   lda     sd_error
+        sta     fat_error
+        sec
+        rts
+
+; FAT[clus] = fat_v, en fat_buf (FAT32: se conservan los 4 bits altos de la entrada). Acarreo = 1 si falla.
+fat_poner:
+        jsr     fat_ent_ptr
+        bcc     :+
+        rts
+:
+        ldy     #0
+        lda     fat_v
+        sta     (fat_p),y
+        iny
+        lda     fat_v+1
+        sta     (fat_p),y
+        lda     fat_tipo
+        cmp     #32
+        bne     @ya
+        iny
+        lda     fat_v+2
+        sta     (fat_p),y
+        iny
+        lda     (fat_p),y
+        and     #$F0
+        sta     t32
+        lda     fat_v+3
+        and     #$0F
+        ora     t32
+        sta     (fat_p),y
+@ya:    lda     #1
+        sta     fat_sucio
+        clc
+@fin:   rts
+
+; Acarreo = 1 si clus > fat_max.
+clus_fuera:
+        lda     fat_max
+        cmp     clus
+        lda     fat_max+1
+        sbc     clus+1
+        lda     fat_max+2
+        sbc     clus+2
+        lda     fat_max+3
+        sbc     clus+3
+        bcc     @si                     ; fat_max - clus < 0
+        clc
+        rts
+@si:    sec
+        rts
+
+inc_clus:
+        inc     clus
+        bne     @ya
+        inc     clus+1
+        bne     @ya
+        inc     clus+2
+        bne     @ya
+        inc     clus+3
+@ya:    rts
+
+; Busca lib_k clústeres libres seguidos. Empieza en la pista de la FSInfo (FAT32) o en el 2 y, al llegar al final,
+; sigue desde el 2 hasta donde empezó. Acarreo = 0: lib_ini es el primero. Acarreo = 1: no hay (fat_error =
+; E_LLENA) o falló una lectura. Usa `sector` (FSInfo) y cambia clus.
+fat_libres:
+        lda     #2
+        sta     lib_0
+        lda     #0
+        sta     lib_0+1
+        sta     lib_0+2
+        sta     lib_0+3
+        jsr     info_leer
+        bcs     @desde
+        ldx     #3                      ; pista = siguiente libre (492)
+@p:     lda     sector+492,x
+        sta     clus,x
+        dex
+        bpl     @p
+        lda     clus+3                  ; entre 2 y fat_max; si no, desde el 2
+        ora     clus+2
+        ora     clus+1
+        bne     @rango
+        lda     clus
+        cmp     #2
+        bcc     @desde
+@rango: jsr     clus_fuera
+        bcs     @desde
+        copia32 lib_0, clus
+@desde: copia32 clus, lib_0
+        lda     #0
+        sta     lib_vuelta
+        sta     lib_n
+@sig:   jsr     clus_fuera
+        bcc     @dentro
+        lda     lib_vuelta              ; al final: desde el 2 (una sola vez)
+        beq     :+
+        jmp     @llena
+:       inc     lib_vuelta
+        lda     #0
+        sta     lib_n
+        sta     clus+1
+        sta     clus+2
+        sta     clus+3
+        lda     #2
+        sta     clus
+@dentro:
+        lda     lib_vuelta
+        beq     @mirar
+        lda     clus                    ; tras la vuelta: parar al llegar a donde se empezó
+        cmp     lib_0
+        lda     clus+1
+        sbc     lib_0+1
+        lda     clus+2
+        sbc     lib_0+2
+        lda     clus+3
+        sbc     lib_0+3
+        bcs     @llena
+@mirar: jsr     fat_ent_ptr
+        bcc     :+
+        rts
+:
+        ldy     #0
+        lda     (fat_p),y
+        iny
+        ora     (fat_p),y
+        sta     t32
+        lda     fat_tipo
+        cmp     #32
+        bne     @v
+        iny
+        lda     (fat_p),y
+        ora     t32
+        sta     t32
+        iny
+        lda     (fat_p),y
+        and     #$0F
+        ora     t32
+        sta     t32
+@v:     lda     t32
+        bne     @ocupado
+        lda     lib_n
+        bne     @mas
+        copia32 lib_ini, clus
+@mas:   inc     lib_n
+        lda     lib_n
+        cmp     lib_k
+        bne     @avanza
+        clc
+@fin:   rts
+@ocupado:
+        lda     #0
+        sta     lib_n
+@avanza:
+        jsr     inc_clus
+        jmp     @sig
+@llena: lda     #E_LLENA
+        sta     fat_error
+        sec
+        rts
+
+; Lee la FSInfo en `sector` y comprueba sus firmas. Acarreo = 1 si no hay (FAT16), no vale o falla la lectura.
+info_leer:
+        lda     fat_info
+        ora     fat_info+1
+        ora     fat_info+2
+        ora     fat_info+3
+        beq     @no
+        copia32 sd_lba, fat_info
+        jsr     leer
+        bcs     @no
+        ldx     #3
+@f:     lda     sector,x
+        cmp     info_firma1,x
+        bne     @no
+        lda     sector+484,x
+        cmp     info_firma2,x
+        bne     @no
+        dex
+        bpl     @f
+        clc
+        rts
+@no:    sec
+        rts
+
+; FSInfo: libres = $FFFFFFFF (desconocido, lo recalcula quien lo necesite) y pista = clus. Si no hay FSInfo, nada.
+; Acarreo = 1 si falla la escritura. Usa `sector`.
+fat_info_pista:
+        jsr     info_leer
+        bcc     @hay
+        clc
+        rts
+@hay:   ldx     #3
+@c:     lda     #$FF
+        sta     sector+488,x
+        lda     clus,x
+        sta     sector+492,x
+        dex
+        bpl     @c
+        copia32 sd_lba, fat_info
+        jmp     grabar_sector
+
+; `sector` -> sector sd_lba. Acarreo = 1 si falla (fat_error).
+grabar_sector:
+        lda     #<sector
+        sta     sd_ptr
+        lda     #>sector
+        sta     sd_ptr+1
+        jsr     sd_escribir_sector
+        bcc     @bien
+        lda     sd_error
+        sta     fat_error
+@bien:  rts
+
+; sector sd_lba -> `sector`. Acarreo = 1 si falla (fat_error).
+leer_sector:
+        jsr     leer
+        bcc     @bien
+        lda     sd_error
+        sta     fat_error
+@bien:  rts
+
+; Busca hc_n entradas libres seguidas ($E5, $00 o detrás de un $00) en la carpeta abierta con dir_abrir_c/dir_abrir.
+; Deja sus posiciones (sector e índice 0-15) en hc_lba/hc_idx. Si la carpeta se acaba antes, le añade un clúster a
+; cero. Acarreo = 1 si falla (fat_error). Usa `sector`.
+dir_huecos:
+        lda     #0
+        sta     hc_k
+        sta     hc_fin
+@sector:
+        copia32 sd_lba, dir_lba
+        jsr     leer_sector
+        bcc     :+
+        rts
+:       lda     #<sector
+        sta     t32b
+        lda     #>sector
+        sta     t32b+1
+        lda     #0
+        sta     hc_i
+@ent:   lda     hc_fin
+        bne     @libre
+        ldy     #0
+        lda     (t32b),y
+        beq     @cero
+        cmp     #$E5
+        beq     @libre
+        lda     #0                      ; ocupada: el tramo vuelve a empezar
+        sta     hc_k
+        beq     @otra
+@cero:  inc     hc_fin                  ; $00: esta y todas las de detrás están libres
+@libre: lda     hc_k
+        asl
+        asl
+        tax
+        ldy     #0
+@l:     lda     dir_lba,y
+        sta     hc_lba,x
+        inx
+        iny
+        cpy     #4
+        bne     @l
+        ldx     hc_k
+        lda     hc_i
+        sta     hc_idx,x
+        inc     hc_k
+        lda     hc_k
+        cmp     hc_n
+        beq     @hecho
+@otra:  clc
+        lda     t32b
+        adc     #32
+        sta     t32b
+        bcc     :+
+        inc     t32b+1
+:       inc     hc_i
+        lda     hc_i
+        cmp     #16
+        bne     @ent
+        jsr     dir_sector_sig
+        bcs     :+
+        jmp     @sector
+:       lda     fat_error
+        bne     @mal
+        jsr     dir_ampliar
+        bcs     @mal
+        jmp     @sector
+@mal:   sec
+        rts
+@hecho: clc
+        rts
+
+; Añade a la carpeta abierta (dir_clus = su último clúster) un clúster nuevo, puesto a cero antes de enlazarlo. Deja
+; el recorrido en su primer sector. Acarreo = 1 si falla. Una raíz fija de FAT16 no se puede ampliar (E_LLENA).
+dir_ampliar:
+        lda     dir_clus
+        ora     dir_clus+1
+        ora     dir_clus+2
+        ora     dir_clus+3
+        bne     @cadena
+        lda     #E_LLENA
+        sta     fat_error
+        sec
+        rts
+@cadena:
+        lda     #1
+        sta     lib_k
+        jsr     fat_libres
+        bcc     :+
+        rts
+:
+        ldx     #0                      ; `sector` a cero y a cada sector del clúster nuevo
+        txa
+@z:     sta     sector,x
+        sta     sector+256,x
+        inx
+        bne     @z
+        copia32 clus, lib_ini
+        jsr     clus_a_lba
+        copia32 sd_lba, dir_lba
+@zs:    jsr     grabar_sector
+        bcc     :+
+        rts
+:
+        inc     sd_lba
+        bne     :+
+        inc     sd_lba+1
+        bne     :+
+        inc     sd_lba+2
+        bne     :+
+        inc     sd_lba+3
+:       dec     dir_quedan
+        bne     @zs
+        copia32 clus, dir_clus          ; enlazar: último -> nuevo -> fin de cadena
+        copia32 fat_v, lib_ini
+        jsr     fat_poner
+        bcc     :+
+        rts
+:
+        copia32 clus, lib_ini
+        jsr     fat_fin_cadena
+        bcc     :+
+        rts
+:
+        jsr     fat_grabar
+        bcc     :+
+        rts
+:
+        copia32 clus, lib_ini           ; pista: el siguiente al nuevo
+        jsr     inc_clus
+        jsr     fat_info_pista
+        bcc     :+
+        rts
+:
+        copia32 dir_clus, lib_ini
+        copia32 clus, lib_ini
+        jsr     clus_a_lba
+        clc
+        rts
+
+; FAT[clus] = fin de cadena.
+fat_fin_cadena:
+        .export fat_fin_cadena
+        lda     #$FF
+        sta     fat_v
+        sta     fat_v+1
+        sta     fat_v+2
+        lda     #$0F
+        sta     fat_v+3
+        jmp     fat_poner
 
 ; ---------------------------------------------------------------------------------------------- directorios
 dir_abrir_raiz:
@@ -557,6 +1085,10 @@ lfn_trozo:
         ldy     #13
         lda     (dir_ent),y
         sta     lfn_ck
+        ldy     #0
+        lda     (dir_ent),y
+        and     #$1F
+        sta     lfn_crudo_n
         jmp     @guarda
 @medio: lda     lfn_ok
         beq     @fin
@@ -569,6 +1101,7 @@ lfn_trozo:
         lda     (dir_ent),y
         and     #$1F
         beq     @mal
+        jsr     lfn_a_crudo
         sec
         sbc     #1
         cmp     #5                      ; más allá de 64 caracteres: no se guarda
@@ -597,6 +1130,41 @@ lfn_trozo:
 @fin:   rts
 @mal:   lda     #0
         sta     lfn_ok
+        rts
+
+; Copia en bruto los 13 caracteres UCS-2 del trozo dir_ent (orden A, 1-31) a lfn_crudo + (A - 1) x 26. Los trozos
+; de más de LFN_TROZOS no se guardan. Conserva A; cambia X, Y, lfn_j y t32b.
+lfn_a_crudo:
+        pha
+        cmp     #LFN_TROZOS + 1
+        bcs     @no
+        tax
+        lda     crudo_lo-1,x
+        sta     t32b
+        lda     crudo_hi-1,x
+        sta     t32b+1
+        lda     #0
+        sta     lfn_j
+@c:     ldx     lfn_j
+        ldy     lfn_offs,x
+        lda     (dir_ent),y
+        pha
+        iny
+        lda     (dir_ent),y
+        tax
+        lda     lfn_j
+        asl
+        tay
+        pla
+        sta     (t32b),y
+        iny
+        txa
+        sta     (t32b),y
+        inc     lfn_j
+        lda     lfn_j
+        cmp     #13
+        bne     @c
+@no:    pla
         rts
 
 ; Carácter UCS-2 (A = byte alto, lfn_lo = bajo) -> código de la fuente. 0 = fin del nombre ($0000 y el relleno
@@ -879,7 +1447,17 @@ tramo_sig:
         rts
 
         .segment "RODATA"
+info_firma1: .byte "RRaA"
+info_firma2: .byte "rrAa"
 lfn_pos:    .byte   0, 13, 26, 39, 52
+crudo_lo:
+        .repeat LFN_TROZOS, i
+        .byte   <(lfn_crudo + 26 * i)
+        .endrepeat
+crudo_hi:
+        .repeat LFN_TROZOS, i
+        .byte   >(lfn_crudo + 26 * i)
+        .endrepeat
 lfn_offs:   .byte   1, 3, 5, 7, 9, 14, 16, 18, 20, 22, 24, 28, 30
 ; Latin-1 -> fuente: los caracteres españoles tienen su dibujo; otros acentos se quedan en la letra sin acento.
 latin1:     .byte   $E1, $E9, $ED, $F3, $FA, $F1, $FC, $C1, $C9, $CD, $D3, $DA, $D1, $DC, $BF, $A1, $BA, $AA

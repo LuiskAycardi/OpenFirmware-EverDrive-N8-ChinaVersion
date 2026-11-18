@@ -25,6 +25,7 @@
         .import fat_montar, dir_abrir_raiz, dir_abrir_c, dir_siguiente, dir_guardar, dir_restaurar, ent_clus
         .import fat_error, fat_tipo, fat_spc, lfn_buf, lfn_val
         .import lanzar, l_error, nombre_rbf, ultimo_juego
+        .import partida_pendiente, pt_err
         .importzp l_mapper
         .importzp dir_ent, dir_pos, clus
 
@@ -61,6 +62,7 @@ fila_sub:   .res 1              ; siguiente fila que se sube
 resto:      .res 1
 dig:        .res 1
 impreso:    .res 1
+msj_ini:    .res 1              ; mensaje al encender la pantalla (lo que pasó con la partida pendiente)
 
         .segment "GRANDE"
 pag_pos:    .res 12 * MAX_PAG   ; posición del recorrido al principio de cada página (fat.s: dir_guardar)
@@ -119,6 +121,8 @@ principal:
         jsr     fat_montar
         bcs     @error_fat
         jsr     datos_tarjeta
+        jsr     partida_pendiente       ; la partida del último juego (vuelta de juego o encendido con pila)
+        sta     msj_ini
         lda     #0
         sta     pagina
         sta     fila_c
@@ -163,6 +167,9 @@ principal:
         lda     #$FF
         sta     sel_ant
         sta     antes                   ; lo que esté pulsado al encender la pantalla no cuenta
+        lda     msj_ini
+        beq     encender
+        jmp     mensaje
 encender:
         lda     #$80
         sta     PPUCTRL
@@ -521,8 +528,17 @@ mensaje:
         bne     @n
         jmp     reencender
 @m7:    cmp     #L_SD
-        bne     reencender
+        bne     @m12
         lda     fat_error
+        jsr     hex
+        jmp     reencender
+@m12:   cmp     #L_ESCRIBIR
+        beq     @err
+        cmp     #L_PENDIENTE
+        beq     @err
+        cmp     #M_NOGUARDADA
+        bne     reencender
+@err:   lda     pt_err
         jsr     hex
 reencender:
         ldx     #$FF
@@ -1209,7 +1225,7 @@ FILA_MANDO = NT + 27 * 32
 .endmacro
 
 textos:
-        texto   FILA_TIT + 2,       "OS propio N8 - etapa 4"
+        texto   FILA_TIT + 2,       "OS propio N8 - etapa 5"
         texto   FILA_ARR + 2,       "Arranque:"
         texto   FILA_ARR + 32 + 2,  "Ent/res/vue:"
         texto   FILA_SD + 2,        "SD:"
@@ -1277,8 +1293,16 @@ m6:     .byte "RBF fragmentado en la SD", 0
 m7:     .byte "Error de lectura ", 0
 m8:     .byte "El FPGA no se configura", 0
 m9:     .byte "Demasiadas carpetas", 0
-mensajes_lo: .byte <m1, <m2, <m3, <m4, <m5, <m6, <m7, <m8, <m9
-mensajes_hi: .byte >m1, >m2, >m3, >m4, >m5, >m6, >m7, >m8, >m9
+m10:    .byte "Falta la carpeta EDFC/SAVE", 0
+m11:    .byte "SD llena: no cabe la partida", 0
+m12:    .byte "Error al escribir la SD ", 0
+m13:    .byte "Partida vac", C_i, "a en EDFC/SAVE", 0
+m14:    .byte "Sin guardar la anterior: ", 0
+m15:    .byte "Partida guardada", 0
+m16:    .byte "Partida no guardada: ", 0
+m17:    .byte "Partida no encontrada", 0
+mensajes_lo: .byte <m1, <m2, <m3, <m4, <m5, <m6, <m7, <m8, <m9, <m10, <m11, <m12, <m13, <m14, <m15, <m16, <m17
+mensajes_hi: .byte >m1, >m2, >m3, >m4, >m5, >m6, >m7, >m8, >m9, >m10, >m11, >m12, >m13, >m14, >m15, >m16, >m17
 
 cifras:
         .byte   "0123456789ABCDEF"

@@ -1,15 +1,16 @@
-# OS propio del EverDrive N8 clon — etapa 4: carpetas y nombres largos
+# OS propio del EverDrive N8 clon — etapa 5: partidas con pila
 
-`OS.BIN` propio (GPL-3.0-or-later): arranca desde la BIOS del cartucho, lee la microSD (solo lectura), recorre sus
-carpetas con nombres largos y lanza los juegos con nuestros RBF (ver
+`OS.BIN` propio (GPL-3.0-or-later): arranca desde la BIOS del cartucho, lee la microSD, recorre sus carpetas con
+nombres largos, lanza los juegos con nuestros RBF y guarda las partidas con pila en `EDFC/SAVE` (ver
 [docs/os-propio-viabilidad.md](../docs/os-propio-viabilidad.md) y [docs/bios-n8-clon.md](../docs/bios-n8-clon.md)).
 Funciona con el `255.RBF` de fábrica y con el nuestro (`hdl/out/255.RBF`, solo el modo OS: con él no queda en la SD
 ningún archivo de Krikzz; probado en la NES el 2026-11-17).
 
-**Qué no hace**, a propósito: no toca la flash de la BIOS, no escribe en la SD y no toca la PRG-RAM de las
-partidas ni el estado del OS de fábrica. Solo escribe en la RAM de la CPU, en su propia imagen (`$8000-$FFFF`), en
-la PPU, en el reg 130 del FPGA (banco de la CHR, igual que el v13) y, al arrancar, reg 9 = 01 en el CPLD (el valor
-que deja la BIOS).
+**Qué no hace**, a propósito: no toca la flash de la BIOS. En la SD solo escribe las partidas (`EDFC/SAVE`) y lo que
+la FAT necesita para crearlas (ver la etapa 5); nunca borra ni cambia de tamaño un archivo. Escribe en la RAM de la
+CPU, en su propia imagen (`$8000-$FFFF`), en la PRG-RAM de las partidas y en la marca de partida pendiente
+(`0x10000`), en la PPU, en los regs 129 (ventana `$6000`) y 130 (banco de la CHR) del FPGA y, al arrancar, reg 9 =
+01 en el CPLD (el valor que deja la BIOS).
 
 ## Compilar y probar en el PC
 
@@ -36,7 +37,7 @@ Comprueba (19 casos) que:
 ## Instalar en la SD de pruebas
 
 1. **Antes de nada, arranca una vez el OS de fábrica** después de la última partida con pila. El v13 guarda las
-   partidas pendientes al arrancar y el nuestro no lo hace.
+   partidas pendientes al arrancar, y las del v13 (`EDFC/SAVE/<rom>.nes`, 32 KiB) no son las nuestras.
 2. En la SD, copia `EDFC/OS.BIN` (el v13, md5 `f5ac5490…`) como `EDFC/OS_V13.BIN`. Guarda también una copia en
    el PC.
 3. Borra `EDFC/OS.BIN` y copia `os/build/OS.BIN` en su lugar. Deja el `255.RBF` de fábrica.
@@ -240,5 +241,58 @@ el nibble alto del byte 7 vale siempre (si el byte 8 pide un mapper de más de 8
 9 pide más tamaño: «Tamaño de ROM no admitido»). Si valen `00` y los bytes 12-15 son cero, iNES: también vale. En
 otro caso (como «DiskDude!»), solo el nibble bajo del byte 6.
 
-Pendiente: partidas guardadas, menú completo (orden alfabético, información del
-juego), modo banco.
+## Etapa 5: partidas con pila (`src/partida.s`, escritura en `src/sd.s` y `src/fat.s`)
+
+**Formato:** `EDFC/SAVE/<nombre de la ROM sin extensión>.srm`, con el contenido de la PRG-RAM desde `0x00000` tal
+cual. Es lo mismo que el `.sav` de un emulador (Mesen, FCEUX…): se puede copiar en los dos sentidos cambiando la
+extensión. Tamaño de una partida nueva: 8 KiB; 32 KiB con el MMC5 (mapper 5); con una cabecera NES 2.0 que declara
+PRG-NVRAM, ese tamaño (entre 8 y 64 KiB). Una partida que ya existe se lee y se escribe con su tamaño (si mide menos
+de 8 KiB, el resto de los 8 KiB queda a `$FF`). Las partidas nuevas empiezan llenas de `$FF` (Famicom Jump II se
+cuelga con la RAM a cero).
+
+**Nombre:** con nombre largo, la partida lleva el mismo nombre largo con `.srm` (y un 8.3 inventado: 8 cifras
+hexadecimales de un resumen del nombre). Sin nombre largo, `ZELDA.NES` da `ZELDA.SRM`. La búsqueda no distingue
+mayúsculas de ASCII. Varias ROMs con el mismo nombre en carpetas distintas comparten la partida, como en el v13.
+
+**Cuándo:**
+1. **Al lanzar** un juego con pila (bit 1 del byte 6): se busca la partida y, si no está, se crea; se copia a la
+   PRG-RAM por la ventana `$6000` (reg 129), y justo antes de saltar al juego se deja la **marca de partida
+   pendiente** en la PRG-RAM `0x10000` (banco 8): firma `N8SV`, sector e índice de la entrada del archivo, primer
+   clúster, tamaño y una suma de comprobación.
+2. **Al arrancar el OS** (vuelta de un juego con RESET, reset, o encendido), si la marca vale, se comprueba que la
+   entrada sigue siendo ese archivo (clúster y tamaño), se vuelca la PRG-RAM encima y se borra la marca: «Partida
+   guardada». Si la RAM tiene pila, la marca sobrevive al apagado y la partida se guarda en el siguiente encendido.
+3. **Antes de lanzar cualquier juego** se repite el paso 2: si una partida no se pudo guardar, no se lanza nada
+   («Sin guardar la anterior: nn»), porque el juego nuevo podría pisar la PRG-RAM.
+
+La marca está fuera de los 64 KiB de las partidas (todos los mappers ponen su RAM ahí, casi todos en el banco 0),
+fuera de lo que carga la BIOS (nuestro OS.BIN ocupa `0x18000-0x1FFFF`; el v13, `0x12000-0x1FFFF`) y ningún mapper
+la ve.
+
+**Escritura segura:**
+- `sd.s` escribe sectores sueltos (CMD24): 512 bytes seguidos por `$4401` sin esperar, como la BIOS, la respuesta
+  de datos y la espera de «ocupada» (hasta ~1,5 s).
+- Una partida que ya existe solo se sobrescribe, sector a sector siguiendo su cadena de clústeres: la FAT no cambia.
+- Para crear una (o la carpeta `EDFC/SAVE`, si falta: la SD de la v0.4.0-beta no la trae), el orden es: huecos en la
+  carpeta (si no caben, se le añade un clúster puesto a cero antes de enlazarlo), clústeres libres seguidos
+  (desde la pista de la FSInfo), los datos, la cadena en **todas las copias de la FAT**, la FSInfo («libres:
+  desconocido», pista = el siguiente) y, al final, las entradas (nombre largo y 8.3). Un corte a mitad deja como
+  mucho clústeres perdidos, nunca una entrada que apunte a basura.
+- Fecha fija (1-1-2026): el cartucho no tiene reloj.
+
+**Mensajes** (fila 25): «Partida guardada», «Partida no guardada: nn» (la marca se queda para otro intento),
+«Partida no encontrada» (la marca no coincide con ningún archivo: se borra sin escribir), «SD llena: no cabe la
+partida», «Error al escribir la SD nn» (`0B`: la tarjeta rechaza el bloque, por ejemplo protegida contra
+escritura), «Partida vacía en EDFC/SAVE» (un `.srm` de 0 bytes) y «Sin guardar la anterior: nn».
+
+**Límites:** no hay copia de seguridad del `.srm` anterior; los mappers con EEPROM (Bandai 16/159, Datach) o con
+RAM dentro del FPGA (sonido del Namco 163) no guardan; las partidas del v13 (`EDFC/SAVE/<rom>.nes`) no se leen.
+
+**Pruebas** (`herramientas/probar_os.py`, con fsck.fat y mtools sobre la imagen después de cada paso): crear la
+partida a `$FF`, marca en el banco 8, guardar al volver con RESET, cargarla al lanzar otra vez sin escribir nada,
+apagado dentro del juego con la RAM con pila (se guarda al encender) y sin pila (no escribe), marca con la suma mal
+o que no coincide, partida copiada del PC con otras mayúsculas, NES 2.0 de 32 KiB (4 bancos), ROM 8.3, `EDFC/SAVE`
+sin sitio (el nombre largo queda partido entre dos clústeres), sin `EDFC/SAVE`, FAT16, SDSC, tarjeta llena y
+tarjeta que rechaza las escrituras.
+
+Pendiente: menú completo (orden alfabético, información del juego), modo banco.

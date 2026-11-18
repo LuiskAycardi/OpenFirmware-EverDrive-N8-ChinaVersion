@@ -151,15 +151,19 @@ deja de arrancar.
 Qué hace hoy:
 - Arranca desde la BIOS y distingue el encendido, un reset en el menú y la vuelta desde un juego. Aguanta el
   botón RESET y el reset por mando del kit Lava RGB.
-- Lee la microSD con un controlador propio, **solo lectura**: FAT16 y FAT32, SDHC y SDSC, con o sin MBR.
+- Lee la microSD con un controlador propio: FAT16 y FAT32, SDHC y SDSC, con o sin MBR. Solo escribe las partidas.
 - Recorre las carpetas de la tarjeta (16 entradas por página; A entra, B vuelve) y muestra los nombres largos con una
   fuente propia, pensada para televisores CRT y con caracteres españoles.
 - **Lanza juegos**: lee la cabecera iNES, busca el RBF en `EDFC/MAPROUT.BIN`, carga el RBF en el FPGA, copia la
   PRG y la CHR y salta al juego con el número de mapper de la cabecera, sin traducirlo.
 
+- **Partidas con pila** (en `main`, todavía sin release): `EDFC/SAVE/<nombre de la ROM>.srm`, el mismo formato
+  que el `.sav` de los emuladores. Se cargan al lanzar el juego y se guardan al volver al menú con RESET (o en el
+  siguiente encendido).
+
 Carga rápida: SMB3 (384 KiB) se carga en unos 3,8 s (antes 9,5 s).
 
-Qué falta: partidas guardadas y menú completo (orden alfabético, información del juego). **Es experimental**: pruébalo en una microSD de pruebas.
+Qué falta: menú completo (orden alfabético, información del juego). **Es experimental**: pruébalo en una microSD de pruebas.
 
 Para probarlo:
 1. `make -C os` (necesita cc65 y Python 3).
@@ -181,16 +185,20 @@ a NES): with ours no file from Krikzz is left on the SD card, but the factory OS
 What it does today:
 - It boots from the BIOS and tells apart a power-on, a reset in the menu and a return from a game. It handles
   the RESET button and the Lava RGB kit's controller reset.
-- It reads the microSD card with its own driver, **read-only**: FAT16 and FAT32, SDHC and SDSC, with or
-  without an MBR.
+- It reads the microSD card with its own driver: FAT16 and FAT32, SDHC and SDSC, with or without an MBR. The
+  only thing it writes is saved games.
 - It browses the card's folders (16 entries per page; A enters, B goes back) and shows long file names with its
   own font, designed for CRT TVs and with Spanish characters.
 - **It launches games**: it reads the iNES header, looks up the RBF in `EDFC/MAPROUT.BIN`, loads the RBF into
   the FPGA, copies the PRG and CHR data and jumps to the game with the header's mapper number, untranslated.
 
+- **Battery saves** (in `main`, not released yet): `EDFC/SAVE/<ROM name>.srm`, the same format as emulator `.sav`
+  files. They are loaded when the game starts and saved when you go back to the menu with RESET (or at the next
+  power-on).
+
 Fast loading: SMB3 (384 KiB) loads in about 3.8 s (it used to take 9.5 s).
 
-Still missing: battery saves and a full menu (alphabetical order, game information). **It is experimental**: try it on a spare microSD card.
+Still missing: a full menu (alphabetical order, game information). **It is experimental**: try it on a spare microSD card.
 
 To try it:
 1. `make -C os` (needs cc65 and Python 3).

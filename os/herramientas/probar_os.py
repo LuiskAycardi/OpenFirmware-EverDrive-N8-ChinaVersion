@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""probar_os.py --bios BIOS.bin --rbf 255.RBF --trabajo DIR — Prueba el OS (etapa 4) con la BIOS real en el modelo
+"""probar_os.py --bios BIOS.bin --rbf 255.RBF --trabajo DIR — Prueba el OS (etapa 5) con la BIOS real en el modelo
 de tools/bios: arranque y resets, mando, lectura de la SD (FAT16/FAT32, SDHC/SDSC, con y sin MBR, raíz con cadena
 de clústeres, reset a mitad de lectura, tarjeta muda) y lanzamiento de juegos (carga del RBF, PRG, CHR, registros,
 salto, vuelta al menú y errores), carpetas (entrar, volver, páginas, vuelta de un juego dentro de una carpeta) y
-nombres largos (acentos, cortados, ocultos, borrados). Comprueba que nunca escribe en la tarjeta ni en la flash."""
+nombres largos (acentos, cortados, ocultos, borrados) y partidas con pila (crear, cargar, guardar al volver y al
+encender, nombres largos, carpeta ampliada, FAT16, SDSC, tarjeta que no deja escribir). Comprueba que solo escribe
+en la tarjeta las partidas (y lo que la FAT necesita para crearlas, validado con fsck.fat) y nunca en la flash."""
 import argparse, os, pathlib, shutil, subprocess, sys
 
 RAIZ = pathlib.Path(__file__).resolve().parents[2]
@@ -43,6 +45,28 @@ def comprobar(cond, texto):
     print(('ok    ' if cond else 'FALLO ') + texto)
     if not cond:
         fallos.append(texto)
+
+def particion(m, desp=8192 * 512):
+    f = t / 'part.img'
+    f.write_bytes(bytes(m.sd.img[desp:]) if isinstance(m, Maquina) else m[desp:])
+    return f
+
+def fsck(m, desp=8192 * 512):
+    """Avisos de fsck.fat -n (sin el de la FSInfo «sin calcular», que es lo que deja el OS a propósito)."""
+    r = subprocess.run(['fsck.fat', '-n', str(particion(m, desp))], capture_output=True, text=True)
+    avisos = [l for l in r.stdout.split('\n') if l and not l.startswith('fsck.fat ') and 'files,' not in l
+              and 'Free cluster summary uninitialized' not in l]
+    return avisos + ([f'salida {r.returncode}'] if r.returncode else [])
+
+def leer_archivo(m, ruta, desp=8192 * 512):
+    f = t / 'sacado.bin'
+    f.unlink(missing_ok=True)
+    r = subprocess.run(['mcopy', '-n', '-i', str(particion(m, desp)), f'::{ruta}', str(f)], capture_output=True)
+    return f.read_bytes() if r.returncode == 0 else None
+
+def nombres_save(m, desp=8192 * 512):
+    r = subprocess.run(['mdir', '-b', '-i', str(particion(m, desp)), '::EDFC/SAVE'], capture_output=True, text=True)
+    return sorted(l.rsplit('/', 1)[-1] for l in r.stdout.split('\n') if l.strip())
 
 etiquetas = {}
 for linea in (pathlib.Path(a.os).parent / 'os.lbl').read_text().split('\n'):
@@ -105,7 +129,7 @@ comprobar(ok, 'la BIOS salta a $8000')
 r = m.correr(PASOS, nmi_cada=9000)
 pan = m.pantalla()
 comprobar(r == 'limite', 'el OS sigue corriendo (sin opcodes ilegales)')
-comprobar('OS propio N8 - etapa 4' in pan and 'Arranque: frío (BIOS)' in pan and contadores(m) == (1, 0, 0),
+comprobar('OS propio N8 - etapa 5' in pan and 'Arranque: frío (BIOS)' in pan and contadores(m) == (1, 0, 0),
           'encendido: FRIO, contadores 1/0/0')
 comprobar(m.ppu_mask & 0x08 and m.ppu_ctrl & 0x80, 'fondo visible y NMI activa')
 comprobar('SD: SDHC FAT32 clúster 01' in pan, 'tarjeta SDHC, FAT32')
@@ -147,8 +171,8 @@ comprobar(estado(m, 'en_juego') == 0 and m.cpld[9] == 1, 'marca en_juego borrada
 cpld = [e for e in m.log[m.n_log:] if e[0] == 'CPLD']
 comprobar(all(e[1] in (2, 9) for e in cpld) and all(e[3] == 1 for e in cpld if e[1] == 9),
           'del CPLD solo escribe el reg 2 (SD) y reg 9 = 01')
-otros = [e for e in m.log[m.n_log:] if e[0] in ('4402', 'ESCRITURA_EN_FLASH', 'USB_TX') or (e[0] == 'FPGA' and e[1] != 130)]
-comprobar(not otros, f'no toca la flash, $4402 ni otros registros del FPGA ({otros[:3]})')
+otros = [e for e in m.log[m.n_log:] if e[0] in ('4402', 'ESCRITURA_EN_FLASH', 'USB_TX') or (e[0] == 'FPGA' and e[1] not in (129, 130))]
+comprobar(not otros, f'no toca la flash, $4402 ni otros registros del FPGA que el 129 (marca de partida) y el 130 ({otros[:3]})')
 comprobar(dict(m.escrituras_prgram) == m.prg_antes and bytes(m.prgram[:0x12000]) == m.partidas,
           'no toca la PRG-RAM fuera de su imagen')
 comprobar(solo_lectura(m) and bytes(m.sd.img) == pathlib.Path(img32).read_bytes(), 'la imagen de la SD queda idéntica')
@@ -228,9 +252,9 @@ ROMS = [('JUEGO.NES', rom(2, 1, 0, byte6=1)), ('CHRRAM.NES', rom(1, 0, 0, semill
         # «DiskDude!» en los bytes 7-15: solo vale el nibble bajo (mapper 4)
         ('DUDE.NES', rom(8, 8, 0x44, semilla=9, cola=b'DiskDude!'))]
 
-def imagen3(nombre, fragmentar=False, fragmentar_roms=()):
+def imagen3(nombre, fragmentar=False, fragmentar_roms=(), fat=32):
     img = t / nombre
-    subprocess.run(['sh', str(RAIZ / 'tools/bios/hacer_sd.sh'), str(img), '32', 'si', str(t / 'edfc')], check=True,
+    subprocess.run(['sh', str(RAIZ / 'tools/bios/hacer_sd.sh'), str(img), str(fat), 'si', str(t / 'edfc')], check=True,
                    stdout=subprocess.DEVNULL)
     dest = f'{img}@@{8192 * 512}'
     subprocess.run(['mmd', '-i', dest, '::PRUEBAS'], check=True)
@@ -285,8 +309,9 @@ for nombre, prg16, chr8, mapper, r132, r133, r134, rbf in (
     comprobar(bytes(m.chr[:len(chr_)]) == chr_, f'{nombre}: la CHR ({len(chr_) // 1024} KiB) queda igual en la SRAM')
     comprobar((m.fpga.get(132), m.fpga.get(133), m.fpga.get(134), m.fpga.get(136)) == (r132, r133, r134, 0),
               f'{nombre}: regs 132/133/134/136 = {r132:02X}/{r133:02X}/{r134:02X}/00')
-    comprobar(estado(m, 'en_juego') == 1 and solo_lectura(m) and not [e for e in m.log[m.n_log:] if e[0] == 'ESCRITURA_EN_FLASH'],
-              f'{nombre}: marca en_juego puesta; la SD solo se lee; nada escrito en la flash')
+    pila = nombre == 'MMC3.NES'           # byte 6 = 2: con pila, crea EDFC/SAVE/MMC3.SRM
+    comprobar(estado(m, 'en_juego') == 1 and (pila or solo_lectura(m)) and not [e for e in m.log[m.n_log:] if e[0] == 'ESCRITURA_EN_FLASH'],
+              f'{nombre}: marca en_juego puesta; {"crea su partida" if pila else "la SD solo se lee"}; nada escrito en la flash')
     if mapper == 0:
         m.correr(3000)
         comprobar(bytes(m.ram[0x700:0x703]) == bytes([0xA5, prg[0], 0xFD]), f'{nombre}: el juego corre (marca en la RAM, S = $FD)')
@@ -417,7 +442,219 @@ comprobar(cursor_en(m.pantalla(), 'Juegos/') and cabecera(m.pantalla()) == 'Raí
 m.cpu.reset()
 m.correr(PASOS, nmi_cada=9000)
 comprobar('Arranque: reset' in m.pantalla() and 'Raíz' in m.pantalla(), 'reset en el menú: sigue en la carpeta (raíz)')
-comprobar(solo_lectura(m) and bytes(m.sd.img) == pathlib.Path(img4).read_bytes(), 'la imagen con carpetas queda idéntica')
+comprobar(fsck(m) == [] and leer_archivo(m, 'EDFC/SAVE/Súper Prueba ñ (España).srm') == bytes([0xFF]) * 8192,
+          'la partida del juego de la subcarpeta: «Súper Prueba ñ (España).srm», y la FAT sin errores')
+
+
+# ------------------------------------------------------------------ etapa 5: partidas con pila
+PILA = [('Juego con pila (USA).nes', rom(2, 1, 0, byte6=2, semilla=11)),
+        ('Otro juego (Japan).nes', rom(2, 1, 0, byte6=2, semilla=12)),
+        # NES 2.0 con 32 KiB de PRG-NVRAM (byte 10 = $90: 64 << 9)
+        ('Grande NES 2.0.nes', rom(2, 1, 0, byte6=2, semilla=13, cola=[0x08, 0, 0, 0x90, 0, 0, 0, 0, 0]))]
+OTRA = bytes((i * 7 + 5) & 0xFF for i in range(8192))          # partida que ya estaba (copiada de un emulador)
+FF8 = bytes([0xFF]) * 8192
+
+def imagen5(nombre, fat=32, relleno=0, ocupar=False, sin_save=False):
+    img = imagen3(nombre, fat=fat)
+    dest = f'{img}@@{8192 * 512}'
+    def copia(datos, destino):
+        f = t / 'tmp.bin'
+        f.write_bytes(datos)
+        subprocess.run(['mcopy', '-i', dest, str(f), destino], check=True)
+    for n, r in PILA:
+        copia(r[0], f'::{n}')
+    if sin_save:
+        subprocess.run(['mrd', '-i', dest, '::EDFC/SAVE'], check=True)
+    else:
+        copia(OTRA, '::EDFC/SAVE/OTRO JUEGO (Japan).SRM')           # mayúsculas distintas: tiene que valer
+    for i in range(relleno):
+        copia(b'x', f'::EDFC/SAVE/R{i:02d}.BIN')
+    if ocupar:                                                      # casi llena: menos de 8 KiB libres
+        out = subprocess.run(['mdir', '-i', dest, '::'], capture_output=True, text=True).stdout
+        libres = int(out.strip().split('\n')[-1].split('bytes')[0].replace(' ', ''))
+        f = t / 'grande.bin'
+        with open(f, 'wb') as g:
+            g.truncate(libres - 2048)
+        subprocess.run(['mcopy', '-i', dest, str(f), '::RELLENO.BIN'], check=True)
+    return img
+
+def encender(img_bytes, prgram=None, sdhc=True, sd=None):
+    m = Maquina(bios, sd or SD(img_bytes, sdhc=sdhc), prgram=prgram)
+    ok = m.arrancar_bios() == 'parada' and m.cpu.pc == 0x8000
+    m.n_log = len(m.log)
+    m.correr(PASOS, nmi_cada=9000)
+    m.n_cfg = len(m.fpga_cfgs)
+    return m, ok
+
+def ir_a(m, nombre):
+    """Desde el arranque (cursor en EDFC), baja hasta la ROM `nombre` de PILA."""
+    for _ in range(2 + len(ROMS) + [n for n, _ in PILA].index(nombre)):
+        toca(m, 0x04)
+
+def suma_marca(r):
+    """La suma de partida.s: $A5 + bytes 17..0 con ADC (el acarreo se arrastra)."""
+    a, c = 0xA5, 0
+    for x in reversed(r[0x10000:0x10012]):
+        v = a + x + c
+        a, c = v & 0xFF, v >> 8
+    return a
+
+def marca(m):
+    return bytes(m.prgram[0x10000:0x10004]) == b'N8SV'
+
+def escrituras(m):
+    return [e for e in m.log[m.n_log:] if e[0] == 'SD_CMD24']
+
+def volver(m):
+    m.correr(3000)
+    m.reset_consola()
+    m.correr(PASOS, nmi_cada=9000)
+    return m.pantalla()
+
+JP = 'Juego con pila (USA)'
+img5 = imagen5('e5.img')
+m, ok = encender(pathlib.Path(img5).read_bytes())
+ir_a(m, JP + '.nes')
+comprobar(cursor_en(m.pantalla(), JP), 'partidas: el cursor llega al juego con pila')
+m.prgram[:0x2000] = bytes(0x2000)
+ok = lanzar(m)
+comprobar(ok and m.mapper == 0 and leer_archivo(m, f'EDFC/SAVE/{JP}.srm') == FF8 and bytes(m.prgram[:0x2000]) == FF8,
+          'juego con pila sin partida: crea «EDFC/SAVE/Juego con pila (USA).srm» (8 KiB a $FF) y la PRG-RAM queda a $FF')
+comprobar(marca(m) and fsck(m) == [], 'marca de partida pendiente en el banco 8; fsck.fat sin errores')
+comprobar(nombres_save(m) == sorted([f'{JP}.srm', 'OTRO JUEGO (Japan).SRM']), f'EDFC/SAVE: {nombres_save(m)}')
+comprobar(not [e for e in m.log if e[0] == 'ESCRITURA_EN_FLASH'], 'nada escrito en la flash')
+PAT = bytes((i * 11 + 3) & 0xFF for i in range(8192))
+m.prgram[:0x2000] = PAT                    # lo que guarda el juego
+pan = volver(m)
+comprobar('Arranque: vuelta de juego' in pan and 'Partida guardada' in pan and cursor_en(pan, JP),
+          'RESET en el juego: «Partida guardada», con el cursor sobre el juego')
+comprobar(leer_archivo(m, f'EDFC/SAVE/{JP}.srm') == PAT and not marca(m) and fsck(m) == [],
+          'el .srm tiene lo que dejó el juego, la marca se borra y la FAT sigue bien')
+n_esc = len(escrituras(m))
+m.prgram[:0x2000] = bytes(0x2000)
+m.n_cfg = len(m.fpga_cfgs)
+ok = lanzar(m)
+comprobar(ok and bytes(m.prgram[:0x2000]) == PAT and len(escrituras(m)) == n_esc and len(nombres_save(m)) == 2,
+          'al lanzarlo otra vez carga la partida guardada, sin escribir nada ni crear otra')
+PAT2 = bytes((i * 5 + 9) & 0xFF for i in range(8192))
+m.prgram[:0x2000] = PAT2
+ram = bytearray(m.prgram)
+ram[0x12000:] = bytes(len(ram) - 0x12000)  # al encender, la BIOS vuelve a cargar el OS
+m2, ok = encender(bytes(m.sd.img), prgram=ram)
+pan = m2.pantalla()
+comprobar(ok and 'Arranque: frío (BIOS)' in pan and 'Partida guardada' in pan and leer_archivo(m2, f'EDFC/SAVE/{JP}.srm') == PAT2
+          and not marca(m2) and fsck(m2) == [], 'apagado dentro del juego (RAM con pila): al encender se guarda la partida')
+m3, ok = encender(bytes(m.sd.img))           # RAM sin pila: llega a cero, no hay marca
+comprobar(ok and 'Partida' not in m3.pantalla() and solo_lectura(m3), 'encendido con la RAM a cero: no escribe nada')
+mal = bytearray(ram)
+mal[0x10012] ^= 1                            # marca con la suma mal
+comprobar(suma_marca(ram) == ram[0x10012], 'la suma de la marca se calcula como en partida.s')
+m3, ok = encender(bytes(m.sd.img), prgram=mal)
+comprobar(ok and 'Partida' not in m3.pantalla() and solo_lectura(m3), 'marca con la suma de comprobación mal: no escribe nada')
+mal = bytearray(ram)
+mal[0x1000A] ^= 0x40                         # marca que apunta a otro clúster (con su suma bien)
+mal[0x10012] = suma_marca(mal)
+m3, ok = encender(bytes(m.sd.img), prgram=mal)
+comprobar(ok and 'Partida no encontrada' in m3.pantalla() and solo_lectura(m3) and not marca(m3),
+          'marca que no coincide con el archivo: «Partida no encontrada», no escribe y la borra')
+
+m, ok = encender(pathlib.Path(img5).read_bytes())
+ir_a(m, 'Otro juego (Japan).nes')
+ok = lanzar(m)
+comprobar(ok and bytes(m.prgram[:0x2000]) == OTRA and len(nombres_save(m)) == 1 and not escrituras(m),
+          'partida que ya estaba («OTRO JUEGO (Japan).SRM», otras mayúsculas): se carga, sin crear nada')
+m, ok = encender(pathlib.Path(img5).read_bytes())
+ir_a(m, 'Grande NES 2.0.nes')
+ok = lanzar(m)
+comprobar(ok and leer_archivo(m, 'EDFC/SAVE/Grande NES 2.0.srm') == bytes([0xFF]) * 32768 and bytes(m.prgram[:0x8000]) == bytes([0xFF]) * 32768,
+          'NES 2.0 con 32 KiB de PRG-NVRAM: partida de 32 KiB (4 bancos de la PRG-RAM)')
+PAT32 = bytes((i * 3 + (i >> 9)) & 0xFF for i in range(32768))
+m.prgram[:0x8000] = PAT32
+pan = volver(m)
+comprobar('Partida guardada' in pan and leer_archivo(m, 'EDFC/SAVE/Grande NES 2.0.srm') == PAT32 and fsck(m) == [],
+          'los 32 KiB se guardan al volver')
+m, ok = encender(pathlib.Path(img5).read_bytes())
+for _ in range(2 + [n for n, _ in ROMS].index('MMC3.NES')):
+    toca(m, 0x04)
+ok = lanzar(m)
+comprobar(ok and 'MMC3.SRM' in nombres_save(m) and leer_archivo(m, 'EDFC/SAVE/MMC3.SRM') == FF8 and fsck(m) == [],
+          'ROM con nombre 8.3 (MMC3.NES): su partida es MMC3.SRM, sin nombre largo')
+
+# carpeta SAVE casi llena (clúster de 512 bytes = 16 entradas): la partida nueva empieza en el clúster y sigue en otro
+m, ok = encender(pathlib.Path(imagen5('e5dir.img', relleno=9)).read_bytes())
+ir_a(m, JP + '.nes')
+ok = lanzar(m)
+comprobar(ok and leer_archivo(m, f'EDFC/SAVE/{JP}.srm') == FF8 and fsck(m) == [] and len(nombres_save(m)) == 11,
+          'EDFC/SAVE sin sitio: se le añade un clúster y el nombre largo queda partido entre los dos; fsck.fat bien')
+m.prgram[:0x2000] = PAT
+pan = volver(m)
+comprobar('Partida guardada' in pan and leer_archivo(m, f'EDFC/SAVE/{JP}.srm') == PAT, 'y se guarda bien al volver')
+
+# sin la carpeta EDFC/SAVE (la SD de la v0.4.0-beta no la trae): se crea
+m, ok = encender(pathlib.Path(imagen5('e5sinsave.img', sin_save=True)).read_bytes())
+ir_a(m, JP + '.nes')
+ok = lanzar(m)
+comprobar(ok and nombres_save(m) == [f'{JP}.srm'] and leer_archivo(m, f'EDFC/SAVE/{JP}.srm') == FF8 and fsck(m) == [],
+          'sin EDFC/SAVE: crea la carpeta («.» y «..») y la partida; fsck.fat sin errores')
+
+# FAT16 y SDSC
+m, ok = encender(pathlib.Path(imagen5('e5f16.img', fat=16)).read_bytes())
+ir_a(m, JP + '.nes')
+ok = lanzar(m)
+m.prgram[:0x2000] = PAT
+pan = volver(m)
+comprobar(ok and 'FAT16' in pan and 'Partida guardada' in pan and leer_archivo(m, f'EDFC/SAVE/{JP}.srm') == PAT and fsck(m) == [],
+          'FAT16: crea, guarda al volver y fsck.fat sin errores')
+m, ok = encender(pathlib.Path(img5).read_bytes(), sdhc=False)
+ir_a(m, JP + '.nes')
+ok = lanzar(m)
+m.prgram[:0x2000] = PAT
+pan = volver(m)
+comprobar(ok and 'SDSC' in pan and 'Partida guardada' in pan and leer_archivo(m, f'EDFC/SAVE/{JP}.srm') == PAT and fsck(m) == [],
+          'SDSC (direcciones en bytes): crea y guarda')
+
+# tarjeta llena
+m, ok = encender(pathlib.Path(imagen5('e5llena.img', fat=16, ocupar=True)).read_bytes())
+ir_a(m, JP + '.nes')
+ok = lanzar(m)
+m.correr(200_000, nmi_cada=9000)
+comprobar(not ok and 'SD llena: no cabe la partida' in m.pantalla() and not m.fpga_cfgs[m.n_cfg:] and fsck(m) == [],
+          'SD sin sitio: «SD llena», no lanza y la FAT queda bien')
+
+# tarjeta que no deja escribir (protegida): la marca se queda y no se lanza nada hasta guardar
+class SDprotegida(SD):
+    def byte(self, v, cs):
+        if cs and self.modo == 'escribir' and self.wbuf is not None and len(self.wbuf) == 514:
+            self.wbuf = None
+            self.modo = None
+            self.salida.extend([0x0D, 0xFF])           # bloque rechazado (error de escritura)
+            return 0xFF
+        return super().byte(v, cs)
+m, ok = encender(pathlib.Path(img5).read_bytes())
+ir_a(m, JP + '.nes')
+ok = lanzar(m)
+m.prgram[:0x2000] = PAT
+m.sd.__class__ = SDprotegida
+pan = volver(m)
+comprobar('Partida no guardada: 0B' in pan and marca(m), 'tarjeta que no deja escribir: «Partida no guardada: 0B» y la marca se queda')
+toca(m, 0x08)                                # arriba: a NOTAS.TXT... el cursor está en el juego; subir y bajar
+toca(m, 0x04)
+m.n_cfg = len(m.fpga_cfgs)
+lanzo = lanzar(m)
+m.correr(200_000, nmi_cada=9000)
+comprobar(not lanzo and 'Sin guardar la anterior: 0B' in m.pantalla() and not m.fpga_cfgs[m.n_cfg:] and bytes(m.prgram[:0x2000]) == PAT,
+          'con la partida sin guardar no se lanza nada (ni se toca la PRG-RAM)')
+m.sd.__class__ = SD
+m.cpu.reset()
+m.correr(PASOS, nmi_cada=9000)
+comprobar('Partida guardada' in m.pantalla() and leer_archivo(m, f'EDFC/SAVE/{JP}.srm') == PAT and not marca(m),
+          'cuando la tarjeta vuelve a dejar escribir, el reset guarda la partida')
+m, ok = encender(pathlib.Path(img5).read_bytes(), sd=SDprotegida(pathlib.Path(img5).read_bytes()))
+ir_a(m, JP + '.nes')
+lanzo = lanzar(m)
+m.correr(200_000, nmi_cada=9000)
+comprobar(not lanzo and 'Error al escribir la SD 0B' in m.pantalla() and not m.fpga_cfgs[m.n_cfg:],
+          'no se puede crear la partida: «Error al escribir la SD 0B» y no lanza')
 
 print('pantalla del caso FAT32:')
 m, ok = arrancar(img32)

@@ -53,4 +53,14 @@ L_SINRBF    = 5                 ; no está EDFC/MAPS/NNN.RBF
 L_FRAG      = 6                 ; el RBF no está contiguo en la tarjeta
 L_SD        = 7                 ; error de lectura (fat_error)
 L_FPGA      = 8                 ; no llegan los datos durante la configuración
+; (9 = M_PROF, en principal.s)
+L_SINSAVE   = 10                ; no está la carpeta EDFC/SAVE
+L_LLENA     = 11                ; no hay sitio en la SD para una partida nueva
+L_ESCRIBIR  = 12                ; error al escribir en la SD (pt_err)
+L_PERDIDA   = 13                ; la partida de EDFC/SAVE está vacía (0 bytes)
+L_PENDIENTE = 14                ; no se pudo guardar la partida anterior: no se lanza nada (pt_err)
+; resultados de partida_pendiente (partida.s), que el menú enseña al arrancar
+M_GUARDADA   = 15
+M_NOGUARDADA = 16               ; (pt_err)
+M_PERDIDA    = 17
 

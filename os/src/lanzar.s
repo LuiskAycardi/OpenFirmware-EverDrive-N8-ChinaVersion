@@ -5,12 +5,14 @@
 ;
 ; Pasos de `lanzar` (dir_ent = entrada de la ROM en el directorio; pantalla apagada y sin NMI):
 ;   1. cabecera iNES: PRG, CHR, mapper, byte 6;
+;      partidas (partida.s): primero se guarda la del juego anterior si quedó pendiente (si no se puede, no se
+;      lanza nada); con pila (byte 6 bit 1), se busca o se crea EDFC/SAVE/<nombre>.srm y se copia a la PRG-RAM;
 ;   2. EDFC/MAPROUT.BIN[mapper] = número del RBF ($FF = no hay);
 ;   3. EDFC/MAPS/NNN.RBF: tiene que estar contiguo, porque se pasa al FPGA con una sola lectura múltiple;
 ;   4. configurar el FPGA desde la RAM (ram_config): mientras se configura no hay nada en $8000-$FFFF;
 ;   5. copiar la PRG por la ventana $4800 (reg 128) y la CHR por la PPU (reg 130);
-;   6. regs 132 (PRG), 133 (CHR), 134 (byte 6 de la cabecera), 136 (reset corto), marca en_juego y, desde la
-;      RAM, reg 131 = mapper y salto al vector de reset del juego.
+;   6. regs 132 (PRG), 133 (CHR), 134 (byte 6 de la cabecera), 136 (reset corto), marca de partida pendiente (con
+;      pila), marca en_juego y, desde la RAM, reg 131 = mapper y salto al vector de reset del juego.
 ; Solo vuelve si algo falla: acarreo = 1 y l_error.
 
         .setcpu "6502"
@@ -25,6 +27,7 @@
         .importzp E_FIN, E_DATOS
         .import sd_multi_ini, sd_parar, sd_base
         .import en_juego
+        .import partida_nombre, partida_preparar, partida_marcar, partida_pendiente, pt_sect_nueva
         .importzp sd_lba, nombre
         .import __RAMCOD_LOAD__, __RAMCOD_RUN__, __RAMCOD_SIZE__
 
@@ -87,6 +90,7 @@ falla_sd:
         bne     falla
 
 lanzar:
+        jsr     partida_nombre          ; con dir_ent y el nombre largo de la ROM, antes de leer nada más
         lda     #0
         sta     l_error
         sta     fat_error
@@ -156,6 +160,19 @@ lanzar:
         ora     l_mapper
         sta     l_mapper
 @mapper:
+        ; ---- 1b. partidas
+        jsr     tam_partida             ; con la cabecera aún en `sector`
+        jsr     partida_pendiente       ; la del juego anterior, si quedó sin guardar
+        bcc     :+
+        lda     #L_PENDIENTE
+        jmp     falla
+:       lda     l_cfg
+        and     #$02
+        beq     @sin_pila
+        jsr     partida_preparar
+        bcc     @sin_pila
+        jmp     falla                   ; A = L_*
+@sin_pila:
         ; ---- 2. EDFC/MAPROUT.BIN
         jsr     abrir_edfc
         bcs     @sin_maprout
@@ -392,9 +409,48 @@ lanzar:
         ldx     #REG_CART_CFG
         lda     #0                      ; reset corto: el reset vuelve al OS
         jsr     fpga_reg
-        lda     #1
+        lda     l_cfg
+        and     #$02
+        beq     :+
+        jsr     partida_marcar          ; al volver (o al encender, si la RAM tiene pila) se guarda
+:       lda     #1
         sta     en_juego
         jmp     ram_lanzar
+
+; Tamaño de una partida nueva, en sectores (pt_sect_nueva), según la cabecera que hay en `sector`: la PRG-NVRAM de
+; NES 2.0 (64 << n bytes, entre 8 y 64 KiB); si no la declara, 32 KiB con el MMC5 (5) y 8 KiB con los demás.
+tam_partida:
+        lda     #16
+        sta     pt_sect_nueva
+        lda     sector+7
+        and     #$0C
+        cmp     #$08
+        bne     @ines
+        lda     sector+10
+        lsr
+        lsr
+        lsr
+        lsr
+        beq     @ines
+        sec
+        sbc     #7                      ; 64 << 7 = 8 KiB
+        bcc     @ya
+        cmp     #3
+        bcc     :+
+        lda     #3                      ; 64 KiB como mucho
+:       tax
+        lda     #16
+@d:     cpx     #0
+        beq     @fin
+        asl
+        dex
+        jmp     @d
+@ines:  lda     l_mapper
+        cmp     #5
+        bne     @ya
+        lda     #64
+@fin:   sta     pt_sect_nueva
+@ya:    rts
 
 ; Abre EDFC desde la raíz. Acarreo = 1 si no está.
 abrir_edfc:

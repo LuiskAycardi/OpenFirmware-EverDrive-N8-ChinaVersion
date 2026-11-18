@@ -347,8 +347,10 @@ para volver.
 4. **Todos los mappers.** `MAPROUT.BIN`, número de la cabecera sin traducir, CHR-RAM (`$FF`), cuatro pantallas,
    ROMs grandes y cargas por tramos de clústeres. Prueba: la tanda de cobertura (`tools/n8sim/cobertura.py`) con el
    banco de la consola. Aquí se estudian los bits 2-4 del reg 9.
-5. **Partidas.** Leer y escribir el formato del v13 (§2.5), con relleno `$FF` para las nuevas. Guardar al volver al
-   menú. Prueba: Zelda y Kirby con partidas de verdad, con copia previa de `EDFC/SAVE`.
+5. **Partidas.** *Hecho en el banco ([os/LEEME.md](../os/LEEME.md), etapa 5), falta la consola.* Formato propio:
+   `EDFC/SAVE/<nombre>.srm`, igual que el `.sav` de los emuladores (el del v13, §2.5, no se lee), relleno `$FF` en las
+   nuevas, marca de partida pendiente en la PRG-RAM `0x10000` y guardado al volver al menú o en el encendido
+   siguiente. Prueba: Zelda y Kirby con partidas de verdad, con copia previa de `EDFC/SAVE`.
 6. **Menú completo.** Orden alfabético, LFN, carpetas, desplazamiento continuo, búsqueda por letra, último juego e
    información de la ROM (mapper, tamaños, CRC).
 7. **Modo banco** (§4): `AUTO.TXT`, `LISTA.TXT`, fotograma de identificación e informe en la SD. Adaptar

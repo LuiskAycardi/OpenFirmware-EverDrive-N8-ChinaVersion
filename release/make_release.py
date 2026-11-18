@@ -6,6 +6,7 @@ BIOS del cartucho lee de la tarjeta sale de este repositorio (nada de Krikzz).
   SD/EDFC/MAPS/255.RBF        el RBF del modo OS (hdl/out/255.RBF), el que la BIOS carga al encender
   SD/EDFC/MAPS/100-106.RBF    los mappers (hdl/out)
   SD/EDFC/MAPROUT.BIN         mapper -> RBF, generado desde n8_top.v (sin FDS: no hay 254.RBF propio)
+  SD/EDFC/SAVE/               carpeta vacía para las partidas (el OS la crea si falta)
   LEEME.md, MAPPERS.txt, LICENSE, SHA256SUMS.txt
 
   make -C hdl build
@@ -43,6 +44,7 @@ def main():
         shutil.rmtree(stage)
     maps = stage / "SD/EDFC/MAPS"
     maps.mkdir(parents=True)
+    (stage / "SD/EDFC/SAVE").mkdir()
 
     top = (ROOT / "hdl/rtl/n8_top.v").stat().st_mtime
     for n in RBFS:
@@ -79,6 +81,8 @@ def main():
         for p in sorted(stage.rglob("*")):
             if p.is_file():
                 z.write(p, f"{name}/{p.relative_to(stage)}")
+            elif p.is_dir() and not any(p.iterdir()):          # carpetas vacías (EDFC/SAVE)
+                z.write(p, f"{name}/{p.relative_to(stage)}/")
     print(f"{zpath} ({zpath.stat().st_size} bytes), commit {commit}")
     print(sums, end="")
     return 0
