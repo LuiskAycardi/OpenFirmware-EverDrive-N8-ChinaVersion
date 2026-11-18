@@ -75,6 +75,7 @@ cuenta2:    .res 1
 info_pag:   .res 1              ; dónde estaba el cursor la última vez (fila 25: información del juego)
 info_fila:  .res 1
 info_cnt:   .res 1              ; fotogramas que faltan para leer la información (0 = ya está o no toca)
+info_borrar: .res 1             ; 1 = vaciar la fila 25 (el cursor se ha movido)
 rep_dir:    .res 1              ; dirección mantenida y fotogramas que lleva (repetición)
 rep_cnt:    .res 1
 sel_k:      .res 2              ; k (orden de la FAT) de la entrada del cursor (buscar_sel)
@@ -649,6 +650,7 @@ mensaje:
         sta     info_fila
         lda     #0
         sta     info_cnt
+        sta     info_borrar
         sta     PPUMASK
         lda     #REG_CHR                ; la fuente: el lanzador puede haber movido el banco de la CHR
         sta     REG_SEL
@@ -1218,10 +1220,19 @@ info_tick:
         lda     fila_c
         cmp     info_fila
         bne     @mov
-        lda     info_cnt
-        beq     @fin
         lda     filas_pend
         bne     @fin
+        lda     info_borrar             ; primero, vaciar la fila (que no se vea la información de otro juego)
+        beq     @cuenta
+        lda     #0
+        sta     info_borrar
+        ldx     #FILA_INFO
+        jsr     fila_dst
+        jsr     fila_blanca
+        jmp     subir_info
+@cuenta:
+        lda     info_cnt
+        beq     @fin
         dec     info_cnt
         bne     @fin
         jmp     mostrar_info
@@ -1231,6 +1242,8 @@ info_tick:
         sta     info_fila
         lda     #12
         sta     info_cnt
+        lda     #1
+        sta     info_borrar
 @fin:   rts
 
 ; Prepara la fila de información (filas_txt 17) de la entrada del cursor y la marca para subirla.
@@ -1320,7 +1333,9 @@ mostrar_info:
         lda     #>t_pila
         sta     src+1
         jsr     copia_src
-@sube:  lda     #FILA_INFO
+@sube:
+subir_info:
+        lda     #FILA_INFO
         sta     fila_sub
         lda     #1
         sta     filas_pend

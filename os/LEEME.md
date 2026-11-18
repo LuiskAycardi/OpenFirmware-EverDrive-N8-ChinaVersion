@@ -333,8 +333,9 @@ compara lo que se ve (el nombre largo sin `.nes`), hasta 31 caracteres; con clav
 
 **Información del juego** (fila 25): con el cursor quieto 12 fotogramas se lee la cabecera del archivo (la misma
 rutina que el lanzador, `leer_cabecera`): «Mapper 4  256K+128K  pila» (PRG + CHR, o `+RAM` con CHR-RAM). Si no se
-puede lanzar, el mismo texto que daría el lanzador («No es una ROM iNES»…). En una carpeta, nada. Un mensaje
-(«Partida guardada»…) se queda hasta que se mueve el cursor.
+puede lanzar, el mismo texto que daría el lanzador («No es una ROM iNES»…). En una carpeta, nada. Al mover el
+cursor la fila se vacía enseguida (no queda la del juego anterior). Un mensaje («Partida guardada»…) se queda hasta
+que se mueve el cursor.
 
 **Último juego:** al lanzar, la ruta (carpetas y cursor de cada una) y el número del juego en su carpeta se guardan
 en el banco 8 (PRG-RAM con pila, en `$6040`, con firma `N8UL` y suma). Al encender, el menú abre esa carpeta con el
@@ -342,10 +343,24 @@ cursor sobre el juego, si su primera entrada sigue siendo «.» (si no, la raíz
 pone por el número de la entrada en la FAT, no por la página y la fila, así que cae sobre el juego aunque cambie el
 orden.
 
-**Pruebas** (`herramientas/probar_os.py`, 178 casos en total): orden con carpetas, acentos, ñ y nombres que empiezan
+**Pruebas** (`herramientas/probar_os.py`, 180 casos en total): orden con carpetas, acentos, ñ y nombres que empiezan
 igual, en dos páginas; información de un MMC1 con pila, CHR-RAM, un MMC3 grande, un archivo que no es ROM y una
 carpeta; repetición; saltos por letra en los dos sentidos y dando la vuelta; último juego al encender con la RAM con
 pila y sin ella; orden de la FAT con una partida sin guardar. Las pruebas anteriores buscan las entradas por su
 nombre en la pantalla, sin depender del orden.
+
+### Resultados en la NES (2026-11-18, con la capturadora y el Nano)
+
+- Raíz, `PRUEBAS` (26 entradas) y `PRUEBAS/14 RBF 105` (45 entradas con nombres largos, 3 páginas) ordenadas; el
+  orden es de texto («10 Repetir» antes que «2 UxROM»).
+- **Cambio de página: unos 0,3 s** (a los 0,2 s seguía la página anterior; a los 0,5 s, la nueva entera).
+- Información: «Mapper 35  512K+256K  pila» (Wario Land 2), «Mapper 176  512K+256K  pila», «Mapper 209
+  128K+256K», «Mapper 219  128K+128K».
+- Abajo mantenido 1,2 s: 12 filas y cambio de página. Select+Derecha de «176…» a «209…»; Select+Izquierda desde la
+  página 3 al primer «2…» de la página 2.
+- Lanzar Tiny Toon Adventures 6 (211), apagar y encender: el menú abre `14 RBF 105`, página 2/3, con el cursor sobre
+  el juego.
+- Visto en la consola y corregido después (probado en el banco): la fila de información seguía mostrando el juego
+  anterior hasta que el cursor se quedaba quieto; ahora se vacía al moverlo.
 
 Pendiente: CRC del juego, modo banco.

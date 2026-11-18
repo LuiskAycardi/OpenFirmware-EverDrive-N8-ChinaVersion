@@ -706,6 +706,10 @@ for nombre, info in (('Final Fantasy II', 'Mapper 1  32K+8K  pila'), ('CHRRAM', 
     ir_a_nombre(m, nombre)
     m.correr(300_000, nmi_cada=9000)
     comprobar(fila25(m.pantalla()) == info, f'información de {nombre}: «{fila25(m.pantalla())}»')
+toca(m, 0x08)                                # se mueve: la fila se vacía enseguida (no queda la del juego anterior)
+comprobar(fila25(m.pantalla()) == '', f'al mover el cursor, la fila de información se vacía: «{fila25(m.pantalla())}»')
+m.correr(300_000, nmi_cada=9000)
+comprobar(fila25(m.pantalla()) == 'Mapper 0  32K+8K', f'y luego sale la del juego nuevo (JUEGO, encima de M219): «{fila25(m.pantalla())}»')
 comprobar(solo_lectura(m), 'el orden y la información no escriben en la tarjeta')
 
 m, ok = arrancar(img6)                      # repetición: abajo mantenido
