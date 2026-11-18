@@ -24,9 +24,12 @@ import unicodedata
 
 import numpy as np
 
+RAIZ = pathlib.Path(__file__).resolve().parents[2]
 COLS, FILAS = 32, 30
 CONTRASTE = 40          # diferencia mínima de luminancia en una celda con texto
 DIST_GLIFO = 1          # píxeles distintos (de 64) para considerar dos formas el mismo glifo
+DIST_SEMILLA = 6        # con un glifo sembrado (fuente conocida del OS propio): hasta 6, si el segundo queda lejos
+MARGEN_SEMILLA = 4
 
 
 def lum(img):
@@ -74,6 +77,7 @@ class Fuente:
         self.formas = []           # np.bool_ (64,)
         self.letra = {}            # id -> carácter
         self.votos = {}            # id -> {carácter: n}
+        self.semillas = []         # ids de la fuente conocida (sembrar_os_propio)
         if self.ruta and self.ruta.exists():
             d = json.loads(self.ruta.read_text())
             for h in d.get("formas", []):
@@ -97,9 +101,48 @@ class Fuente:
             i = int(np.argmin(d))
             if d[i] <= DIST_GLIFO:
                 return i
+            if self.semillas:           # la fuente conocida aguanta el desenfoque de la captura (U y V: 15 de 64)
+                s = sorted((int(d[k]), k) for k in self.semillas)
+                if s[0][0] <= DIST_SEMILLA and (len(s) < 2 or s[1][0] >= s[0][0] + MARGEN_SEMILLA):
+                    return s[0][1]
         self.formas.append(forma.copy())
         self._m = None
         return len(self.formas) - 1
+
+    def sembrar_os_propio(self):
+        """Los glifos del OS propio (os/herramientas/fuente.py) con su letra: así no hay que aprenderlos y letras
+        parecidas no se confunden (la «V» de «(V1 bancos)» salía como «U» con la fuente aprendida, 2026-11-17)."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("fuente_os", RAIZ / "os" / "herramientas" / "fuente.py")
+        f = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(f)
+        for c, filas in f.G.items():
+            if c == " ":
+                continue
+            forma = np.array([[p == "#" for p in fila] + [False] for fila in filas], bool).reshape(64)
+            gid = next((k for k, f0 in enumerate(self.formas) if (f0 == forma).all()), None)   # sin tolerancia:
+            if gid is None:                                    # é y e, R y P... son glifos distintos
+                self.formas.append(forma.copy())
+                self._m = None
+                gid = len(self.formas) - 1
+            self.votos[gid] = {c: 1000}
+            self.letra[gid] = c
+            if gid not in self.semillas:
+                self.semillas.append(gid)
+        return self
+
+    def puntuar_semillas(self, img, maximo=2):
+        """Celdas de la imagen que casan (a `maximo` píxeles o menos) con un glifo sembrado: sirve para afinar la
+        calibración provisional con la fuente conocida del OS propio."""
+        if not self.semillas:
+            return 0
+        alto, texto, *_ = celdas(img, (0, 0))
+        m = np.array([self.formas[k] for k in self.semillas])
+        fs = alto[texto]
+        if not len(fs):
+            return 0
+        d = (fs[:, None, :] != m[None, :, :]).sum(2).min(1)
+        return int((d <= maximo).sum())
 
     def aprender(self, gid, c):
         v = self.votos.setdefault(gid, {})
@@ -277,15 +320,44 @@ def aprender(filas, asign, salto_de, fuente):
 
 
 # ---------------------------------------------------------------- carpetas de la SD
-def entradas(carpeta):
-    """Nombres que el OS puede mostrar en una carpeta de la copia de la SD, en el orden más probable
-    (carpetas primero y por nombre sin distinguir mayúsculas). Se descartan los ocultos y los ._ de macOS."""
+_ESPECIALES = {"¿": 0x8E, "¡": 0x8F, "º": 0x90, "ª": 0x91}
+
+
+def clave_os_propio(nombre, es_dir):
+    """La clave de orden del OS propio (os/src/orden.s): carpetas primero; el nombre que se ve (sin «.nes»), hasta 31
+    caracteres; mayúsculas, acentos fuera, la ñ entre la n y la o; los nombres cortos van antes."""
+    if not es_dir and nombre.lower().endswith(".nes"):
+        nombre = nombre[:-4]
+    cs = []
+    for c in nombre[:31]:
+        if c in "ñÑ":
+            cs.append(0x4F)
+            continue
+        if c in _ESPECIALES:
+            cs.append(_ESPECIALES[c])
+            continue
+        if ord(c) >= 0x80:
+            base = unicodedata.normalize("NFD", c)[0]
+            c = base if ord(base) < 0x80 and base.isalpha() else "?"
+        k = ord(c.upper()) if "a" <= c <= "z" else ord(c)
+        if 0x4F <= k <= 0x60:                   # O-Z (y [\]^_`) un puesto arriba: la ñ va entre N y O
+            k += 1
+        cs.append(k)
+    return (0 if es_dir else 1, cs)
+
+
+def entradas(carpeta, os_propio=False):
+    """Nombres que el OS puede mostrar en una carpeta de la copia de la SD, en su orden: el del OS propio (alfabético,
+    carpetas primero: clave_os_propio) o, para el v13 (que sigue el orden de la FAT), el más probable (carpetas
+    primero y por nombre sin distinguir mayúsculas). Se descartan los ocultos y los ._ de macOS."""
     p = pathlib.Path(carpeta)
     ds, fs = [], []
     for e in sorted(os.listdir(p), key=str.lower):
         if e.startswith(".") or e.startswith("._"):
             continue
         (ds if (p / e).is_dir() else fs).append(e)
+    if os_propio:
+        return sorted(ds + fs, key=lambda e: clave_os_propio(e, (p / e).is_dir()))
     return ds + fs
 
 
@@ -297,7 +369,7 @@ def variantes(nombre, es_carpeta):
     if ext and not es_carpeta:
         v.append((base, 0.2))
     if es_carpeta:
-        v += [(f"[{nombre}]", 1.0), (f"/{nombre}", 1.0), (f"<{nombre}>", 1.0)]
+        v += [(f"{nombre}/", 0.1), (f"[{nombre}]", 1.0), (f"/{nombre}", 1.0), (f"<{nombre}>", 1.0)]   # OS propio: «nombre/»
     return v
 
 
@@ -312,8 +384,9 @@ class Lectura:
 
 
 class Menu:
-    def __init__(self, raiz_sd, fuente, cursor=None, teclas=None, log=None):
+    def __init__(self, raiz_sd, fuente, cursor=None, teclas=None, log=None, os_propio=False):
         self.raiz = pathlib.Path(raiz_sd)
+        self.os_propio = os_propio
         self.fuente = fuente
         self.cursor = cursor          # modelo aprendido: {"sel": {...}, "nosel": {...}}
         # Menú del OS v13 del N8 (comprobado en la consola el 2026-11-11 con la ROM de calibración, que confirma que el
@@ -322,7 +395,10 @@ class Menu:
         # Páginas de 21 entradas: Derecha/Izquierda pasan de página; Abajo/Arriba no salen de ella (2026-11-15).
         self.teclas = {"abajo": "down", "arriba": "up", "entrar": "b", "volver": "a", "lanzar": ["b", "b"],
                        "pag_sig": "right", "pag_ant": "left", "por_pagina": 21,
-                       "pulso_ms": 100, "pausa_ms": 150, **(teclas or {})}  # el OS v13 ignora pulsos de ~50 ms (medido 2026-11-11)
+                       "pulso_ms": 100, "pausa_ms": 150}  # el OS v13 ignora pulsos de ~50 ms (medido 2026-11-11)
+        if os_propio:     # OS propio: A abre y lanza, B vuelve; 16 por página (os/LEEME.md)
+            self.teclas.update({"entrar": "a", "volver": "b", "lanzar": ["a"], "por_pagina": 16})
+        self.teclas.update(teclas or {})
         self.log = log or (lambda *_: None)
         self.fase = (0, 0)
         self._carpetas = None
@@ -336,7 +412,7 @@ class Menu:
                                if p.is_dir() and not p.name.startswith(".")]:
                 d = self.raiz / rel
                 lst = []
-                for e in entradas(d):
+                for e in entradas(d, self.os_propio):
                     for v, pen in variantes(e, (d / e).is_dir()):
                         lst.append((v, e, pen))
                 if rel:
@@ -348,6 +424,8 @@ class Menu:
     # ------------------------------------------------------------ lectura
     def leer(self, img, solo=None):
         filas = leer(img, self.fuente, self.fase)
+        if self.os_propio:      # la lista del OS propio va en las filas 9-24 (la 7 es la cabecera: carpeta y «1/2»)
+            filas = [f for f in filas if 9 <= f.y + (1 if self.fase[1] > 4 else 0) <= 24]
         # a lo rápido, cuántas filas encajan con cada carpeta; la identificación completa, en las dos mejores
         previas = []
         for rel, lst in self.carpetas().items():

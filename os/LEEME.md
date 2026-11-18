@@ -378,4 +378,32 @@ nombre en la pantalla, sin depender del orden.
   en blanco); derecha pasa a la 3/3 con el cursor en la última entrada (página más corta); Select+izquierda vuelve al
   primer «2…» de la página 2.
 
-Pendiente: CRC del juego, modo banco.
+## Etapa 7: modo banco (`src/banco.s`)
+
+Para las pruebas automáticas en la consola (`tools/consola/`, `prueba.py --modo-banco`): el PC deja de navegar por
+el menú leyendo la pantalla.
+
+- **`EDFC/BANCO.TXT`**: una ruta por línea desde la raíz de la SD (`PRUEBAS/1 MMC1/Metroid (USA).nes`), en UTF-8,
+  con los nombres largos tal cual (sin distinguir mayúsculas de ASCII) o los 8.3. Las líneas vacías y las que
+  empiezan por `#` no cuentan; fin de línea LF o CR LF. La escribe `prueba.py preparar-banco`.
+- Si existe, **al arrancar el OS no enseña el menú sino la pantalla de banco**: «Modo banco 12/154», la ruta (hasta 3
+  filas), el mapper y los tamaños (o «No encuentro el archivo») y, en las filas 16 y 17, **el número de la entrada
+  (desde 0) en bloques**: bloque de marca, 16 bits del más alto al más bajo y bloque de marca; la fila 17 es el
+  complemento. El PC lo lee en la captura sin OCR (`tools/consola/banco.py`).
+- Mando: **Start** lanza la entrada; **derecha / izquierda**, la siguiente o la anterior (dando la vuelta por «Lista
+  terminada»); **B** sale al menú normal hasta el siguiente encendido. Con Select pulsado no hace nada (kit Lava).
+- El número se guarda en la PRG-RAM con pila (banco 8, `$6200`: firma `N8BK`, clúster y tamaño de BANCO.TXT, entrada
+  y suma). Al lanzar se guarda ya el de la siguiente: tras el juego, el botón RESET (o el kit Lava) vuelve a la
+  pantalla con la siguiente. Si BANCO.TXT cambia (otro clúster o tamaño), se empieza por la primera. Si un
+  lanzamiento falla, la pantalla vuelve con la siguiente y el motivo en la fila 25.
+- La lista se lee entera cada vez (es pequeña) y la ruta se busca carpeta por carpeta con el mismo nombre largo que
+  usa el menú (así las partidas y la información salen igual que lanzando desde el menú).
+- No hay informe en la SD ni `AUTO.TXT` (§4 del estudio de viabilidad): el PC lleva el registro de cada prueba y ve
+  el número en pantalla; un solo juego es una lista de una línea.
+
+**Pruebas** (`herramientas/probar_os.py`): entrada 1 sin la línea vacía ni el comentario; código; lanzar; RESET a la
+siguiente con nombre largo y ñ en UTF-8 y carpetas; archivo que falta; Start sobre él (no lanza, avanza y dice por
+qué); «Lista terminada»; dar la vuelta con derecha e izquierda; 8.3 en minúsculas; puesto tras apagar con la RAM con
+pila y sin ella; B al menú, que se mantiene tras un reset; otra BANCO.TXT vuelve a la primera.
+
+Pendiente: CRC del juego.

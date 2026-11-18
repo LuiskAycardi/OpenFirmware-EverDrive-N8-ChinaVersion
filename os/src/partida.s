@@ -23,7 +23,7 @@
         .include "os.inc"
 
         .export partida_nombre, partida_preparar, partida_marcar, partida_pendiente, pt_err, pt_sect_nueva
-        .export partida_hay_marca, banco_marca
+        .export partida_hay_marca, banco_marca, pt_nom, pt_len, igual_largo
         .import dir_abrir_raiz, dir_abrir, dir_abrir_c, dir_buscar, dir_siguiente, ent_clus
         .import arch_abrir, arch_avanzar, arch_lba
         .import fat_error, fat_spc, fat_desp, sector, lfn_val, lfn_crudo, lfn_crudo_n

@@ -39,6 +39,8 @@ que apagues y enciendas, y sigue solo con el siguiente juego en cuanto vuelve a 
    ```
    - No hace falta instalar nada: `firmware/mando.hex` ya está compilado y `flashear.py` habla directamente con el
      cargador del Nano.
+   - **Con la consola apagada**: al reiniciarse, el Nano mueve D2 (el RESET de la consola) y una consola encendida se
+     cuelga. `flashear.py` lo comprueba (si el firmware ya está y cuenta LATCH, no graba; `--forzar` para saltárselo).
    - Si falla con un clon, prueba `--baud 57600` (cargador antiguo) o pulsa RESET en el Nano justo al lanzarlo.
    - Alternativa con avrdude: `sudo pacman -S avrdude` y `make -C tools/consola/firmware flash-avrdude BAUD=57600`.
 4. **Copiar la ROM de calibración a la microSD**, junto con lo demás la próxima vez que la actualices:
@@ -60,6 +62,27 @@ que apagues y enciendas, y sigue solo con el siguiente juego en cuanto vuelve a 
    ```
    Tiene que contar LATCH (`lat=` subiendo y `per16≈66557`, el periodo NTSC). Con `mando.py toca down 100` el
    cursor del menú baja una fila.
+
+## Con el OS propio: modo banco (recomendado)
+Con nuestro OS (`os/`) en la SD, el banco no necesita navegar por el menú: el OS tiene un **modo banco**
+(os/LEEME.md, etapa 7). Con `EDFC/BANCO.TXT` en la tarjeta, al arrancar enseña una pantalla con una entrada de la
+lista y su número en bloques; el PC comprueba el número en la captura, lo corrige con derecha/izquierda si hace falta,
+arma el guion y pulsa Start; tras el juego, el botón RESET vuelve a la pantalla con la siguiente.
+
+```bash
+python3 -I prueba.py preparar-banco --destino /run/media/$USER/N8 --carpeta "PRUEBAS/4 MMC3"   # SD en el PC
+python3 -I prueba.py ejecutar --modo-banco --carpeta "PRUEBAS/4 MMC3"                          # SD en la consola
+```
+- `preparar-banco` escribe la lista (la ROM de calibración primero) en la SD montada y una copia en
+  `datos/banco_lista.json`, que es la que usa `ejecutar --modo-banco`: hay que usar los mismos filtros.
+- Para volver al menú normal: B en la pantalla de banco (hasta apagar) o borrar `EDFC/BANCO.TXT`.
+- En seco: `prueba.py ejecutar --seco --modo-banco --max 3` (el simulador tiene la pantalla de banco).
+
+**`"os"` en config.json** (por defecto `"propio"`): con nuestro OS, el lector del menú se siembra con su fuente
+(`os/herramientas/fuente.py`: no hay que aprenderla y no confunde letras parecidas como la V y la U), ordena como él
+(alfabético, carpetas primero), solo lee la lista (filas 9-24) y usa sus teclas (A abre y lanza, B vuelve; 16 por
+página); el simulador imita su menú (▶ y fila en rojo, arriba/abajo paran en el borde, derecha/izquierda dan la vuelta).
+Con el OS de fábrica, `"os": "v13"`.
 
 ## Uso normal
 Las opciones (puerto, capturadora, carpeta de la SD, teclas del menú, retrasos) van en `config.json`. Copia
@@ -123,6 +146,8 @@ python3 -I prueba.py ejecutar --solo "Mega Man" --max 2
   - El informe queda en `informes/<fecha>/index.html`: consola y Mesen2 lado a lado en cada escena, el vídeo de
     cada juego (`clip.mp4`) y el audio (`audio.wav`).
   - Va guardando a medida que avanza: si lo paras con Ctrl+C, lo hecho queda.
+- Antes de cada reset (botón o kit Lava) se desarma el guion del Nano: si no, sus pulsaciones seguían tras el reset
+  y caían en el menú (con el OS propio, A o Start volvían a lanzar el juego).
 - **Prueba en seco** (sin hardware):
   ```bash
   python3 -I prueba.py ejecutar --seco --max 3 --fotogramas 600

@@ -42,7 +42,7 @@
         .export dir_abrir_c, dir_guardar, dir_restaurar, ent_clus, lfn_buf, lfn_val
         .export fat_libres, fat_poner, fat_grabar, fat_info_pista, dir_huecos, leer_sector, grabar_sector
         .export lib_k, lib_ini, fat_v, hc_n, hc_lba, hc_idx, lfn_crudo, lfn_crudo_n
-        .export dir_lba, dir_idx, dir_clus, clus_a_lba
+        .export dir_lba, dir_idx, dir_clus, clus_a_lba, ucs_a_fuente, lfn_lo
         .exportzp dir_ent, nombre, clus, dir_pos
         .import sd_leer_sector, sd_escribir_sector
         .importzp sd_lba, sd_ptr

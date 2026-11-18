@@ -22,7 +22,10 @@
         .setcpu "6502"
         .include "os.inc"
 
-        .export principal, nmi
+        .export principal, nmi, ppu_dir, cadena, info_de_ent, dec16, fila_blanca, copia_src
+        .export mensajes_lo, mensajes_hi
+        .exportzp ptr, dst, src, botones, nmis, mando_on, w16
+        .import banco
         .import tipo_arranque, arranques, resets, vueltas
         .import sd_iniciar, sd_error, sd_r1, sd_sdhc
         .import fat_montar, dir_abrir_raiz, dir_abrir_c, dir_siguiente, dir_guardar, dir_restaurar, ent_clus
@@ -147,6 +150,7 @@ principal:
 :       jsr     datos_tarjeta
         jsr     partida_pendiente       ; la partida del último juego (vuelta de juego o encendido con pila)
         sta     msj_ini
+        jsr     banco                   ; con EDFC/BANCO.TXT: la pantalla del modo banco (no vuelve)
         lda     #0
         sta     pagina
         sta     fila_c
@@ -1297,10 +1301,15 @@ mostrar_info:
         bne     @nada                   ; carpeta: nada
         jsr     buscar_sel
         bcs     @nada
+        jsr     info_de_ent
+@nada:  jmp     subir_info
+
+; Escribe en (dst), desde la columna 0, la información del archivo de la entrada dir_ent (la fila ya en blanco).
+info_de_ent:
         jsr     arch_abrir
         jsr     arch_leer
         bcc     :+
-@nada:  jmp     @sube
+        rts
 :       jsr     leer_cabecera
         bcc     @rom
         tax                             ; no se puede lanzar: el mismo texto que al intentarlo
@@ -1309,8 +1318,7 @@ mostrar_info:
         lda     mensajes_hi-1,x
         sta     src+1
         ldy     #0
-        jsr     copia_src
-        jmp     @sube
+        jmp     copia_src
 @rom:   ldy     #0                      ; «Mapper N  PRGK+CHRK  pila»
         lda     #<t_mapper
         sta     src
@@ -1365,13 +1373,14 @@ mostrar_info:
         iny
 @pila:  lda     l_cfg
         and     #$02
-        beq     @sube
+        beq     @fin
         lda     #<t_pila
         sta     src
         lda     #>t_pila
         sta     src+1
-        jsr     copia_src
-@sube:
+        jmp     copia_src
+@fin:   rts
+
 subir_info:
         lda     #FILA_INFO
         sta     fila_sub
@@ -1956,8 +1965,9 @@ m14:    .byte "Sin guardar la anterior: ", 0
 m15:    .byte "Partida guardada", 0
 m16:    .byte "Partida no guardada: ", 0
 m17:    .byte "Partida no encontrada", 0
-mensajes_lo: .byte <m1, <m2, <m3, <m4, <m5, <m6, <m7, <m8, <m9, <m10, <m11, <m12, <m13, <m14, <m15, <m16, <m17
-mensajes_hi: .byte >m1, >m2, >m3, >m4, >m5, >m6, >m7, >m8, >m9, >m10, >m11, >m12, >m13, >m14, >m15, >m16, >m17
+m18:    .byte "No encuentro el archivo", 0
+mensajes_lo: .byte <m1, <m2, <m3, <m4, <m5, <m6, <m7, <m8, <m9, <m10, <m11, <m12, <m13, <m14, <m15, <m16, <m17, <m18
+mensajes_hi: .byte >m1, >m2, >m3, >m4, >m5, >m6, >m7, >m8, >m9, >m10, >m11, >m12, >m13, >m14, >m15, >m16, >m17, >m18
 
 cifras:
         .byte   "0123456789ABCDEF"

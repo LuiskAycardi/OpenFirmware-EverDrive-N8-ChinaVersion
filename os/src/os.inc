@@ -43,6 +43,7 @@ C_EXC = $8F                     ; ¡
 C_CURSOR = $92                  ; cursor del menú
 C_IZQ = $93                     ; ◀
 C_PUNTOS = $94                  ; … (nombre cortado)
+C_BLOQUE = $95                  ; bloque macizo (código del modo banco)
 
 ; motivos por los que no se puede lanzar un juego (lanzar.s)
 L_NOINES    = 1                 ; no empieza por "NES" $1A
@@ -63,4 +64,5 @@ L_PENDIENTE = 14                ; no se pudo guardar la partida anterior: no se 
 M_GUARDADA   = 15
 M_NOGUARDADA = 16               ; (pt_err)
 M_PERDIDA    = 17
+M_NOARCH     = 18               ; modo banco: la ruta de la lista no está en la SD
 

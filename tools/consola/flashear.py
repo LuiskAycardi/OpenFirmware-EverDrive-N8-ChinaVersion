@@ -7,6 +7,10 @@ STK500 v1 de Optiboot y del cargador antiguo del Nano). Solo biblioteca estánda
 
 Prueba 115200 baudios (Optiboot: Nano nuevo y Uno) y después 57600 (Nano con el cargador antiguo).
 Escribe por páginas de 128 bytes, lee todo otra vez y lo compara.
+
+**Con la consola apagada.** Al reiniciarse en el cargador, el Nano mueve sus patillas (D2 pulsa el RESET de la consola
+por el PC817) y la consola encendida se cuelga (3 de 3, 2026-11-11). Antes de grabar, si el firmware ya está, se le
+pregunta si llegan LATCH de la consola: si llegan, no se graba (salvo con --forzar).
 Alternativa con avrdude: make -C firmware flash-avrdude PUERTO=/dev/ttyUSB0 BAUD=57600
 """
 import argparse
@@ -132,11 +136,31 @@ def flashear(puerto, imagen, bauds=(115200, 57600), log=print):
     return False
 
 
+def consola_encendida(puerto):
+    """True si el firmware del mando contesta y cuenta LATCH en 0,3 s (la consola está encendida). Sin firmware
+    (Nano nuevo) o sin respuesta, False: no se puede saber y se graba."""
+    try:
+        from mando import Mando
+        m = Mando(puerto, esperar_hola=1.0)
+    except Exception:  # noqa: BLE001
+        return False
+    try:
+        a = m.estado().get("lat", 0)
+        time.sleep(0.3)
+        b = m.estado().get("lat", 0)
+        return b != a
+    except Exception:  # noqa: BLE001
+        return False
+    finally:
+        m.cerrar()
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("hex", nargs="?", default=str(pathlib.Path(__file__).resolve().parent / "firmware" / "mando.hex"))
     ap.add_argument("--puerto")
     ap.add_argument("--baud", type=int, help="solo esta velocidad (115200 Optiboot, 57600 cargador antiguo)")
+    ap.add_argument("--forzar", action="store_true", help="grabar aunque la consola parezca encendida")
     a = ap.parse_args()
     imagen = leer_hex(a.hex)
     puerto = a.puerto
@@ -145,6 +169,9 @@ def main():
         if not ps:
             sys.exit("no hay /dev/ttyUSB* ni /dev/ttyACM*: ¿está el Nano enchufado? (y el usuario en el grupo uucp)")
         puerto = ps[0]
+    if not a.forzar and consola_encendida(puerto):
+        sys.exit("la consola está encendida (el Nano recibe LATCH): apágala antes de grabar, o se cuelga. "
+                 "Si estás seguro, --forzar.")
     print(f"{a.hex}: {len(imagen)} bytes -> {puerto}")
     t0 = time.time()
     if not flashear(puerto, imagen, (a.baud,) if a.baud else (115200, 57600)):

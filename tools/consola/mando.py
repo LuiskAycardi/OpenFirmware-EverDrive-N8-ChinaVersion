@@ -123,6 +123,16 @@ class Mando:
         if "N8MANDO" not in r:
             raise ErrorMando(f"{puerto} no es el mando N8 (respuesta {r!r}). ¿Está flasheado?")
         self.log(f"mando en {puerto} ({describir(puerto) or 'USB'}): {r}")
+        if self.hola:
+            # El Nano se acaba de reiniciar (primera vez que se abre el puerto tras enchufarlo). La primera pulsación
+            # que se mandó justo después se perdió en la consola (2026-11-18): esperar a que cuente unos LATCH (como
+            # mucho 1,5 s; con la consola apagada no llegan y se sigue igual).
+            try:
+                l0, fin = self.estado().get("lat", 0), time.monotonic() + 1.5
+                while time.monotonic() < fin and self.estado().get("lat", 0) - l0 < 10:
+                    time.sleep(0.1)
+            except ErrorMando:
+                pass
 
     def _lector(self):
         while self.vivo:

@@ -31,6 +31,7 @@ import numpy as np
 AQUI = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(AQUI))
 sys.path.insert(0, str(AQUI / "rom"))
+import banco as banco_mod  # noqa: E402
 import calibrar  # noqa: E402
 import hacer_rom  # noqa: E402
 import menu as menu_mod  # noqa: E402
@@ -177,11 +178,149 @@ class OsSimulado:
         return img
 
 
+class OsPropioSimulado(OsSimulado):
+    """Menú del OS propio (os/src/principal.s, etapa 6): orden alfabético con las carpetas primero, 16 por página, ▶
+    y la fila elegida en rojo, nombres sin «.nes» y las carpetas con «/». Arriba/Abajo paran en el borde de la página;
+    Derecha/Izquierda pasan de página dando la vuelta; A abre la carpeta o lanza; B vuelve a la de arriba."""
+    FILAS_LISTA = 16
+
+    def __init__(self, raiz):
+        super().__init__(raiz, estilo="propio")
+        self.glifos = fuente_os_propio()
+
+    def lista(self):
+        return menu_mod.entradas(self.raiz / self.ruta, os_propio=True)
+
+    def pulsar(self, m):
+        nuevos = m & ~self.anterior
+        if m and m == self.anterior:
+            self.repite += 1
+            if self.repite >= 20 and (self.repite - 20) % 4 == 0:
+                nuevos |= m & 0xF0
+        else:
+            self.repite = 0
+        self.anterior = m
+        es = self.lista()
+        if m & 0x04:                                     # con Select: saltos de letra (aquí no hacen falta)
+            return None
+        n = len(es)
+        paginas = max(1, (n + 15) // 16)
+        pag, fila = divmod(self.cursor, 16)
+        en_pag = min(16, n - pag * 16) if n else 0
+        if nuevos & 0x20 and fila + 1 < en_pag:
+            self.cursor += 1
+        if nuevos & 0x10 and fila > 0:
+            self.cursor -= 1
+        if nuevos & 0xC0 and paginas > 1:
+            pag = (pag + (1 if nuevos & 0x80 else -1)) % paginas
+            self.cursor = min(pag * 16 + fila, n - 1)
+        self.arriba = (self.cursor // 16) * 16
+        if nuevos & 0x02 and m == 0x02 and self.ruta:   # B: volver
+            antes = os.path.basename(self.ruta)
+            self.ruta = os.path.dirname(self.ruta)
+            es = self.lista()
+            self.cursor = es.index(antes) if antes in es else 0
+            self.arriba = (self.cursor // 16) * 16
+        elif nuevos & 0x01 and m == 0x01 and es:        # A: abrir o lanzar
+            e = es[self.cursor]
+            p = self.raiz / self.ruta / e
+            if p.is_dir():
+                self.ruta = os.path.join(self.ruta, e) if self.ruta else e
+                self.cursor = self.arriba = 0
+            elif e.lower().endswith(".nes"):
+                return os.path.join(self.ruta, e) if self.ruta else e
+        return None
+
+    def imagen(self):
+        img = np.zeros((240, 256, 3), np.uint8)
+        blanco, rojo = (236, 238, 236), (216, 40, 0)
+        es = self.lista()
+        n = len(es)
+        self.texto(img, 7, 2, (os.path.basename(self.ruta) or "Raiz")[:20], blanco)
+        if n:
+            pag = f"{self.cursor // 16 + 1}/{(n + 15) // 16}"
+            self.texto(img, 7, 30 - len(pag), pag, blanco)
+        for k in range(16):
+            i = self.arriba + k
+            if i >= n:
+                break
+            p = self.raiz / self.ruta / es[i]
+            nombre = es[i] + "/" if p.is_dir() else (es[i][:-4] if es[i].lower().endswith(".nes") else es[i])
+            if len(nombre) > 28:
+                nombre = nombre[:27] + "…"
+            color = rojo if i == self.cursor else blanco
+            if i == self.cursor:
+                self.texto(img, 9 + k, 1, "▶", rojo)
+            self.texto(img, 9 + k, 2, nombre, color)
+        return img
+
+
+def fuente_os_propio():
+    """Los glifos de os/herramientas/fuente.py como máscaras de 8x8."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("fuente_os", menu_mod.RAIZ / "os" / "herramientas" / "fuente.py")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return {c: np.array([[p == "#" for p in fila] + [False] for fila in filas], bool) for c, filas in m.G.items()}
+
+
+class BancoSimulado:
+    """Pantalla del modo banco del OS propio (os/src/banco.s): con EDFC/BANCO.TXT en la SD, una entrada de la lista
+    con su número en bloques. Start la lanza (y deja guardada la siguiente); derecha/izquierda cambian de entrada; B
+    sale al menú hasta apagar. El número sobrevive a los resets y al apagado (PRG-RAM con pila)."""
+
+    def __init__(self, raiz, glifos):
+        self.raiz = pathlib.Path(raiz)
+        self.glifos = glifos
+        self.i = 0
+        self.salir = False
+        self.anterior = 0xFF
+        self.firma = None
+
+    def activo(self):
+        return not self.salir and (self.raiz / banco_mod.LISTA).exists()
+
+    def lista(self):
+        texto = (self.raiz / banco_mod.LISTA).read_text(encoding="utf-8")
+        if texto != self.firma:                     # otra lista: a la primera, como el OS
+            self.firma, self.i = texto, 0
+        return banco_mod.lineas(texto)
+
+    def pulsar(self, m):
+        nuevos = m & ~self.anterior
+        self.anterior = m
+        es = self.lista()
+        if m == 0x08 and nuevos & 0x08 and self.i < len(es):     # Start solo
+            rom = es[self.i]
+            self.i += 1
+            return rom
+        if m == 0x02 and nuevos & 0x02:                          # B solo
+            self.salir = True
+            return None
+        if m & 0x04:                                             # con Select, nada
+            return None
+        if nuevos & 0x80:
+            self.i = 0 if self.i >= len(es) else self.i + 1
+        if nuevos & 0x40:
+            self.i = len(es) if self.i == 0 else self.i - 1
+        return None
+
+    def imagen(self):
+        img = np.zeros((240, 256, 3), np.uint8)
+        es = self.lista()
+        blanco = (236, 238, 236)
+        OsSimulado.texto(self, img, 7, 2, f"Modo banco  {self.i + 1}/{len(es)}", blanco)
+        OsSimulado.texto(self, img, 9, 2, es[self.i][:28] if self.i < len(es) else "Lista terminada", blanco)
+        banco_mod.pintar_codigo(img, self.i, blanco)
+        return img
+
+
 # ---------------------------------------------------------------- la consola
 class ConsolaSimulada:
-    def __init__(self, raiz_sd, refs=None, fallos=None, log=None):
+    def __init__(self, raiz_sd, refs=None, fallos=None, log=None, os_propio=False):
         self.lib = lib_firmware()
-        self.os = OsSimulado(raiz_sd)
+        self.os = OsPropioSimulado(raiz_sd) if os_propio else OsSimulado(raiz_sd)
+        self.banco = BancoSimulado(raiz_sd, self.os.glifos)
         self.raiz = pathlib.Path(raiz_sd)
         self.refs = refs or {}           # ruta relativa de la ROM -> carpeta de referencia (f*.png, polls.txt)
         self.fallos = fallos or {}       # nombre de archivo -> "negra" | "cuelgue:FOT" | "basura:FOT"
@@ -296,10 +435,11 @@ class ConsolaSimulada:
                 self.estado = "menu"
         elif self.estado == "menu":
             m = self._leer_mando()
-            rom = self.os.pulsar(m)
+            pantalla = self.banco if self.banco.activo() else self.os
+            rom = pantalla.pulsar(m)
             if rom:
                 self._lanzar(rom)
-            img = self.os.imagen() if dibujar else self.imagen_actual
+            img = pantalla.imagen() if dibujar else self.imagen_actual
         elif self.estado == "carga":
             img = np.zeros((240, 256, 3), np.uint8)
             if ahora >= self.espera_hasta:
@@ -385,6 +525,7 @@ class ConsolaSimulada:
         self.estado, self.espera_hasta = "apagada", time.monotonic() + segundos
         self.lib.sim_v5(0)
         self.os.ruta, self.os.cursor, self.os.arriba = "", 0, 0
+        self.banco.salir = False                # B del modo banco: hasta apagar
 
     # ------------------------------------------------------------ la cadena de vídeo
     def cuadro_retrasado(self):

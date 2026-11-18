@@ -18,7 +18,7 @@
         .setcpu "6502"
         .include "os.inc"
 
-        .export lanzar, l_error, l_rbf, nombre_rbf, leer_cabecera, l_prg16, l_chr8, l_cfg
+        .export lanzar, l_error, l_rbf, nombre_rbf, leer_cabecera, l_prg16, l_chr8, l_cfg, abrir_edfc
         .exportzp l_mapper
         .import dir_abrir_raiz, dir_abrir, dir_buscar
         .import arch_abrir, arch_leer, arch_contiguo

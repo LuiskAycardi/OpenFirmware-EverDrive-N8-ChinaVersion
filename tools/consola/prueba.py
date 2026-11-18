@@ -8,11 +8,14 @@
   python3 -I prueba.py ejecutar --carpeta "PRUEBAS/4 MMC3" --max 3
   python3 -I prueba.py ejecutar --seco         # todo sin hardware (consola, Nano y capturadora simulados)
   python3 -I prueba.py informe CARPETA         # rehace index.html y resultados_pagina.json
+  python3 -I prueba.py preparar-banco --destino /run/media/USUARIO/N8 [--carpeta ...]   # OS propio: EDFC/BANCO.TXT
+  python3 -I prueba.py ejecutar --modo-banco [--carpeta ...]    # sin navegar: la pantalla de banco del OS propio
 
 Por cada juego:
   1. vuelve al menú si hace falta (botón RESET por el PC817; si no, reset por el mando del kit Lava; si el juego
      no lee el mando, pide apagar y encender);
-  2. navega por el menú del OS v13 hasta la ROM, comprobándolo con capturas;
+  2. navega por el menú del OS v13 hasta la ROM, comprobándolo con capturas (con --modo-banco, en la pantalla de
+     banco del OS propio lleva el número de entrada al de la ROM con derecha/izquierda y pulsa Start);
   3. carga el guion en el Nano, lo arma y pulsa A. El primer LATCH del juego es el fotograma p0 del banco;
   4. graba vídeo y audio y, en cada fotograma de captura, compara la escena con la de Mesen2;
   5. marca negra, basura, distinto o cuelgue, y vuelve al menú.
@@ -39,6 +42,7 @@ import numpy as np
 AQUI = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(AQUI))
 sys.path.insert(0, str(AQUI / "rom"))
+import banco as banco_mod  # noqa: E402
 import calibrar  # noqa: E402
 import comparar  # noqa: E402
 import hacer_rom  # noqa: E402
@@ -53,6 +57,7 @@ ROM_CAL = AQUI / "rom" / "calibracion.nes"
 DEF = {
     "puerto": None, "video": None, "audio": "auto",
     "sd": "~/SD_Pruebas", "consola": "nes",
+    "os": "propio",               # "propio" (os/: A abre, B vuelve, orden alfabético, 16 por página) o "v13" (fábrica)
     "rom_calibracion": "PRUEBAS/0 Calibracion/calibracion.nes",
     "sensor_5v": False,
     "teclas_menu": {},
@@ -225,19 +230,30 @@ class Banco:
             import simulador
             sd = simulador.sd_simulada(salida / "sd_simulada", cfg["sd"], ROM_CAL)
             cfg["sd"] = str(sd)
-            self.sim = simulador.ConsolaSimulada(sd, refs=refs or {}, fallos=sim_fallos or {}, log=log)
+            self.sim = simulador.ConsolaSimulada(sd, refs=refs or {}, fallos=sim_fallos or {}, log=log,
+                                                 os_propio=cfg.get("os", "propio") == "propio")
             self.mando = Mando(self.sim.puerto, log=log, esperar_hola=1.0)
             self.cap = simulador.CapturaSimulada(self.sim, log=log)
         else:
             import captura
             self.mando = Mando(cfg["puerto"], log=log)
             self.cap = cap or captura.Captura(cfg["video"], cfg["audio"], log=log, ventana=cfg["ventana"])
-        self.fuente = menu_mod.Fuente(self.datos / "fuente.json")
+        propio = cfg.get("os", "propio") == "propio"
+        self.fuente = menu_mod.Fuente(self.datos / ("fuente_os_propio.json" if propio else "fuente.json"))
+        if propio:
+            self.fuente.sembrar_os_propio()
         cursor = None
         if (self.datos / "cursor.json").exists():
             cursor = json.loads((self.datos / "cursor.json").read_text())
-        self.menu = menu_mod.Menu(cfg["sd"], self.fuente, cursor, cfg["teclas_menu"], log=log)
+        self.menu = menu_mod.Menu(cfg["sd"], self.fuente, cursor, cfg["teclas_menu"], log=log, os_propio=propio)
         self.cal = None
+        self.modo_banco = bool(cfg.get("modo_banco"))
+        self.banco_lista = banco_mod.cargar_local(self.datos) if self.modo_banco else None
+        if self.modo_banco and seco:            # en seco, la lista va en la SD simulada
+            self.banco_lista = cfg["banco_lista"]
+            banco_mod.escribir(cfg["sd"], self.banco_lista)
+        if self.modo_banco and not self.banco_lista:
+            raise Abortar("modo banco sin lista: antes, prueba.py preparar-banco con la SD en el PC")
         if (self.datos / "calibracion.json").exists():
             self.cal = calibrar.cargar(self.datos / "calibracion.json")
             self.menu.fase = tuple(self.cal.get("fase_menu", (0, 0)))
@@ -265,9 +281,22 @@ class Banco:
 
 
 # ---------------------------------------------------------------- volver al menú
+def en_banco(b, intentos=2):
+    """Modo banco: el número de la pantalla de banco ({"banco": n}), o None si no se ve un código válido."""
+    for _ in range(intentos):
+        _, img = b.cap.estable(2)
+        n = banco_mod.leer_codigo(img)
+        if n is not None:
+            return {"banco": n}
+        time.sleep(0.5)
+    return None
+
+
 def en_menu(b, intentos=2):
-    """La lectura del menú, o None. Exige 2 entradas reconocidas y la elegida (salvo carpetas de una sola entrada):
+    """La lectura del menú, o None (en el modo banco, la pantalla de banco). Exige 2 entradas reconocidas y la elegida (salvo carpetas de una sola entrada):
     con una sola coincidencia, el título de Punch-Out!! pasaba por el menú (2026-11-11)."""
+    if b.modo_banco:
+        return en_banco(b, intentos)
     lec, _ = b.menu.ver(b.cap, intentos=intentos)
     if lec is None or lec.carpeta is None or lec.seleccion is None:
         return None
@@ -297,6 +326,7 @@ def apagar_a_mano(b, motivo):
 
 def reset_mando(b):
     """Reset por el mando (combinación del kit Lava). Distinto del botón RESET (reset_boton)."""
+    b.mando.desarmar()                       # (ver reset_boton)
     return b.mando.reset_mando(b.cfg["reset_mando_select_ms"], b.cfg["reset_mando_a_ms"])
 
 
@@ -304,6 +334,9 @@ def reset_boton(b, res=None):
     """Botón RESET por el PC817. Devuelve la lectura del menú si vuelve a él (o None)."""
     if not b.cfg["reset_boton"]:
         return None
+    # Sin guion: si no, sus pulsaciones siguen tras el reset y caen en el menú (con el OS propio, A o Start lanzan la
+    # entrada del cursor: el juego volvía a arrancar solo; visto en la prueba en seco del 2026-11-18).
+    b.mando.desarmar()
     r = b.mando.reset_boton(b.cfg["reset_boton_ms"])
     if res is not None:
         res["reset"] = dict(r, boton=1)
@@ -347,8 +380,44 @@ def volver_al_menu(b, res):
         asegurar_menu(b)
 
 
+def lanzar_banco(b, rom_rel, p0, guion_txt):
+    """Modo banco: lleva la pantalla de banco a la entrada de la ROM (derecha/izquierda, comprobando el número en la
+    captura), arma el guion y pulsa Start. Devuelve la hora del pulso."""
+    if rom_rel not in b.banco_lista:
+        raise menu_mod.ErrorMenu(f"{rom_rel} no está en BANCO.TXT: vuelve a hacer preparar-banco")
+    objetivo, total = b.banco_lista.index(rom_rel), len(b.banco_lista) + 1   # +1: «Lista terminada»
+    b.mando.desarmar()
+    actual = asegurar_menu(b)["banco"]
+    for _ in range(total + 4):
+        if actual == objetivo:
+            break
+        adelante = (objetivo - actual) % total
+        boton = "right" if adelante <= total - adelante else "left"
+        b.mando.tocar(boton, b.menu.teclas["pulso_ms"], 50)
+        t0, nuevo = time.monotonic(), None
+        while time.monotonic() - t0 < 4:          # la pantalla se rehace (lee la lista y la cabecera)
+            time.sleep(0.3)
+            lec = en_banco(b, 1)
+            if lec and lec["banco"] != actual:
+                nuevo = lec["banco"]
+                break
+        if nuevo is None:
+            raise menu_mod.ErrorMenu(f"la pantalla de banco no cambia de entrada (sigue en {actual})")
+        actual = nuevo
+    else:
+        raise menu_mod.ErrorMenu(f"no llego a la entrada {objetivo} de BANCO.TXT (estoy en {actual})")
+    b.mando.guion(guion_txt)
+    b.mando.eventos(True)
+    b.mando.armar(p0, b.cfg["silencio_arranque_ms"])
+    t = time.monotonic()
+    b.mando.tocar("start", b.menu.teclas["pulso_ms"], 50)
+    return t
+
+
 def lanzar(b, rom_rel, p0, guion_txt):
     """Navega hasta la ROM, carga y arma el guion y la lanza (B, B en el OS v13). Devuelve la hora del pulso."""
+    if b.modo_banco:
+        return lanzar_banco(b, rom_rel, p0, guion_txt)
     # Tras la ROM de calibración (o un juego) el guion sigue activo y el fotograma sigue contando con las lecturas
     # del menú: al cargar el guion nuevo, sus tramos pulsarían en el menú (right+b, a...) y la B de lanzar se perdía.
     b.mando.desarmar()
@@ -390,7 +459,8 @@ def calibrar_todo(b, salida):
         log("sin calibración: provisional con el menú")
         for intento in range(4):
             foto = b.cap.foto_completa()
-            prov = calibrar.provisional_menu(foto, log=log)
+            prov = calibrar.provisional_menu(foto, log=log,
+                                             puntuar=b.fuente.puntuar_semillas if b.fuente.semillas else None)
             b.cap.iniciar(prov)
             b.cal = prov
             if en_menu(b, 2):
@@ -849,7 +919,8 @@ def generar_refs(validos, cfg):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("accion", choices=["dispositivos", "calibrar", "referencias", "ejecutar", "informe", "tas"])
+    ap.add_argument("accion", choices=["dispositivos", "calibrar", "referencias", "ejecutar", "informe", "tas",
+                                       "preparar-banco"])
     ap.add_argument("--pelicula", help="tas: película .fm2 de FCEUX (TASVideos)")
     ap.add_argument("--desfase", type=int, default=1, help="tas: fotograma de la película = fotograma + desfase (FCEUX: 1)")
     ap.add_argument("--modo", choices=["fotogramas", "lecturas"], default="lecturas",
@@ -872,10 +943,15 @@ def main():
                     help='en seco: "archivo.nes=negra,otro.nes=cuelgue:300" (por defecto, el 2.º juego negra y el 3.º se cuelga)')
     ap.add_argument("--recalibrar", action="store_true")
     ap.add_argument("--sin-ventana", action="store_true", help="sin la ventana en vivo de la capturadora")
+    ap.add_argument("--modo-banco", action="store_true",
+                    help="OS propio con EDFC/BANCO.TXT: sin navegar por el menú (antes, preparar-banco)")
+    ap.add_argument("--destino", help="preparar-banco: la raíz de la microSD montada (por defecto, la de config.json)")
     a = ap.parse_args()
     cfg = cargar_config(a.config)
     if a.sin_ventana:
         cfg["ventana"] = False
+    if a.modo_banco:
+        cfg["modo_banco"] = True
     a.consola = a.consola or cfg["consola"]
 
     if a.accion == "dispositivos":
@@ -893,6 +969,17 @@ def main():
         return
 
     guiones = cargar_guiones()
+    if a.accion == "preparar-banco":
+        validos, _ = preparar_lista(a, cfg, guiones)
+        rutas = [cfg["rom_calibracion"]] + [j["rom_rel"] for j in validos if j["rom_rel"] != cfg["rom_calibracion"]]
+        destino = pathlib.Path(a.destino or cfg.get("sd_tarjeta") or cfg["sd"])
+        faltan = [r for r in rutas if not (destino / r).exists()]
+        if faltan:
+            log(f"aviso: {len(faltan)} rutas no están en {destino} (el OS dirá «No encuentro el archivo»): {faltan[:3]}")
+        p = banco_mod.escribir(destino, rutas)
+        banco_mod.guardar_local(AQUI / "datos", rutas)
+        log(f"{p}: {len(rutas)} entradas (la 1, la ROM de calibración). Copia local: datos/banco_lista.json")
+        return
     salida = AQUI / "informes" / (datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ("-seco" if a.seco else ""))
     salida.mkdir(parents=True, exist_ok=True)
     if a.accion == "tas":
@@ -933,6 +1020,9 @@ def main():
         if fallos:
             log(f"fallos simulados a propósito: {fallos}")
     refs_sim = {j["rom_rel"]: str(refs[j["rom_rel"]]["dir"]) for j in validos if j["rom_rel"] in refs}
+    if cfg.get("modo_banco") and a.seco:      # en seco, la lista sale de lo que se va a probar
+        cfg["banco_lista"] = [cfg["rom_calibracion"]] + [j["rom_rel"] for j in validos
+                                                          if j["rom_rel"] != cfg["rom_calibracion"]]
     b = Banco(cfg, a.seco, salida, fallos, refs_sim, cap=cap_previa)
     resultados = []
     try:

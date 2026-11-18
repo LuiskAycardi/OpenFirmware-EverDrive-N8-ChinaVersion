@@ -14,6 +14,7 @@ el color 2 (solo el plano 1), el rojo de la fila seleccionada del menú: el tile
   $92      cursor del menú
   $93      flecha a la izquierda (ayuda: cambiar de página)
   $94      puntos suspensivos (nombre cortado)
+  $95      bloque macizo (código del modo banco, que el PC lee en la captura)
 Cada glifo: hasta 8 filas de 7 columnas ('#' = punto encendido); la columna 8 queda libre como separación. Las
 mayúsculas ocupan las filas 0-6; las minúsculas, las filas 2-6 con ascendentes desde la 0 y descendentes hasta la 7.
 """
@@ -23,6 +24,7 @@ ESPANOL = 'áéíóúñüÁÉÍÓÚÑÜ¿¡ºª'           # códigos $80...
 CURSOR = '▶'                        # $92
 IZQUIERDA = '◀'                     # $93
 PUNTOS = '…'                        # $94
+BLOQUE = '█'                        # $95
 
 G = {}
 
@@ -151,6 +153,7 @@ g('º', ".###... ##.##.. ##.##.. .###... ....... #####..")
 g('ª', ".###... ...##.. .####.. ##.##.. .####.. ....... #####..")
 g(CURSOR, "##..... ####... ######. ####### ######. ####... ##.....")
 g(IZQUIERDA, ".....## ...#### .###### ####### .###### ...#### .....##")
+g(BLOQUE, "####### ####### ####### ####### ####### ####### ####### #######")
 g(PUNTOS, "....... ....... ....... ....... ....... ##.##.# ##.##.#")
 
 
@@ -164,6 +167,8 @@ def codigo(car):
         return 0x93
     if car == PUNTOS:
         return 0x94
+    if car == BLOQUE:
+        return 0x95
     return ord(car)
 
 

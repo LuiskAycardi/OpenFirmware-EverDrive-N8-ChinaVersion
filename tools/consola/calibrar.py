@@ -199,7 +199,7 @@ def _periodo(perfil, lo, hi):
     return float(k)
 
 
-def provisional_menu(captura, log=None):
+def provisional_menu(captura, log=None, puntuar=None):
     """Escala y fase de la rejilla de texto del menú (8x8) a partir de una captura completa del menú. El
     desplazamiento absoluto puede ir mal por múltiplos de 8 píxeles del NES: para leer el menú da igual, y la
     calibración buena se hace después con la ROM de calibración."""
@@ -223,15 +223,29 @@ def provisional_menu(captura, log=None):
     mejor = max((vacias(ox, oy, sx, sy), ox, oy) for oy in np.arange(0, 8 * sy, 1.0)
                 for ox in np.arange(0, 8 * sx, 1.0))
     _, fx, fy = mejor
-    for _ in range(2):
-        mejor = max((vacias(fx, oy, sx, syy), syy, oy) for syy in np.arange(sy - 0.04, sy + 0.041, 0.004)
+    # (±0,10: con muchas filas de texto seguidas, como en el OS propio, el periodo se desvía más de ±0,04)
+    for ancho_b, paso in ((0.10, 0.008), (0.02, 0.002)):
+        mejor = max((vacias(fx, oy, sx, syy), syy, oy) for syy in np.arange(sy - ancho_b, sy + ancho_b + 1e-6, paso)
                     for oy in np.arange(fy - 3, fy + 3.1, 0.5))
         _, sy, fy = mejor
-        mejor = max((vacias(ox, fy, sxx, sy), sxx, ox) for sxx in np.arange(sx - 0.04, sx + 0.041, 0.004)
+        mejor = max((vacias(ox, fy, sxx, sy), sxx, ox) for sxx in np.arange(sx - ancho_b, sx + ancho_b + 1e-6, paso)
                     for ox in np.arange(fx - 3, fx + 3.1, 0.5))
         _, sx, fx = mejor
     mejor = (mejor[0], fx, fy)
     _, fx, fy = mejor
+    if puntuar:     # con una fuente conocida (OS propio): la escala y la fase con más letras reconocidas
+        def nota(ox, oy, sx_, sy_):
+            r = np.nan_to_num(reducir(s, (ox, oy, sx_, sy_), ancho, alto))
+            return puntuar(np.repeat(np.clip(r, 0, 255)[..., None], 3, axis=2).astype(np.uint8))
+        # primera pasada: para cada escala, la fase entera (al cambiar la escala, la fase se mueve)
+        _, sy, fy = max((nota(fx, oy, sx, syy), syy, oy) for syy in np.arange(sy - 0.08, sy + 0.08 + 1e-6, 0.008)
+                        for oy in np.arange(0, 8 * syy, 1.0))
+        _, sx, fx = max((nota(ox, fy, sxx, sy), sxx, ox) for sxx in np.arange(sx - 0.08, sx + 0.08 + 1e-6, 0.008)
+                        for ox in np.arange(0, 8 * sxx, 1.0))
+        _, sy, fy = max((nota(fx, oy, sx, syy), syy, oy) for syy in np.arange(sy - 0.012, sy + 0.012 + 1e-6, 0.002)
+                        for oy in np.arange(fy - 2, fy + 2.1, 0.5))
+        _, sx, fx = max((nota(ox, fy, sxx, sy), sxx, ox) for sxx in np.arange(sx - 0.012, sx + 0.012 + 1e-6, 0.002)
+                        for ox in np.arange(fx - 2, fx + 2.1, 0.5))
     cx = (ancho - NES_W * sx) / 2
     cy = (alto - NES_H * sy) / 2
     ox = fx + round((cx - fx) / (8 * sx)) * 8 * sx

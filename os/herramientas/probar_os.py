@@ -783,6 +783,90 @@ comprobar(cabecera(m2.pantalla()) == 'Raíz 1/2' and cursor_en(m2.pantalla(), '�
 m3, ok3 = encender(bytes(m.sd.img))
 comprobar(cabecera(m3.pantalla()) == 'Raíz 1/2' and cursor_en(m3.pantalla(), 'Ábaco/'), 'con la RAM a cero: la raíz')
 
+# ------------------------------------------------------------------ etapa 7: modo banco (EDFC/BANCO.TXT)
+def codigo_banco(pan):
+    """El número que pintan las filas 16 y 17 (bloques = 1, entre dos bloques de marca; la 17 es el complemento),
+    como lo leerá el PC. None si no es válido."""
+    filas = {int(l[:2]): l[3:] for l in pan.split('\n')}
+    a, b = filas.get(16, '').ljust(20)[2:20], filas.get(17, '').ljust(20)[2:20]
+    if not (a[0] == a[17] == b[0] == b[17] == '█'):
+        return None
+    va = int(''.join('1' if c == '█' else '0' for c in a[1:17]), 2)
+    vb = int(''.join('1' if c == '█' else '0' for c in b[1:17]), 2)
+    return va if va ^ vb == 0xFFFF else None
+
+def titulo_banco(pan):
+    return next((l[3:].strip() for l in pan.split('\n') if l[:2] == ' 7'), '')
+
+LISTA7 = '# lista de prueba\n\nJUEGO.NES\r\nJuegos/Mapper 4 (MMC3)/Súper Prueba ñ (España).nes\nNO/EXISTE.nes\nzelda.nes\n'
+def imagen7(nombre, lista=LISTA7):
+    img = imagen4(nombre)
+    dest = f'{img}@@{8192 * 512}'
+    f = t / 'tmp.bin'
+    f.write_bytes(lista.encode())
+    subprocess.run(['mcopy', '-i', dest, str(f), '::EDFC/BANCO.TXT'], check=True)
+    f.write_bytes(dict(ROMS)['JUEGO.NES'][0])
+    subprocess.run(['mcopy', '-i', dest, '-o', str(f), '::ZELDA.NES'], check=True)
+    return img
+
+img7 = imagen7('e7.img')
+m, ok = arrancar(img7)
+m.correr(PASOS + 1_000_000, nmi_cada=9000)
+pan = m.pantalla()
+comprobar(titulo_banco(pan) == 'Modo banco  1/4' and 'JUEGO.NES' in pan and fila25(pan) == '' and codigo_banco(pan) == 0,
+          f'con BANCO.TXT: pantalla de banco, entrada 1/4 (sin la línea vacía ni el comentario), código 0: {titulo_banco(pan)}')
+comprobar(any('Mapper 0  32K+8K' in l for l in pan.split('\n')) and m.rojas() == set(), 'información de la entrada; sin rojo')
+comprobar(solo_lectura(m), 'la pantalla de banco no escribe en la tarjeta')
+ok = lanzar(m, 0x10)
+_, prg, chr_ = dict(ROMS)['JUEGO.NES']
+comprobar(ok and m.mapper == 0 and bytes(m.prgrom[:len(prg)]) == prg, 'Start lanza la entrada (JUEGO.NES, mapper 0)')
+m.reset_consola()
+m.correr(PASOS + 1_000_000, nmi_cada=9000)
+pan = m.pantalla()
+ruta7 = ''.join(l[3:].ljust(30)[2:30] for l in pan.split('\n') if 9 <= int(l[:2]) <= 11)
+comprobar(titulo_banco(pan) == 'Modo banco  2/4' and codigo_banco(pan) == 1 and 'Súper Prueba ñ' in ruta7,
+          f'RESET en el juego: la pantalla de banco con la siguiente (2/4, código 1, nombre largo con ñ en UTF-8)')
+ok = lanzar(m, 0x10)
+_, prg, chr_ = dict(ROMS)['MMC3.NES']
+comprobar(ok and m.mapper == 4 and bytes(m.prgrom[:len(prg)]) == prg, 'lanza la ruta con carpetas y nombre largo (MMC3)')
+m.reset_consola()
+m.correr(PASOS + 1_000_000, nmi_cada=9000)
+pan = m.pantalla()
+comprobar(titulo_banco(pan) == 'Modo banco  3/4' and 'No encuentro el archivo' in pan and codigo_banco(pan) == 2,
+          'la entrada 3 no existe: «No encuentro el archivo»')
+m.n_cfg = len(m.fpga_cfgs)
+lanzo = lanzar(m, 0x10)
+m.correr(500_000, nmi_cada=9000)
+pan = m.pantalla()
+comprobar(not lanzo and titulo_banco(pan) == 'Modo banco  4/4' and fila25(pan) == 'No encuentro el archivo'
+          and not m.fpga_cfgs[m.n_cfg:], 'Start sobre ella: no lanza, pasa a la 4 y dice por qué en la fila 25')
+pulsa(m, 0x01, 2_000_000)
+pan = m.pantalla()
+comprobar(titulo_banco(pan) == 'Modo banco  5/4' and 'Lista terminada' in pan and codigo_banco(pan) == 4, 'derecha: «Lista terminada» (5/4)')
+pulsa(m, 0x01, 2_000_000)
+comprobar(titulo_banco(m.pantalla()) == 'Modo banco  1/4' and codigo_banco(m.pantalla()) == 0, 'derecha otra vez: vuelve a la 1')
+pulsa(m, 0x02, 2_000_000)
+pulsa(m, 0x02, 2_000_000)
+comprobar(titulo_banco(m.pantalla()) == 'Modo banco  4/4' and 'zelda.nes' in m.pantalla(), 'izquierda dos veces: la 4 (zelda.nes, 8.3 en minúsculas)')
+ram = bytearray(m.prgram)
+ram[0x12000:] = bytes(len(ram) - 0x12000)
+m2, ok2 = encender(bytes(m.sd.img), prgram=ram)
+m2.correr(1_000_000, nmi_cada=9000)
+comprobar(titulo_banco(m2.pantalla()) == 'Modo banco  4/4', 'al encender (RAM con pila) sigue en la misma entrada')
+m3, ok3 = encender(bytes(m.sd.img))
+m3.correr(1_000_000, nmi_cada=9000)
+comprobar(titulo_banco(m3.pantalla()) == 'Modo banco  1/4', 'con la RAM a cero: la primera')
+pulsa(m, 0x40, 3_000_000)
+pan = m.pantalla()
+comprobar(cabecera(pan) == 'Raíz 1/1' and 'Modo banco' not in pan, 'B: sale al menú normal')
+m.cpu.reset()
+m.correr(PASOS + 1_000_000, nmi_cada=9000)
+comprobar('Modo banco' not in m.pantalla() and cabecera(m.pantalla()) == 'Raíz 1/1', 'y un reset lo deja en el menú (hasta apagar)')
+img7b = imagen7('e7b.img', lista='zelda.nes\nJUEGO.NES\n')
+m4, ok4 = encender(pathlib.Path(img7b).read_bytes(), prgram=ram)
+m4.correr(1_000_000, nmi_cada=9000)
+comprobar(titulo_banco(m4.pantalla()) == 'Modo banco  1/2', 'otra BANCO.TXT (otro tamaño): empieza por la primera aunque la RAM guarde otra entrada')
+
 print('pantalla del caso FAT32:')
 m, ok = arrancar(img32)
 m.correr(PASOS, nmi_cada=9000)
