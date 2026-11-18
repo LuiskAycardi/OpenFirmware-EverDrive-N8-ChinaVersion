@@ -5,8 +5,10 @@ Pensada para verse bien en un televisor CRT: trazos de 2 píxeles (los trazos ve
 formas redondeadas y algo cuadradas y mucho peso, en la línea de los logotipos de consola de los años 80. Está
 dibujada desde cero; no copia ninguna tipografía.
 
-Genera 128 tiles de 8x8 (16 bytes cada uno: plano 0; el plano 1 a cero) para los códigos $20-$9F, en ese orden: el
-OS los sube al patrón 0 a partir del tile $20, así que el número de tile es el código del carácter.
+Genera los 256 tiles del patrón 0 (16 bytes cada uno). Los códigos $20-$9F son los caracteres en el color 1 de la
+paleta (solo el plano 0): el número de tile es el código del carácter. Los demás tiles son los mismos caracteres en
+el color 2 (solo el plano 1), el rojo de la fila seleccionada del menú: el tile del carácter c en rojo es c XOR $80
+($20-$7F -> $A0-$FF; $80-$9F -> $00-$1F).
   $20-$7E  ASCII (mayúsculas, minúsculas, cifras y signos)
   $80-$91  español: á é í ó ú ñ ü Á É Í Ó Ú Ñ Ü ¿ ¡ º ª   (constantes en src/os.inc)
   $92      cursor del menú
@@ -165,18 +167,21 @@ def codigo(car):
     return ord(car)
 
 
-def tile(filas):
-    plano0 = [sum(1 << (7 - i) for i, c in enumerate(f) if c == '#') for f in filas]
-    return bytes(plano0) + bytes(8)
+def tile(filas, rojo=False):
+    plano = bytes(sum(1 << (7 - i) for i, c in enumerate(f) if c == '#') for f in filas)
+    return bytes(8) + plano if rojo else plano + bytes(8)
 
 
 def main():
     por_codigo = {codigo(c): f for c, f in G.items()}
     assert all(0x20 <= c < 0xA0 for c in por_codigo)
     salida = bytearray()
-    for c in range(0x20, 0xA0):
-        salida += tile(por_codigo.get(c, G[' ']))
-    assert len(salida) == 128 * 16
+    for t in range(256):
+        if 0x20 <= t < 0xA0:
+            salida += tile(por_codigo.get(t, G[' ']))
+        else:
+            salida += tile(por_codigo.get(t ^ 0x80, G[' ']), rojo=True)
+    assert len(salida) == 256 * 16
     open(sys.argv[1], 'wb').write(salida)
     if len(sys.argv) > 2:                 # vista previa: una frase de prueba, a 4x, blanco sobre negro
         from PIL import Image

@@ -174,8 +174,8 @@ Qué hace hoy:
 Carga rápida: SMB3 (384 KiB) se carga en unos 3,8 s (antes 9,5 s).
 
 - **Menú ordenado** (en `main`, todavía sin release): orden alfabético con las carpetas primero, información del
-  juego bajo el cursor (mapper, tamaños, pila), repetición al mantener, Select+◀▶ salta de letra en letra y, al
-  encender, vuelve al último juego.
+  juego bajo el cursor (mapper, tamaños, pila), la entrada seleccionada en rojo, ◀▶ cambia de página, Select+◀▶
+  salta de letra en letra y, al encender, vuelve al último juego.
 
 Qué falta: modo banco y CRC del juego. **Es experimental**: pruébalo en una microSD de pruebas.
 
@@ -213,8 +213,8 @@ What it does today:
 Fast loading: SMB3 (384 KiB) loads in about 3.8 s (it used to take 9.5 s).
 
 - **Sorted menu** (in `main`, not released yet): alphabetical order with folders first, game information under the
-  cursor (mapper, sizes, battery), key repeat, Select+◀▶ jumps from letter to letter and, at power-on, it goes back
-  to the last game.
+  cursor (mapper, sizes, battery), the selected entry in red, ◀▶ changes page, Select+◀▶ jumps from letter to letter
+  and, at power-on, it goes back to the last game.
 
 Still missing: test-bench mode and the game CRC. **It is experimental**: try it on a spare microSD card.
 

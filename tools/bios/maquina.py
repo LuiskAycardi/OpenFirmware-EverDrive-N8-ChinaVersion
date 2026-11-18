@@ -126,6 +126,7 @@ class SD:
 
 
 class Maquina:
+    ROJO = False                         # pantalla(): leer los tiles rojos del OS propio como texto
     def __init__(self, bios, sd, prgram=None):
         if len(bios) != 0x4000:
             raise ValueError('la BIOS debe medir 16 KiB (ventana $C000-$FFFF)')
@@ -278,10 +279,16 @@ class Maquina:
         filas = []
         for f in range(30):
             t = bytes(self.nt[f * 32:(f + 1) * 32])
+            if self.ROJO:                    # OS propio: tiles rojos = código ^ $80 (la BIOS usa $00 de relleno)
+                t = bytes(c ^ 0x80 if c < 0x20 or c >= 0xA0 else c for c in t)
             s = ''.join(chr(c) if 32 <= c < 127 else self.EXTRA.get(c, ' ') for c in t).rstrip()
             if s.strip():
                 filas.append(f'{f:2d} {s}')
         return '\n'.join(filas)
+
+    def rojas(self):
+        """Filas de la nametable 0 con algún tile rojo del OS propio (códigos < $20 o >= $A0, sin contar el espacio rojo)."""
+        return {f for f in range(30) if any((c < 0x20 or c >= 0xA0) and c != 0xA0 for c in self.nt[f * 32:(f + 1) * 32])}
 
     # ---------------------------------------------------------------- CPLD / FPGA
     def _cs(self):

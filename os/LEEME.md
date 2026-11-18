@@ -314,10 +314,19 @@ tarjeta que rechaza las escrituras.
 
 ## Etapa 6: menú ordenado, información del juego y último juego (`src/orden.s`, `src/principal.s`)
 
-**Mando:** como en la etapa 4, y además: mantener una dirección la repite (a los 20 fotogramas, cada 4);
+**Mando** (cambió el 2026-11-18, a petición del usuario): **arriba y abajo se quedan en la página** (paran en la
+primera y en la última fila); **las páginas se cambian solo con derecha e izquierda** (dando la vuelta). Mantener una
+dirección la repite (a los 20 fotogramas, cada 4);
 **Select+Derecha** salta a la primera entrada con otra inicial (desde la última, al principio) y **Select+Izquierda**
 al principio de la inicial actual o, si ya está ahí, al de la anterior. No choca con el reset del kit Lava (Select y
 luego Select+A).
+
+**Fila seleccionada en rojo:** el ▶ y el texto de la entrada del cursor van en rojo (`$16`). Los atributos de color
+de la NES van por bloques de 16x16 píxeles (dos filas de texto), así que no sirven para una sola fila: la fuente lleva
+una segunda copia dibujada en el color 2 de la paleta (solo el plano 1) en los tiles libres, el carácter c en rojo es
+el tile c XOR $80 (`herramientas/fuente.py`, que ahora genera los 256 tiles del patrón 0). Al moverse el cursor, la
+fila de antes se reescribe en normal y la nueva en rojo (58 bytes, en un VBlank sin otras filas pendientes); después
+de leer una página, la fila del cursor se vuelve a poner en rojo.
 
 **Orden alfabético:** carpetas primero; sin distinguir mayúsculas; los acentos cuentan como la letra sin acento y la
 ñ va entre la n y la o; un nombre que es el principio de otro va antes («Final Fantasy» < «Final Fantasy II»). Se
@@ -343,7 +352,8 @@ cursor sobre el juego, si su primera entrada sigue siendo «.» (si no, la raíz
 pone por el número de la entrada en la FAT, no por la página y la fila, así que cae sobre el juego aunque cambie el
 orden.
 
-**Pruebas** (`herramientas/probar_os.py`, 180 casos en total): orden con carpetas, acentos, ñ y nombres que empiezan
+**Pruebas** (`herramientas/probar_os.py`, 184 casos en total; el modelo lee los tiles rojos como texto y
+`Maquina.rojas()` dice qué filas van en rojo): orden con carpetas, acentos, ñ y nombres que empiezan
 igual, en dos páginas; información de un MMC1 con pila, CHR-RAM, un MMC3 grande, un archivo que no es ROM y una
 carpeta; repetición; saltos por letra en los dos sentidos y dando la vuelta; último juego al encender con la RAM con
 pila y sin ella; orden de la FAT con una partida sin guardar. Las pruebas anteriores buscan las entradas por su

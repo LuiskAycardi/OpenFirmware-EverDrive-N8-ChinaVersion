@@ -198,8 +198,10 @@ with your factory SD card it works exactly as before.
 ## Uso / Usage
 
 **ES**
-- **Arriba/Abajo**: mover el cursor (al pasar del borde, a la página siguiente o anterior).
+- **Arriba/Abajo**: mover el cursor dentro de la página (la entrada seleccionada va en rojo).
 - **Izquierda/Derecha**: cambiar de página (16 entradas por página).
+- **Select + Izquierda/Derecha**: saltar a la letra anterior o siguiente (la lista va en orden alfabético).
+- Con el cursor quieto, abajo sale el mapper, los tamaños y si el juego tiene pila.
 - **A o Start**: entrar en una carpeta o lanzar el juego.
 - **B**: volver a la carpeta de arriba.
 - **RESET** de la consola dentro de un juego: vuelve al menú, a la carpeta del juego y con el cursor sobre él.
@@ -220,8 +222,10 @@ with your factory SD card it works exactly as before.
 - La fecha de los archivos es fija (1-1-2026): el cartucho no tiene reloj.
 
 **EN**
-- **Up/Down**: move the cursor (past the edge, to the next or previous page).
+- **Up/Down**: move the cursor within the page (the selected entry is shown in red).
 - **Left/Right**: change page (16 entries per page).
+- **Select + Left/Right**: jump to the previous or next letter (the list is in alphabetical order).
+- With the cursor still, the bottom line shows the mapper, the sizes and whether the game has a battery.
 - **A or Start**: enter a folder or launch the game.
 - **B**: go back to the folder above.
 - Console **RESET** inside a game: returns to the menu, to the game's folder and with the cursor on it. With the
@@ -245,15 +249,12 @@ with your factory SD card it works exactly as before.
 **ES**
 - Partidas de los mappers con EEPROM (Bandai 16/159, Datach) y de la RAM interna del Namco 163.
 - Save states, Famicom Disk System (FDS) y Game Genie.
-- Orden alfabético e información del juego en el menú (la lista sale en el orden en que se copiaron los
-  archivos).
 - **Sonido de expansión** (VRC6, VRC7, Sunsoft 5B, Namco 163, MMC5): solo se oye en la **Famicom**; la NES no
   mezcla el audio del cartucho.
 
 **EN**
 - Saves for mappers with an EEPROM (Bandai 16/159, Datach) and for the Namco 163's internal RAM.
 - Save states, Famicom Disk System (FDS) and Game Genie.
-- Alphabetical order and game information in the menu (the list follows the order in which files were copied).
 - **Expansion audio** (VRC6, VRC7, Sunsoft 5B, Namco 163, MMC5): only heard on the **Famicom**; the NES does not
   mix the cartridge audio.
 

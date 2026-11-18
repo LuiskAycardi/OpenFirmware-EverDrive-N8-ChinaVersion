@@ -12,6 +12,7 @@ import argparse, os, pathlib, shutil, subprocess, sys
 RAIZ = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(RAIZ / 'tools/bios'))
 from maquina import Maquina, SD   # noqa: E402
+Maquina.ROJO = True                 # la fila seleccionada va en rojo (tiles = código ^ $80)
 
 p = argparse.ArgumentParser()
 p.add_argument('--bios', required=True)
@@ -280,14 +281,20 @@ def visto(nombre):
     """Cómo sale un archivo en el menú: sin «.nes»."""
     return nombre[:-4] if nombre.lower().endswith('.nes') else nombre
 
-def ir_a_nombre(m, texto, maximo=80):
-    """Baja el cursor (dando la vuelta) hasta la fila `texto`. No depende del orden de la lista."""
+def ir_a_nombre(m, texto, maximo=40):
+    """Lleva el cursor a la fila `texto`: la busca en la página (derecha pasa a la siguiente, dando la vuelta) y
+    sube o baja hasta ella. No depende del orden de la lista."""
     for _ in range(maximo):
-        if cursor_en(m.pantalla(), texto):
-            return True
-        toca(m, 0x04)
-        m.correr(60_000, nmi_cada=9000)
-    return cursor_en(m.pantalla(), texto)
+        pan = m.pantalla()
+        filas = lista(pan)
+        if texto in filas:
+            actual = next((i for i, l in enumerate(filas) if cursor_en(pan, l)), 0)
+            for _ in range(abs(filas.index(texto) - actual)):
+                toca(m, 0x04 if filas.index(texto) > actual else 0x08)
+            m.correr(60_000, nmi_cada=9000)
+            return cursor_en(m.pantalla(), texto)
+        pulsa(m, 0x01)
+    return False
 
 def menu3(img, nombre):
     """Arranca, baja el cursor hasta `nombre` y devuelve la máquina."""
@@ -416,16 +423,27 @@ pan = m.pantalla()
 comprobar(cabecera(pan) == 'Juegos 1/3' and cursor_en(pan, 'Mapper 4 (MMC3)/')
           and lista(pan) == ['Mapper 4 (MMC3)/', 'Vacía/'] + [f'Juego de prueba número {i:02d}' for i in range(14)],
           'dentro de Juegos: cabecera «Juegos 1/3», carpetas, acentos, 16 por página; el borrado no sale')
+comprobar(m.rojas() == {9}, f'la fila del cursor (la 9) va en rojo y las demás no ({sorted(m.rojas())})')
 toca(m, 0x08)
 m.correr(150_000, nmi_cada=9000)
 pan = m.pantalla()
-comprobar(cabecera(pan) == 'Juegos 3/3' and cursor_en(pan, 'Juego de prueba número 39')
-          and lista(pan) == [f'Juego de prueba número {i:02d}' for i in range(30, 40)],
-          'arriba desde la primera fila: última página, cursor en la última entrada')
-toca(m, 0x04)
+comprobar(cabecera(pan) == 'Juegos 1/3' and cursor_en(pan, 'Mapper 4 (MMC3)/'),
+          'arriba en la primera fila: el cursor se queda (no cambia de página)')
+for _ in range(20):
+    toca(m, 0x04)
 m.correr(150_000, nmi_cada=9000)
-comprobar(cabecera(m.pantalla()) == 'Juegos 1/3' and cursor_en(m.pantalla(), 'Mapper 4 (MMC3)/'),
-          'abajo desde la última: vuelve a la primera página')
+pan = m.pantalla()
+comprobar(cabecera(pan) == 'Juegos 1/3' and cursor_en(pan, 'Juego de prueba número 13') and m.rojas() == {24},
+          f'abajo hasta el final: se para en la última fila de la página, que va en rojo ({sorted(m.rojas())})')
+for _ in range(15):
+    toca(m, 0x08)
+m.correr(150_000, nmi_cada=9000)
+comprobar(cursor_en(m.pantalla(), 'Mapper 4 (MMC3)/') and m.rojas() == {9}, 'y arriba vuelve a la primera fila')
+pulsa(m, 0x02)
+comprobar(cabecera(m.pantalla()) == 'Juegos 3/3' and cursor_en(m.pantalla(), 'Juego de prueba número 30') and m.rojas() == {9},
+          'izquierda desde la página 1: la 3 (dando la vuelta), con la fila del cursor en rojo')
+pulsa(m, 0x01)
+comprobar(cabecera(m.pantalla()) == 'Juegos 1/3' and cursor_en(m.pantalla(), 'Mapper 4 (MMC3)/'), 'derecha: vuelve a la 1')
 pulsa(m, 0x01)
 comprobar(cabecera(m.pantalla()) == 'Juegos 2/3' and cursor_en(m.pantalla(), 'Juego de prueba número 14'), 'derecha: página 2')
 pulsa(m, 0x02)

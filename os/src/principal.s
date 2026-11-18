@@ -82,6 +82,8 @@ sel_k:      .res 2              ; k (orden de la FAT) de la entrada del cursor (
 cur_k:      .res 2              ; k donde hay que poner el cursor después de recorrer la carpeta
 cur_k_ok:   .res 1
 ini_p:      .res 2              ; letra_ant: puesto de partida
+pend_ini:   .res 1              ; filas pendientes al empezar el fotograma
+repintar:   .res 1              ; 1 = se ha leído una página: volver a poner en rojo la fila del cursor
 
         .segment "GRANDE"
 pag_pos:    .res 12 * MAX_PAG   ; posición del recorrido al principio de cada página (fat.s: dir_guardar)
@@ -248,6 +250,8 @@ bucle:
         lda     nmis
 @vb:    cmp     nmis
         beq     @vb
+        lda     filas_pend              ; ¿hay filas que subir en este fotograma? (el cursor espera)
+        sta     pend_ini
         ldx     #2
         jsr     subir_filas
         jsr     valores_vivos
@@ -257,37 +261,86 @@ bucle:
         jsr     info_tick
         jmp     bucle
 
-; Pinta el cursor si ha cambiado de fila (durante el VBlank). Sin entradas, no hay cursor.
+; Cursor y fila seleccionada en rojo (durante el VBlank): si el cursor ha cambiado de fila, la fila de antes vuelve
+; a su texto normal (y sin ▶) y la nueva se escribe con los tiles rojos (código XOR $80, fuente.py) y el ▶ rojo. Solo
+; en un fotograma sin filas de texto pendientes (no caben las dos cosas en el VBlank). Después de leer una página
+; (`repintar`), la fila seleccionada ya llegó en normal: se vuelve a poner en rojo. Sin entradas, no hay cursor.
 cursor: lda     sd_bien
         beq     @fin
+        lda     pend_ini
+        bne     @fin
+        lda     repintar
+        bne     @rep
         lda     filas_pag
-        bne     @hay
-        ldx     sel_ant
-        bmi     @fin
-        lda     #$FF
-        sta     sel_ant
-        lda     #' '
-        jmp     @en
-@hay:   lda     fila_c
+        beq     @sin
+        lda     fila_c
         cmp     sel_ant
         beq     @fin
         ldx     sel_ant
         bmi     @pon
-        lda     #' '
-        jsr     @en
+        lda     #0                      ; la de antes, normal
+        jsr     fila_ppu
 @pon:   ldx     fila_c
         stx     sel_ant
-        lda     #C_CURSOR
-@en:    pha
+        lda     #$80                    ; la nueva, en rojo
+        jmp     fila_ppu
+@rep:   lda     #0
+        sta     repintar
+        ldx     sel_ant                 ; quitar el ▶ de la fila de antes (su texto ya es el nuevo)
+        bmi     @r2
         lda     cur_hi,x
         pha
         lda     cur_lo,x
         tax
         pla
         jsr     ppu_dir
-        pla
+        lda     #' '
         sta     PPUDATA
+@r2:    lda     filas_pag
+        beq     @nada
+        ldx     fila_c
+        stx     sel_ant
+        lda     #$80
+        jmp     fila_ppu
+@sin:   ldx     sel_ant
+        bmi     @fin
+        lda     #0
+        jsr     fila_ppu
+@nada:  lda     #$FF
+        sta     sel_ant
 @fin:   rts
+
+; Escribe en la PPU la fila X de la lista: el ▶ (o un espacio) y su texto, con los códigos XOR A ($80 = rojo).
+fila_ppu:
+        sta     msk
+        lda     cur_hi,x                ; columna 1: el cursor
+        pha
+        lda     cur_lo,x
+        pha
+        inx                             ; texto: filas_txt fila X + 1
+        lda     txt_lo,x
+        sta     ptr
+        lda     txt_hi,x
+        sta     ptr+1
+        pla
+        tax
+        pla
+        jsr     ppu_dir
+        lda     msk
+        beq     @blanco
+        lda     #C_CURSOR ^ $80
+        bne     @c
+@blanco:
+        lda     #' '
+@c:     sta     PPUDATA
+        ldy     #0
+@t:     lda     (ptr),y
+        eor     msk
+        sta     PPUDATA
+        iny
+        cpy     #ANCHO
+        bne     @t
+        rts
 
 ; Sube a la PPU hasta X filas de texto pendientes (filas_txt -> pantalla).
 subir_filas:
@@ -401,36 +454,19 @@ repetir:
         sta     rep_cnt
         rts
 
-abajo:  lda     filas_pag
-        beq     @fin
-        inc     fila_c
-        lda     fila_c
-        cmp     filas_pag
-        bcc     @fin
-        lda     #0
-        sta     fila_c
-        lda     paginas
-        cmp     #2
-        bcc     @fin
-        jmp     pag_mas
+; Arriba y abajo se quedan en la página: paran en la primera y en la última fila (las páginas, con derecha e
+; izquierda).
+abajo:  ldx     fila_c
+        inx
+        cpx     filas_pag
+        bcs     @fin
+        stx     fila_c
 @fin:   rts
 
-arriba: lda     filas_pag
+arriba: lda     fila_c
         beq     @fin
-        lda     fila_c
-        beq     @borde
         dec     fila_c
 @fin:   rts
-@borde: lda     paginas
-        cmp     #2
-        bcc     @ult
-        lda     #FILAS                  ; leer_pagina lo deja en la última fila de la página
-        sta     fila_c
-        jmp     pag_menos
-@ult:   ldx     filas_pag
-        dex
-        stx     fila_c
-        rts
 
 pag_der:
         lda     paginas
@@ -957,6 +993,8 @@ leer_pagina:
         sta     filas_pend
         lda     #0
         sta     fila_sub
+        lda     #1
+        sta     repintar
         rts
 
 ; dst = texto de la fila X (0 = cabecera)
@@ -1698,14 +1736,14 @@ cadena:
 @fin:   rts
 
 subir_fuente:
-        lda     #$02                    ; tile $20 = $0200 del patrón 0
+        lda     #$00                    ; el patrón 0 entero: $20-$9F normal, el resto en rojo (fuente.py)
         ldx     #$00
         jsr     ppu_dir
         lda     #<fuente
         sta     ptr
         lda     #>fuente
         sta     ptr+1
-        ldx     #8                      ; 8 x 256 = 2048 bytes (128 tiles: $20-$9F)
+        ldx     #16                     ; 16 x 256 = 4096 bytes (256 tiles)
         ldy     #0
 @b:     lda     (ptr),y
         sta     PPUDATA
@@ -1926,7 +1964,7 @@ cifras:
 letras_mando:
         .byte   "ABSTUDLR"              ; A, B, Select, sTart, arriba (Up), abajo (Down), izquierda (Left), derecha (Right)
 colores:
-        .byte   $0F, $30, $10, $00,  $0F, $30, $10, $00,  $0F, $30, $10, $00,  $0F, $30, $10, $00
-        .byte   $0F, $30, $10, $00,  $0F, $30, $10, $00,  $0F, $30, $10, $00,  $0F, $30, $10, $00
+        .byte   $0F, $30, $16, $00,  $0F, $30, $16, $00,  $0F, $30, $16, $00,  $0F, $30, $16, $00    ; 2 = rojo
+        .byte   $0F, $30, $16, $00,  $0F, $30, $16, $00,  $0F, $30, $16, $00,  $0F, $30, $16, $00
 fuente:
         .incbin "fuente.chr"
