@@ -10,6 +10,18 @@ clone of the EverDrive N8, built around an **Altera Cyclone II EP2C5** FPGA), fo
 Clean-room implementation, validated against the Mesen2 emulator with synthetic-ROM fuzzing, simulation
 testbenches and real games.
 
+> 🗂️ **ES — Novedad (noviembre de 2026): v0.5.1-beta, menú ordenado y modo banco.** Lista en orden alfabético
+> (carpetas primero) con la entrada elegida en rojo, información del juego bajo el cursor, ◀▶ para cambiar de página
+> y Select+◀▶ para saltar de letra, y al encender vuelve al último juego. Además, un modo banco para las pruebas
+> automáticas en la consola (`tools/consola`). Descárgala en
+> [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases).
+>
+> 🗂️ **EN — News (November 2026): v0.5.1-beta, sorted menu and test-bench mode.** Alphabetical list (folders first)
+> with the selected entry in red, game information under the cursor, ◀▶ to change page and Select+◀▶ to jump by
+> letter, and at power-on it goes back to the last game. Plus a test-bench mode for automated console tests
+> (`tools/consola`). Download it from
+> [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases).
+>
 > 💾 **ES — Novedad (noviembre de 2026): v0.5.0-beta, partidas con pila.** Nuestro OS guarda las partidas en
 > `EDFC/SAVE/<nombre>.srm` (el formato `.sav` de los emuladores) al volver al menú con RESET y también si apagas
 > dentro del juego. Probado en una NES real con Zelda. Descárgala en
@@ -173,7 +185,7 @@ Qué hace hoy:
 
 Carga rápida: SMB3 (384 KiB) se carga en unos 3,8 s (antes 9,5 s).
 
-- **Menú ordenado** (en `main`, todavía sin release): orden alfabético con las carpetas primero, información del
+- **Menú ordenado** (desde la v0.5.1-beta): orden alfabético con las carpetas primero, información del
   juego bajo el cursor (mapper, tamaños, pila), la entrada seleccionada en rojo, ◀▶ cambia de página, Select+◀▶
   salta de letra en letra y, al encender, vuelve al último juego.
 
@@ -212,7 +224,7 @@ What it does today:
 
 Fast loading: SMB3 (384 KiB) loads in about 3.8 s (it used to take 9.5 s).
 
-- **Sorted menu** (in `main`, not released yet): alphabetical order with folders first, game information under the
+- **Sorted menu** (since v0.5.1-beta): alphabetical order with folders first, game information under the
   cursor (mapper, sizes, battery), the selected entry in red, ◀▶ changes page, Select+◀▶ jumps from letter to letter
   and, at power-on, it goes back to the last game.
 

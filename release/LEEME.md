@@ -10,7 +10,9 @@ cartucho lee de la tarjeta sale de nuestro repositorio, **sin ningún archivo de
 
 Del cartucho solo se usa su **BIOS** (en la memoria flash del propio cartucho), que no se toca. **Es una
 beta**: funciona en una NES real, pero todavía le faltan cosas (ver «Qué falta»). **Novedad de la v0.5.0: guarda
-las partidas con pila** (ver «Partidas»).
+las partidas con pila** (ver «Partidas»). **Novedad de la v0.5.1: menú ordenado** (alfabético, con la entrada
+elegida en rojo, la información del juego, saltos por letra y vuelta al último juego al encender) y **modo banco**
+para pruebas automáticas (ver «Uso»).
 
 **EN** — Free (GPL-3.0-or-later) firmware for the microSD card of the **EverDrive N8 China Version** (Chinese
 clone with an EP2C5 FPGA, NON-PRO version), **Famicom and NES** cartridges. It is a **complete own build**:
@@ -23,7 +25,9 @@ the factory**:
 
 Only the cartridge's **BIOS** (in the cartridge's own flash memory) is used, and it is left untouched. **This
 is a beta**: it works on a real NES, but things are still missing (see "What is missing"). **New in v0.5.0: it
-saves battery-backed games** (see "Saved games").
+saves battery-backed games** (see "Saved games"). **New in v0.5.1: a sorted menu** (alphabetical, with the selected
+entry in red, game information, letter jumps and back to the last game at power-on) and a **test-bench mode** for
+automated tests (see "Usage").
 
 ## Qué contiene / Contents
 
@@ -159,7 +163,7 @@ NES, and FAT32 with 32 KB and 512 bytes and FAT16 in our emulator of the cartrid
 5. Eject the card safely, put it in the cartridge and switch the console on. The **"OS propio N8"** menu should
    appear with the card's list.
 
-### Actualizar desde la v0.4.0-beta / Updating from v0.4.0-beta
+### Actualizar desde la v0.4.0-beta o la v0.5.0-beta / Updating from v0.4.0-beta or v0.5.0-beta
 
 **ES** — Basta con copiar el `SD/EDFC/OS.BIN` nuevo encima del de la tarjeta (los RBF y `MAPROUT.BIN` no cambian).
 En una tarjeta con clúster de 32 KB el archivo ocupa un solo clúster, así que sigue contiguo. La carpeta
@@ -202,6 +206,10 @@ with your factory SD card it works exactly as before.
 - **Izquierda/Derecha**: cambiar de página (16 entradas por página).
 - **Select + Izquierda/Derecha**: saltar a la letra anterior o siguiente (la lista va en orden alfabético).
 - Con el cursor quieto, abajo sale el mapper, los tamaños y si el juego tiene pila.
+- Al encender, el menú vuelve a la carpeta del último juego que lanzaste, con el cursor sobre él.
+- **Modo banco** (para pruebas automáticas con un PC, `tools/consola` del repositorio): si la tarjeta tiene
+  `EDFC/BANCO.TXT` (una ruta por línea), el OS enseña una pantalla con una entrada de la lista en vez del menú; Start
+  la lanza, ◀▶ cambian de entrada y B vuelve al menú. Sin ese archivo, nada cambia.
 - **A o Start**: entrar en una carpeta o lanzar el juego.
 - **B**: volver a la carpeta de arriba.
 - **RESET** de la consola dentro de un juego: vuelve al menú, a la carpeta del juego y con el cursor sobre él.
@@ -226,6 +234,10 @@ with your factory SD card it works exactly as before.
 - **Left/Right**: change page (16 entries per page).
 - **Select + Left/Right**: jump to the previous or next letter (the list is in alphabetical order).
 - With the cursor still, the bottom line shows the mapper, the sizes and whether the game has a battery.
+- At power-on, the menu goes back to the folder of the last game you launched, with the cursor on it.
+- **Test-bench mode** (for automated tests with a PC, the repository's `tools/consola`): if the card has
+  `EDFC/BANCO.TXT` (one path per line), the OS shows a screen with one entry of the list instead of the menu; Start
+  launches it, ◀▶ change entry and B goes back to the menu. Without that file, nothing changes.
 - **A or Start**: enter a folder or launch the game.
 - **B**: go back to the folder above.
 - Console **RESET** inside a game: returns to the menu, to the game's folder and with the cursor on it. With the
