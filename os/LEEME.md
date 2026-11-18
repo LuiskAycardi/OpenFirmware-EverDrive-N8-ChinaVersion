@@ -295,4 +295,13 @@ o que no coincide, partida copiada del PC con otras mayúsculas, NES 2.0 de 32 K
 sin sitio (el nombre largo queda partido entre dos clústeres), sin `EDFC/SAVE`, FAT16, SDSC, tarjeta llena y
 tarjeta que rechaza las escrituras.
 
+### Resultados en la NES (2026-11-18, con la capturadora y el Nano, SD de 4 GB con clúster de 32 KiB)
+
+- La SD venía de la v0.4.0-beta, **sin `EDFC/SAVE`**: el OS creó la carpeta y la partida al lanzar Zelda (MMC1), que
+  arrancó con las tres ranuras vacías (partida nueva a `$FF`).
+- Registrar «ABC» y pulsar **RESET**: «vuelta de juego», cursor sobre Zelda y **«Partida guardada»**.
+- Volver a lanzarlo, registrar «DEF» (solo en la RAM) y **apagar la NES 10 s sin RESET**: al encender, «frío (BIOS)»
+  y **«Partida guardada»**; Zelda muestra ABC y DEF. **La PRG-RAM del clon tiene pila**: la marca del banco 8
+  sobrevive al apagado, así que apagar dentro del juego tampoco pierde la partida.
+
 Pendiente: menú completo (orden alfabético, información del juego), modo banco.
