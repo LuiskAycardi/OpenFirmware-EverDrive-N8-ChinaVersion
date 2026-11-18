@@ -182,7 +182,7 @@ ROMS = [('JUEGO.NES', rom(2, 1, 0, byte6=1)), ('CHRRAM.NES', rom(1, 0, 0, semill
         ('M219.NES', rom(4, 2, 219, semilla=5)), ('NOTAS.TXT', (b'no soy una ROM' * 40, b'', b'')),
         ('SINRBF.NES', rom(2, 1, 65, semilla=6)), ('FALTA.NES', rom(2, 1, 1, semilla=7))]
 
-def imagen3(nombre, fragmentar=False):
+def imagen3(nombre, fragmentar=False, fragmentar_roms=()):
     img = t / nombre
     subprocess.run(['sh', str(RAIZ / 'tools/bios/hacer_sd.sh'), str(img), '32', 'si', str(t / 'edfc')], check=True,
                    stdout=subprocess.DEVNULL)
@@ -195,6 +195,9 @@ def imagen3(nombre, fragmentar=False):
     if fragmentar:
         subprocess.run([sys.executable, '-I', str(RAIZ / 'tools/bios/fragmentar.py'), str(img), '8192',
                         'EDFC/MAPS/100.RBF'], check=True, stdout=subprocess.DEVNULL)
+    if fragmentar_roms:
+        subprocess.run([sys.executable, '-I', str(RAIZ / 'tools/bios/fragmentar.py'), str(img), '8192',
+                        *fragmentar_roms], check=True, stdout=subprocess.DEVNULL)
     return img
 
 def toca(m, mascara):
@@ -270,6 +273,18 @@ ok = lanzar(m)
 m.correr(200_000, nmi_cada=9000)
 comprobar(not ok and 'RBF fragmentado en la SD' in m.pantalla() and not m.fpga_cfgs[m.n_cfg:],
           'RBF fragmentado: aviso y el FPGA no se toca')
+
+# ROMs fragmentadas en la tarjeta: la copia va por tramos de clústeres seguidos (varias lecturas múltiples)
+img3f = imagen3('e3romfrag.img', fragmentar_roms=('JUEGO.NES', 'MMC3.NES', 'TRAINER.NES'))
+for nombre in ('JUEGO.NES', 'MMC3.NES', 'TRAINER.NES'):
+    _, prg, chr_ = dict(ROMS)[nombre]
+    m = menu3(img3f, nombre)
+    n18 = sum(1 for e in m.log[m.n_log:] if e[0] == 'SD_CMD18')
+    c0 = m.cpu.ciclos
+    ok = lanzar(m)
+    n18 = sum(1 for e in m.log[m.n_log:] if e[0] == 'SD_CMD18') - n18
+    comprobar(ok and bytes(m.prgrom[:len(prg)]) == prg and bytes(m.chr[:len(chr_)]) == chr_ and n18 >= 4,
+              f'{nombre} fragmentada: PRG y CHR iguales, {n18} lecturas múltiples (RBF + 3 tramos de la ROM)')
 
 print('pantalla del caso FAT32:')
 m, ok = arrancar(img32)

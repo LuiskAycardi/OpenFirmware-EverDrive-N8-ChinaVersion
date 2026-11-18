@@ -140,8 +140,9 @@ Qué hace hoy:
 - **Lanza juegos**: lee la cabecera iNES, busca el RBF en `EDFC/MAPROUT.BIN`, carga el RBF en el FPGA, copia la
   PRG y la CHR y salta al juego con el número de mapper de la cabecera, sin traducirlo.
 
-Qué falta: carpetas, nombres largos, partidas guardadas, una carga más rápida (unos 40 KiB/s: SMB3 tarda
-unos 9,5 s) y menú completo. **Es experimental**: pruébalo en una microSD de pruebas.
+Carga rápida: SMB3 (384 KiB) se carga en unos 3,8 s (antes 9,5 s).
+
+Qué falta: carpetas, nombres largos, partidas guardadas y menú completo. **Es experimental**: pruébalo en una microSD de pruebas.
 
 Para probarlo:
 1. `make -C os` (necesita cc65 y Python 3).
@@ -168,8 +169,9 @@ What it does today:
 - **It launches games**: it reads the iNES header, looks up the RBF in `EDFC/MAPROUT.BIN`, loads the RBF into
   the FPGA, copies the PRG and CHR data and jumps to the game with the header's mapper number, untranslated.
 
-Still missing: folders, long file names, battery saves, faster loading (about 40 KiB/s: SMB3 takes about
-9.5 s) and a full menu. **It is experimental**: try it on a spare microSD card.
+Fast loading: SMB3 (384 KiB) loads in about 3.8 s (it used to take 9.5 s).
+
+Still missing: folders, long file names, battery saves and a full menu. **It is experimental**: try it on a spare microSD card.
 
 To try it:
 1. `make -C os` (needs cc65 and Python 3).

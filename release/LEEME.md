@@ -80,7 +80,7 @@ el OS de fábrica funcionan igual (salvo el mapper 219, ver abajo).
 - **Qué hace:** arranca desde la BIOS del cartucho, lee la microSD (solo lectura), muestra la raíz y lanza los
   juegos de la raíz con nuestros RBF. El botón RESET vuelve al menú con el cursor sobre el juego.
 - **Qué no hace todavía:** carpetas, nombres largos (se ven los cortos, `SUPERM~1.NES`), partidas con pila,
-  save states ni FDS. La carga es lenta: unos 9,5 s para una ROM de 384 KiB.
+  save states ni FDS. Una ROM de 384 KiB se carga en unos 3,8 s.
 - **Probado** en una NES real: Super Mario Bros. y Super Mario Bros. 3.
 - **Instalación:**
   1. Haz copia de tu carpeta `EDFC`.
@@ -98,7 +98,7 @@ files**: they work the same with the factory OS (except mapper 219, see below).
   folder and launches the games in it with our RBF files. The RESET button returns to the menu with the cursor
   on the game.
 - **What it does not do yet:** folders, long file names (short names such as `SUPERM~1.NES` are shown),
-  battery saves, save states or FDS. Loading is slow: about 9.5 s for a 384 KiB ROM.
+  battery saves, save states or FDS. A 384 KiB ROM loads in about 3.8 s.
 - **Tested** on a real NES: Super Mario Bros. and Super Mario Bros. 3.
 - **Installation:**
   1. Back up your `EDFC` folder.

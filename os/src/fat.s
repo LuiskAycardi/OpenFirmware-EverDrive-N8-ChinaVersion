@@ -8,6 +8,7 @@
 ;   arch_leer         lee el sector actual del archivo en `sector`
 ;   arch_avanzar      pasa al sector siguiente (puede usar `sector` para mirar la FAT)
 ;   arch_contiguo     acarreo = 0 si los clústeres del archivo abierto van seguidos en la tarjeta
+;   tramo_ini/_sig    recorre el archivo abierto por tramos de clústeres seguidos (para lecturas múltiples)
 ;   dir_siguiente     siguiente entrada de verdad (salta nombres largos, borrados y la etiqueta): deja dir_ent
 ;                     apuntando a sus 32 bytes; acarreo = 1 cuando no hay más (o hubo error: fat_error)
 ; Límites de esta etapa: sectores de 512 bytes; FAT12 no; se decide FAT16/FAT32 por «sectores por FAT de 16 bits»
@@ -20,6 +21,7 @@
         .export arch_abrir, arch_leer, arch_avanzar, arch_contiguo
         .export fat_error, fat_tipo, fat_spc, fat_part, fat_datos, sector
         .export arch_lba, arch_tam, arch_clus, arch_ini
+        .export tramo_ini, tramo_sig, tr_lba, tr_n, tr_fin, fat_desp
         .exportzp dir_ent, nombre
         .import sd_leer_sector
         .importzp sd_lba, sd_ptr
@@ -38,7 +40,12 @@ t32:        .res 4
 t32b:       .res 4
 
         .segment "BSS"
-sector:     .res 512            ; el único búfer de sector
+sector:     .res 512            ; búfer de sector (directorios, cabeceras)
+fat_buf:    .res 512            ; un sector de la FAT, con caché
+fat_buf_lba: .res 4             ; qué sector de la tarjeta hay en fat_buf ($FFFFFFFF = ninguno)
+tr_lba:     .res 4              ; tramo_sig: primer sector del tramo
+tr_n:       .res 2              ; tramo_sig: clústeres seguidos del tramo
+tr_fin:     .res 1              ; tramo_sig: 1 = era el último tramo del archivo
 fat_error:  .res 1              ; 0 = bien; E_* de aquí o de sd.s
 fat_tipo:   .res 1              ; 16 o 32
 fat_spc:    .res 1              ; sectores por clúster
@@ -98,6 +105,8 @@ leer:   lda     #<sector
 
 ; ---------------------------------------------------------------------------------------------- montar
 fat_montar:
+        lda     #$FF                    ; caché de la FAT vacía
+        sta     fat_buf_lba+3
         lda     #0
         sta     fat_error
         sta     sd_lba
@@ -261,7 +270,7 @@ clus_a_lba:
         rts
 
 ; clus = clúster siguiente a `clus` según la FAT. Acarreo = 1 si era el último (o error de lectura: fat_error).
-; Usa `sector`.
+; Lee la FAT en su propio búfer (fat_buf), con caché de un sector: no toca `sector`.
 clus_siguiente:
         lda     fat_tipo
         cmp     #32
@@ -279,14 +288,14 @@ clus_siguiente:
         asl
         tay
         bcs     @alta16
-        lda     sector,y
+        lda     fat_buf,y
         sta     clus
-        lda     sector+1,y
+        lda     fat_buf+1,y
         jmp     @v16
 @alta16:
-        lda     sector+256,y
+        lda     fat_buf+256,y
         sta     clus
-        lda     sector+257,y
+        lda     fat_buf+257,y
 @v16:   sta     clus+1
         cmp     #$FF                    ; >= $FFF8: fin de la cadena
         bne     @sigue
@@ -316,22 +325,22 @@ clus_siguiente:
         asl
         tay
         bcs     @alta32
-        lda     sector,y
+        lda     fat_buf,y
         sta     clus
-        lda     sector+1,y
+        lda     fat_buf+1,y
         sta     clus+1
-        lda     sector+2,y
+        lda     fat_buf+2,y
         sta     clus+2
-        lda     sector+3,y
+        lda     fat_buf+3,y
         jmp     @v32
 @alta32:
-        lda     sector+256,y
+        lda     fat_buf+256,y
         sta     clus
-        lda     sector+257,y
+        lda     fat_buf+257,y
         sta     clus+1
-        lda     sector+258,y
+        lda     fat_buf+258,y
         sta     clus+2
-        lda     sector+259,y
+        lda     fat_buf+259,y
 @v32:   and     #$0F
         sta     clus+3
         cmp     #$0F                    ; >= $0FFFFFF8: fin de la cadena
@@ -348,12 +357,28 @@ clus_siguiente:
 @leer_fat:
         copia32 sd_lba, fat_ini
         suma32  sd_lba, t32
-        jsr     leer
+        ldx     #3                      ; ¿es el que ya está en fat_buf?
+@cache: lda     sd_lba,x
+        cmp     fat_buf_lba,x
+        bne     @lee
+        dex
+        bpl     @cache
+        clc
+        rts
+@lee:   lda     #<fat_buf
+        sta     sd_ptr
+        lda     #>fat_buf
+        sta     sd_ptr+1
+        jsr     sd_leer_sector
         bcc     @bien
+        lda     #$FF                    ; búfer a medias: sin caché
+        sta     fat_buf_lba+3
         lda     sd_error
         sta     fat_error
         sec
-@bien:  rts
+        rts
+@bien:  copia32 fat_buf_lba, sd_lba
+        rts
 
 ; ---------------------------------------------------------------------------------------------- directorios
 dir_abrir_raiz:
@@ -594,4 +619,54 @@ arch_contiguo:
 @fin:   jsr     arch_reabrir
         lda     fat_error
         cmp     #1                      ; acarreo = 1 si hubo error de lectura
+        rts
+
+; ---------------------------------------------------------------------------------------------- tramos
+; Prepara el recorrido por tramos del archivo abierto (desde su primer clúster).
+tramo_ini:
+        copia32 clus, arch_ini
+        lda     #0
+        sta     tr_fin
+        rts
+
+; Siguiente tramo de clústeres seguidos, empezando en `clus`: tr_lba = su primer sector, tr_n = clústeres;
+; tr_fin = 1 si después no hay más. Deja `clus` en el primer clúster del tramo siguiente. Acarreo = 1 si falla
+; la lectura de la FAT (fat_error). Cambia dir_lba y dir_quedan.
+tramo_sig:
+        jsr     clus_a_lba
+        copia32 tr_lba, dir_lba
+        lda     #1
+        sta     tr_n
+        lda     #0
+        sta     tr_n+1
+@sig:   copia32 t32b, clus
+        jsr     clus_siguiente
+        bcs     @ultimo
+        inc     t32b                    ; ¿es el siguiente en la tarjeta?
+        bne     @c
+        inc     t32b+1
+        bne     @c
+        inc     t32b+2
+        bne     @c
+        inc     t32b+3
+@c:     ldx     #3
+@cmp:   lda     clus,x
+        cmp     t32b,x
+        bne     @corte
+        dex
+        bpl     @cmp
+        inc     tr_n
+        bne     @sig
+        inc     tr_n+1
+        bne     @sig
+@corte: clc                             ; `clus` ya es el primero del tramo siguiente
+        rts
+@ultimo:
+        lda     fat_error
+        bne     @mal
+        lda     #1
+        sta     tr_fin
+        clc
+        rts
+@mal:   sec
         rts

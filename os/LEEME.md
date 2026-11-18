@@ -147,7 +147,11 @@ lanza nada: Select y luego Select+A es el reset del kit Lava.
 4. **Carga del FPGA**, desde la RAM de la CPU (`$0200`), porque mientras tanto no hay nada en `$8000-$FFFF`: reg 9 a 0,
    pulso de nCONFIG (reg 6), `$4402` = 5, cada byte de `$4401` a `$4403`, 512 bytes `$FF` de relojes de sobra,
    `$4402` = 3 y reg 9 de vuelta a 1. Son los pasos de la BIOS.
-5. **PRG** por la ventana `$4800` (reg 128) y **CHR** por la PPU (reg 130).
+5. **PRG** por la ventana `$4800` (reg 128) y **CHR** por la PPU (reg 130). **Carga rápida:** la ROM se lee con una
+   lectura múltiple (CMD18) por cada tramo de clústeres seguidos, y cada bloque de 512 bytes va directo del SPI a
+   `$4800` o a `PPUDATA`, sin búfer. Como la cabecera iNES ocupa 16 bytes (528 con trainer), todos los cortes (bancos
+   de 2 KiB de PRG, paso de PRG a CHR, bancos de 8 KiB de CHR) caen en el byte 16 de un bloque: cada bloque se copia
+   en trozos de 16, 256 y 240 bytes con bucles desenrollados. Los sectores de la FAT se guardan en caché.
 6. **Registros:** 132 = bancos de 16 KiB − 1; 133 = bancos de 8 KiB − 1, o `$FF` con CHR-RAM; 134 = byte 6 de la
    cabecera `& $1B`; 136 = 0. Marca `en_juego` y, desde la RAM, **reg 131 = mapper de la cabecera, sin traducir**, y
    salto al vector de reset del juego (S = `$FD`, A = X = Y = 0, `$4017` = `$FF` como el v13).
@@ -159,13 +163,14 @@ Si algo falla, lo dice en pantalla y el menú sigue: «No es una ROM iNES», «T
 EDFC/MAPROUT.BIN», «Mapper sin RBF: nn», «No encuentro el RBF nnn», «RBF fragmentado en la SD», «Error de lectura
 nn», «El FPGA no se configura», «Carpetas: en otra etapa».
 
-Límites de esta etapa: solo la raíz y nombres 8.3; la copia de la PRG va byte a byte por un búfer (lenta con ROMs
-grandes); no hay partidas guardadas (un juego con pila arranca con lo que haya en la PRG-RAM).
+Límites de esta etapa: solo la raíz y nombres 8.3; no hay partidas guardadas (un juego con pila arranca con lo que haya en la PRG-RAM).
 
 ### Resultados en la NES (2026-11-17, con la capturadora y el Nano)
 
 - **Super Mario Bros.** (mapper 0, 40 KiB): se lanza con A, juega con el 100.RBF; carga en 1,7 s.
 - **Super Mario Bros. 3** (mapper 4/MMC3, 384 KiB): título y menú correctos; carga en unos 9,5 s (unos 40 KiB/s).
+- **Carga rápida** (2026-11-17, de pulsar A a ver el juego, medido con la capturadora): SMB3 en **3,8 s** (antes
+  9,5 s) y SMB en **1,5 s** (antes 1,7 s). Descontando lo fijo (RBF y arranque, ~1,2 s), unos 145 KiB/s.
 - **Botón RESET dentro de un juego:** vuelve al menú como «vuelta de juego», con el cursor sobre el juego.
 - **Reset por el mando (Lava) en el menú:** 4 resets, los mismos en el Nano y en la pantalla.
 - A sobre una carpeta: «Carpetas: en otra etapa».

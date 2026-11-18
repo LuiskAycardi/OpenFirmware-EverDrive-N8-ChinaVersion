@@ -19,8 +19,10 @@
         .export lanzar, l_error, l_rbf, nombre_rbf
         .exportzp l_mapper
         .import dir_abrir_raiz, dir_abrir, dir_buscar
-        .import arch_abrir, arch_reabrir, arch_leer, arch_avanzar, arch_contiguo
+        .import arch_abrir, arch_leer, arch_contiguo
         .import arch_lba, arch_tam, arch_ini, fat_error, sector
+        .import tramo_ini, tramo_sig, tr_lba, tr_n, tr_fin, fat_desp
+        .importzp E_FIN, E_DATOS
         .import sd_multi_ini, sd_parar, sd_base
         .import en_juego
         .importzp sd_lba, nombre
@@ -35,11 +37,12 @@ REG_CART_CFG = 136
 VENTANA      = $4800
 
         .segment "ZEROPAGE"
-src:        .res 2              ; medio sector que se está copiando
-dsta:       .res 2              ; destino ajustado (destino - Y)
+dsta:       .res 2              ; destino ajustado (destino - Y inicial)
 dst:        .res 2              ; destino en la ventana $4800
-yfin:       .res 1
-y0:         .res 1
+y0:         .res 1              ; Y inicial del trozo (256 - n)
+n_lo:       .res 1              ; tamaño del trozo: 16, 240 o 256 (n_lo = 0, n_hi = 1)
+n_hi:       .res 1
+bloques:    .res 2              ; bloques que quedan del tramo
 cfg_n:      .res 2              ; bloques del RBF que faltan
 cfg_reg2:   .res 1              ; reg 2 durante la carga: tarjeta seleccionada y ráfaga
 l_mapper:   .res 1
@@ -57,7 +60,7 @@ chr_rest:   .res 3
 chr_banco:  .res 2              ; bytes que faltan del tramo de 8 KiB de CHR
 banco_prg:  .res 1
 banco_chr:  .res 1
-primera:    .res 1              ; el primer medio sector lleva la cabecera
+saltar:     .res 2              ; bytes del principio que no se copian (cabecera y «trainer»)
 nombre_rbf: .res 11
 
         .segment "CODE"
@@ -250,9 +253,8 @@ lanzar:
         lda     #L_FPGA
         jmp     falla
 
-        ; ---- 5. PRG y CHR
+        ; ---- 5. PRG y CHR, con lecturas múltiples por tramos de clústeres seguidos y copia directa
 @rom:   copia4  arch_ini, r_ini
-        jsr     arch_reabrir
         lda     #0
         sta     prg_rest
         sta     prg_rest+1
@@ -275,6 +277,12 @@ lanzar:
         lsr
         ror     chr_rest+1
         sta     chr_rest+2
+        lda     #16                     ; la cabecera, y 512 más si hay «trainer»
+        sta     saltar
+        lda     l_trainer
+        beq     :+
+        lda     #2
+:       sta     saltar+1
         lda     #>VENTANA
         sta     dst+1
         ldx     #REG_PRG
@@ -283,33 +291,64 @@ lanzar:
         lda     #1                      ; CHR: $0000-$0FFF = banco 0 y $1000-$1FFF = banco 1
         sta     banco_chr
         jsr     tramo_chr
-        lda     #1
-        sta     primera
-        lda     l_trainer
-        beq     @sector
-        jsr     arch_avanzar            ; 512 bytes de «trainer»: se saltan
-        bcc     @sector
+        jsr     tramo_ini
+@tramo: jsr     tramo_sig
+        bcc     :+
         jmp     falla_sd
-@sector:
-        lda     prg_rest
+:       lda     tr_n                    ; bloques del tramo = clústeres x sectores por clúster
+        sta     bloques
+        lda     tr_n+1
+        sta     bloques+1
+        ldx     fat_desp
+        beq     @lba
+@x:     asl     bloques
+        rol     bloques+1
+        dex
+        bne     @x
+@lba:   copia4  sd_lba, tr_lba
+        jsr     sd_multi_ini
+        bcc     :+
+        jmp     falla_sd
+:       lda     #2                      ; ráfaga y tarjeta seleccionada; el dato SPI en $4401
+        sta     REG_SEL
+        lda     sd_base
+        ora     #%00000100
+        sta     REG_DAT
+        lda     #0
+        sta     REG_SEL
+@bloque:
+        jsr     bloque
+        bcs     @err_tramo
+        lda     saltar
+        ora     saltar+1
+        ora     prg_rest
         ora     prg_rest+1
         ora     prg_rest+2
         ora     chr_rest
         ora     chr_rest+1
         ora     chr_rest+2
-        beq     @copiado
-        jsr     arch_leer
-        bcc     :+
+        beq     @todo
+        lda     bloques
+        bne     :+
+        dec     bloques+1
+:       dec     bloques
+        lda     bloques
+        ora     bloques+1
+        bne     @bloque
+        jsr     sd_parar                ; fin del tramo
+        lda     tr_fin
+        bne     @corto                  ; el archivo se acaba antes de lo que dice la cabecera
+        jmp     @tramo
+@todo:  jsr     sd_parar
+        jmp     @copiado
+@corto: lda     #<E_FIN
+        sta     fat_error
         jmp     falla_sd
-:       lda     #<sector
-        sta     src
-        lda     #>sector
-        sta     src+1
-        jsr     medio
-        inc     src+1
-        jsr     medio
-        jsr     arch_avanzar            ; si era el último sector, el bucle termina antes de leer otro
-        jmp     @sector
+@err_tramo:
+        jsr     sd_parar
+        lda     #<E_DATOS
+        sta     fat_error
+        jmp     falla_sd
 
         ; ---- 6. registros y salto
 @copiado:
@@ -350,45 +389,99 @@ abrir_edfc:
         clc
 @no:    rts
 
-; Copia medio sector (256 bytes en `src`) en dos tramos: Y = 0-15 y 16-255. Como la cabecera mide 16 bytes, los
-; cambios de banco de la PRG, el paso de PRG a CHR y los tramos de 8 KiB de CHR caen siempre entre dos tramos.
-medio:  lda     primera
-        beq     @a
-        lda     #0                      ; la cabecera iNES: no se copia
-        sta     primera
-        beq     @b
-@a:     ldy     #0
-        lda     #16
-        jsr     tramo
-@b:     ldy     #16
-        lda     #0                      ; 0 = hasta 256
-; Copia (src),Y desde Y hasta A (sin incluirlo) a la PRG mientras quede, y después a la CHR.
-tramo:  sta     yfin
-        sty     y0
+; Un bloque de 512 bytes de la lectura múltiple en curso (ráfaga: cada lectura de $4401 saca un byte). Se reparte
+; en tres trozos: 16, 256 y 240 bytes. La cabecera iNES mide 16 bytes (y el «trainer», 512), así que los cambios de
+; banco de la PRG, el paso de PRG a CHR y los tramos de 8 KiB de CHR caen siempre en la posición 16 de un bloque:
+; cada trozo va entero a un solo destino. Acarreo = 1 si no llega el testigo del bloque.
+bloque: ldx     #0
+        ldy     #0
+@t:     lda     REG_DAT
+        cmp     #$FE
+        beq     @datos
+        dex
+        bne     @t
+        dey
+        bne     @t
+        sec
+        rts
+@datos: lda     #16
+        jsr     trozo
+        lda     #0                      ; 256
+        jsr     trozo
+        lda     #240
+        jsr     trozo
+        lda     REG_DAT                 ; CRC (no se comprueba)
+        lda     REG_DAT
+        clc
+        rts
+
+; Un trozo de A bytes (0 = 256; siempre múltiplo de 4) al destino que toque: se salta, a la PRG o a la CHR.
+trozo:  sta     n_lo
+        cmp     #1                      ; n_hi = 1 si son 256
+        lda     #0
+        rol
+        eor     #1
+        sta     n_hi
+        lda     #0                      ; Y empieza en 256 - n y el bucle acaba cuando Y da la vuelta
+        sec
+        sbc     n_lo
+        sta     y0
+        tay
+        lda     saltar
+        ora     saltar+1
+        bne     @salta
         lda     prg_rest
         ora     prg_rest+1
         ora     prg_rest+2
-        beq     @chr
-        sec                             ; destino ajustado para indexar con la misma Y
+        bne     @prg
+        lda     chr_rest
+        ora     chr_rest+1
+        ora     chr_rest+2
+        beq     @nada
+        jmp     @chr
+@nada:  lda     REG_DAT                 ; lo que sobra al final del archivo
+        iny
+        bne     @nada
+        rts
+@salta: lda     REG_DAT
+        iny
+        bne     @salta
+        sec
+        lda     saltar
+        sbc     n_lo
+        sta     saltar
+        lda     saltar+1
+        sbc     n_hi
+        sta     saltar+1
+        rts
+
+@prg:   sec                             ; puntero = destino - Y inicial, para indexar con Y
         lda     dst
         sbc     y0
         sta     dsta
         lda     dst+1
         sbc     #0
         sta     dsta+1
-@p:     lda     (src),y
+@p:     lda     REG_DAT
         sta     (dsta),y
         iny
-        cpy     yfin
+        lda     REG_DAT
+        sta     (dsta),y
+        iny
+        lda     REG_DAT
+        sta     (dsta),y
+        iny
+        lda     REG_DAT
+        sta     (dsta),y
+        iny
         bne     @p
-        jsr     @n                      ; A = bytes copiados
-        pha
-        clc
-        adc     dst
+        clc                             ; destino += n
+        lda     dst
+        adc     n_lo
         sta     dst
-        bcc     :+
-        inc     dst+1
-:       lda     dst+1
+        lda     dst+1
+        adc     n_hi
+        sta     dst+1
         cmp     #>(VENTANA + $800)
         bne     :+
         lda     #>VENTANA               ; siguiente banco de 2 KiB
@@ -397,57 +490,58 @@ tramo:  sta     yfin
         ldx     #REG_PRG
         lda     banco_prg
         jsr     fpga_reg
-:       pla
-        sta     y0
-        sec
+        lda     #0                      ; deja seleccionado otra vez el dato SPI
+        sta     REG_SEL
+:       sec
         lda     prg_rest
-        sbc     y0
+        sbc     n_lo
         sta     prg_rest
         lda     prg_rest+1
-        sbc     #0
+        sbc     n_hi
         sta     prg_rest+1
         lda     prg_rest+2
         sbc     #0
         sta     prg_rest+2
         rts
-@chr:   lda     chr_rest
-        ora     chr_rest+1
-        ora     chr_rest+2
-        beq     @fin
-@c:     lda     (src),y
+
+@chr:   lda     REG_DAT
         sta     PPUDATA
         iny
-        cpy     yfin
-        bne     @c
-        jsr     @n
-        sta     y0
+        lda     REG_DAT
+        sta     PPUDATA
+        iny
+        lda     REG_DAT
+        sta     PPUDATA
+        iny
+        lda     REG_DAT
+        sta     PPUDATA
+        iny
+        bne     @chr
         sec
         lda     chr_rest
-        sbc     y0
+        sbc     n_lo
         sta     chr_rest
         lda     chr_rest+1
-        sbc     #0
+        sbc     n_hi
         sta     chr_rest+1
         lda     chr_rest+2
         sbc     #0
         sta     chr_rest+2
         sec
         lda     chr_banco
-        sbc     y0
+        sbc     n_lo
         sta     chr_banco
         lda     chr_banco+1
-        sbc     #0
+        sbc     n_hi
         sta     chr_banco+1
         ora     chr_banco
-        bne     @fin
+        bne     :+
         inc     banco_chr               ; siguientes 8 KiB
         inc     banco_chr
-        jmp     tramo_chr
-@fin:   rts
-@n:     sec                             ; bytes del tramo: yfin - y0 (16 o 240)
-        lda     yfin
-        sbc     y0
-        rts
+        jsr     tramo_chr
+        lda     #0                      ; deja seleccionado otra vez el dato SPI
+        sta     REG_SEL
+:       rts
 
 ; Prepara la PPU para escribir 8 KiB de CHR en los bancos banco_chr - 1 y banco_chr (de 4 KiB).
 tramo_chr:
