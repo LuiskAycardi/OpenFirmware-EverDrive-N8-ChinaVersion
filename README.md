@@ -10,17 +10,27 @@ clone of the EverDrive N8, built around an **Altera Cyclone II EP2C5** FPGA), fo
 Clean-room implementation, validated against the Mesen2 emulator with synthetic-ROM fuzzing, simulation
 testbenches and real games.
 
+> 💾 **ES — Novedad (noviembre de 2026): v0.5.0-beta, partidas con pila.** Nuestro OS guarda las partidas en
+> `EDFC/SAVE/<nombre>.srm` (el formato `.sav` de los emuladores) al volver al menú con RESET y también si apagas
+> dentro del juego. Probado en una NES real con Zelda. Descárgala en
+> [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases).
+>
+> 💾 **EN — News (November 2026): v0.5.0-beta, battery saves.** Our OS saves games to `EDFC/SAVE/<name>.srm`
+> (the emulator `.sav` format) when you go back to the menu with RESET and also if you switch off inside the
+> game. Tested on a real NES with Zelda. Download it from
+> [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases).
+>
 > 🚀 **ES — Novedad (noviembre de 2026): primera compilación completa propia (beta).** Nuestro OS, nuestro
 > `255.RBF` y nuestros mappers: en la microSD ya no hace falta **ningún archivo de Krikzz ni de fábrica**; del
 > cartucho solo se usa su BIOS, que no se toca. Descárgala en
 > [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases) y sigue su
-> `LEEME.md` (copia de seguridad, formato FAT32 con clúster de 32 KB y copia). Todavía no guarda partidas.
+> `LEEME.md` (copia de seguridad, formato FAT32 con clúster de 32 KB y copia).
 >
 > 🚀 **EN — News (November 2026): first complete own build (beta).** Our OS, our `255.RBF` and our mappers:
 > the microSD card no longer needs **any file from Krikzz or from the factory**; only the cartridge's BIOS is
 > used, and it is left untouched. Download it from
 > [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases) and follow its
-> `LEEME.md` (backup, FAT32 format with 32 KB clusters and copy). It does not save games yet.
+> `LEEME.md` (backup, FAT32 format with 32 KB clusters and copy).
 >
 > 🎉 **ES — Novedad (noviembre de 2026): ya tenemos nuestro primer `OS.BIN` propio funcional.** Arranca
 > desde la BIOS del cartucho, lee la microSD, recorre sus carpetas con nombres largos y **lanza juegos con nuestros RBF**: Super Mario
@@ -157,7 +167,7 @@ Qué hace hoy:
 - **Lanza juegos**: lee la cabecera iNES, busca el RBF en `EDFC/MAPROUT.BIN`, carga el RBF en el FPGA, copia la
   PRG y la CHR y salta al juego con el número de mapper de la cabecera, sin traducirlo.
 
-- **Partidas con pila** (en `main`, todavía sin release): `EDFC/SAVE/<nombre de la ROM>.srm`, el mismo formato
+- **Partidas con pila** (desde la v0.5.0-beta): `EDFC/SAVE/<nombre de la ROM>.srm`, el mismo formato
   que el `.sav` de los emuladores. Se cargan al lanzar el juego y se guardan al volver al menú con RESET (o en el
   siguiente encendido).
 
@@ -192,7 +202,7 @@ What it does today:
 - **It launches games**: it reads the iNES header, looks up the RBF in `EDFC/MAPROUT.BIN`, loads the RBF into
   the FPGA, copies the PRG and CHR data and jumps to the game with the header's mapper number, untranslated.
 
-- **Battery saves** (in `main`, not released yet): `EDFC/SAVE/<ROM name>.srm`, the same format as emulator `.sav`
+- **Battery saves** (since v0.5.0-beta): `EDFC/SAVE/<ROM name>.srm`, the same format as emulator `.sav`
   files. They are loaded when the game starts and saved when you go back to the menu with RESET (or at the next
   power-on).
 

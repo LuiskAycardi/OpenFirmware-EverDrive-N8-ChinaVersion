@@ -9,8 +9,8 @@ cartucho lee de la tarjeta sale de nuestro repositorio, **sin ningún archivo de
 - nuestros **mappers** (`EDFC/MAPS/100.RBF` … `106.RBF`, 194 mappers) y su tabla (`EDFC/MAPROUT.BIN`).
 
 Del cartucho solo se usa su **BIOS** (en la memoria flash del propio cartucho), que no se toca. **Es una
-beta**: funciona en una NES real, pero todavía le faltan cosas (sobre todo, **no guarda partidas**; ver
-«Qué falta»).
+beta**: funciona en una NES real, pero todavía le faltan cosas (ver «Qué falta»). **Novedad de la v0.5.0: guarda
+las partidas con pila** (ver «Partidas»).
 
 **EN** — Free (GPL-3.0-or-later) firmware for the microSD card of the **EverDrive N8 China Version** (Chinese
 clone with an EP2C5 FPGA, NON-PRO version), **Famicom and NES** cartridges. It is a **complete own build**:
@@ -22,8 +22,8 @@ the factory**:
 - our **mappers** (`EDFC/MAPS/100.RBF` … `106.RBF`, 194 mappers) and their table (`EDFC/MAPROUT.BIN`).
 
 Only the cartridge's **BIOS** (in the cartridge's own flash memory) is used, and it is left untouched. **This
-is a beta**: it works on a real NES, but things are still missing (above all, **it does not save games**;
-see "What is missing").
+is a beta**: it works on a real NES, but things are still missing (see "What is missing"). **New in v0.5.0: it
+saves battery-backed games** (see "Saved games").
 
 ## Qué contiene / Contents
 
@@ -34,6 +34,7 @@ see "What is missing").
 | `SD/EDFC/MAPS/255.RBF` | **ES** Nuestro RBF del modo OS: la BIOS lo carga al encender. **EN** Our OS-mode RBF: the BIOS loads it at power-on. |
 | `SD/EDFC/MAPS/100.RBF` … `106.RBF` | **ES** Los mappers (cada archivo lleva un grupo). **EN** The mappers (each file holds a group). |
 | `SD/EDFC/MAPROUT.BIN` | **ES** Qué RBF usa cada mapper. **EN** Which RBF each mapper uses. |
+| `SD/EDFC/SAVE/` | **ES** Carpeta (vacía) para las partidas; el OS la crea si falta. **EN** (Empty) folder for saved games; the OS creates it if missing. |
 | `MAPPERS.txt` | **ES** Lista de mappers por RBF. **EN** List of mappers per RBF. |
 | `SHA256SUMS.txt` | **ES** Sumas para comprobar que los archivos llegaron bien. **EN** Checksums to verify the files. |
 | `LICENSE` | **ES** Licencia GPL-3.0 (código fuente: commit `{COMMIT}` del repositorio). **EN** GPL-3.0 license (source code: repository commit `{COMMIT}`). |
@@ -65,7 +66,8 @@ see "What is missing").
 ### 1. Copia de seguridad completa de tu SD de fábrica / Full backup of your factory SD card
 
 **ES** — **Antes de nada, guarda todo lo que hay en tu microSD.** Ahí están el OS y el 255.RBF de fábrica (los
-necesitarás para volver atrás) y tus partidas guardadas (`EDFC/SAVE`), que este firmware todavía no usa.
+necesitarás para volver atrás) y tus partidas guardadas del OS de fábrica (`EDFC/SAVE`), que este firmware no lee
+(usa su propio formato, ver «Partidas»).
 
 - **Lo mínimo:** copia **todo** el contenido de la tarjeta (todas las carpetas y archivos, incluida `EDFC`
   entera) a una carpeta de tu PC, por ejemplo `N8-SD-original`. Comprueba que la copia ocupa lo mismo que la
@@ -79,7 +81,8 @@ necesitarás para volver atrás) y tus partidas guardadas (`EDFC/SAVE`), que est
   intacta.
 
 **EN** — **Before anything else, save everything on your microSD card.** It holds the factory OS and 255.RBF
-(you will need them to go back) and your saved games (`EDFC/SAVE`), which this firmware does not use yet.
+(you will need them to go back) and the factory OS's saved games (`EDFC/SAVE`), which this firmware does not read
+(it uses its own format, see "Saved games").
 
 - **The minimum:** copy **all** the contents of the card (every folder and file, including the whole `EDFC`
   folder) to a folder on your PC, for example `N8-SD-original`. Check that the copy is the same size as the
@@ -156,6 +159,16 @@ NES, and FAT32 with 32 KB and 512 bytes and FAT16 in our emulator of the cartrid
 5. Eject the card safely, put it in the cartridge and switch the console on. The **"OS propio N8"** menu should
    appear with the card's list.
 
+### Actualizar desde la v0.4.0-beta / Updating from v0.4.0-beta
+
+**ES** — Basta con copiar el `SD/EDFC/OS.BIN` nuevo encima del de la tarjeta (los RBF y `MAPROUT.BIN` no cambian).
+En una tarjeta con clúster de 32 KB el archivo ocupa un solo clúster, así que sigue contiguo. La carpeta
+`EDFC/SAVE` no hace falta: el OS la crea la primera vez que lanzas un juego con pila.
+
+**EN** — Just copy the new `SD/EDFC/OS.BIN` over the one on the card (the RBF files and `MAPROUT.BIN` do not
+change). On a card with 32 KB clusters the file takes a single cluster, so it stays contiguous. The `EDFC/SAVE`
+folder is not needed: the OS creates it the first time you launch a battery-backed game.
+
 ### Si no arranca / If it does not boot
 
 **ES**
@@ -194,6 +207,18 @@ with your factory SD card it works exactly as before.
 - La pantalla también muestra datos del arranque, de la tarjeta y del mando: es una beta y nos ayudan a
   diagnosticar.
 
+### Partidas
+
+- Los juegos con pila (Zelda, Final Fantasy, Kirby…) guardan en `EDFC/SAVE/<nombre de la ROM>.srm`. El archivo se
+  crea solo la primera vez (8 KB, 32 KB con MMC5, o lo que declare una cabecera NES 2.0).
+- Se carga al lanzar el juego y **se guarda en la SD al volver al menú con RESET** (o con el kit Lava). En la parte
+  de abajo sale «Partida guardada».
+- **También si apagas dentro del juego:** la RAM del cartucho tiene pila (probado con 30 minutos apagada) y la
+  partida se guarda en la SD la próxima vez que enciendes («Partida guardada» al arrancar).
+- Es el mismo formato que el `.sav` de los emuladores (Mesen, FCEUX…): puedes copiar partidas entre el PC y el
+  cartucho cambiando la extensión. Las partidas del OS de fábrica no se leen.
+- La fecha de los archivos es fija (1-1-2026): el cartucho no tiene reloj.
+
 **EN**
 - **Up/Down**: move the cursor (past the edge, to the next or previous page).
 - **Left/Right**: change page (16 entries per page).
@@ -203,11 +228,22 @@ with your factory SD card it works exactly as before.
   Lava RGB kit, holding Select and then Select+A for a few seconds does the same.
 - The screen also shows boot, card and controller data: this is a beta and they help us diagnose problems.
 
+### Saved games
+
+- Battery-backed games (Zelda, Final Fantasy, Kirby…) save to `EDFC/SAVE/<ROM name>.srm`. The file is created
+  automatically the first time (8 KB, 32 KB with MMC5, or whatever an NES 2.0 header declares).
+- It is loaded when the game starts and **written to the SD card when you go back to the menu with RESET** (or with
+  the Lava kit). "Partida guardada" appears at the bottom.
+- **Also if you switch off inside the game:** the cartridge RAM is battery-backed (tested with 30 minutes off) and
+  the save is written to the SD card the next time you switch on ("Partida guardada" at boot).
+- It is the same format as emulator `.sav` files (Mesen, FCEUX…): you can copy saves between the PC and the
+  cartridge by changing the extension. The factory OS's saves are not read.
+- File dates are fixed (1-1-2026): the cartridge has no clock.
+
 ## Qué falta / What is missing
 
 **ES**
-- ⚠️ **Partidas con pila** (Zelda, Final Fantasy…): **todavía no se guardan**. El juego arranca, pero lo que
-  guardes se pierde al apagar. Para esos juegos, usa tu SD de fábrica por ahora.
+- Partidas de los mappers con EEPROM (Bandai 16/159, Datach) y de la RAM interna del Namco 163.
 - Save states, Famicom Disk System (FDS) y Game Genie.
 - Orden alfabético e información del juego en el menú (la lista sale en el orden en que se copiaron los
   archivos).
@@ -215,8 +251,7 @@ with your factory SD card it works exactly as before.
   mezcla el audio del cartucho.
 
 **EN**
-- ⚠️ **Battery saves** (Zelda, Final Fantasy…): **not saved yet**. The game boots, but whatever you save is lost
-  at power-off. For those games, use your factory SD card for now.
+- Saves for mappers with an EEPROM (Bandai 16/159, Datach) and for the Namco 163's internal RAM.
 - Save states, Famicom Disk System (FDS) and Game Genie.
 - Alphabetical order and game information in the menu (the list follows the order in which files were copied).
 - **Expansion audio** (VRC6, VRC7, Sunsoft 5B, Namco 163, MMC5): only heard on the **Famicom**; the NES does not
@@ -235,7 +270,8 @@ with your factory SD card it works exactly as before.
   algunos efectos de pantalla partida difieren unos píxeles en la línea del corte.
 - **Qué está probado en una NES real:**
   - con este OS y este 255: arranque, carpetas y páginas, RESET y kit Lava, Super Mario Bros. (0), Super Mario
-    Bros. 3 (4), Akira (33), Wario Land 2 (35), Toy Story (219) y Aoki Ookami (MMC5);
+    Bros. 3 (4), Akira (33), Wario Land 2 (35), Toy Story (219) y Aoki Ookami (MMC5); partidas de Zelda (MMC1):
+    crear, guardar con RESET y con el apagado, y la tarjeta revisada después con `fsck.fat`;
   - los mappers, con el OS de fábrica: 71 mappers entre las pruebas a mano, una tanda automática de 39 juegos
     (RBF 103-106) y películas TAS de TASVideos comparadas con Mesen2. El resto, solo en el emulador. Lista en el
     README del repositorio.
@@ -251,7 +287,8 @@ with your factory SD card it works exactly as before.
   differ by a few pixels on the split line.
 - **What has been tested on a real NES:**
   - with this OS and this 255: boot, folders and pages, RESET and the Lava kit, Super Mario Bros. (0), Super
-    Mario Bros. 3 (4), Akira (33), Wario Land 2 (35), Toy Story (219) and Aoki Ookami (MMC5);
+    Mario Bros. 3 (4), Akira (33), Wario Land 2 (35), Toy Story (219) and Aoki Ookami (MMC5); Zelda (MMC1) saves:
+    creating, saving with RESET and at power-off, and the card checked afterwards with `fsck.fat`;
   - the mappers, with the factory OS: 71 mappers across manual tests, an automated run of 39 games (RBF
     103-106) and TASVideos TAS movies compared with Mesen2. The rest only in the emulator. List in the
     repository README.
