@@ -13,7 +13,14 @@ Hechos del 254.RBF de Krikzz (netlist de `~/n8-firmware/artifacts/ep2c5-handshak
 leído para entender, nada copiado): lleva **16 M4K de solo lectura = 8 KiB de código propio** (no es la BIOS de
 Nintendo: 20 130 bits a uno frente a ~28 000 de cualquier BIOS FDS) y **8 M4K de 4096×1 que se llenan desde
 `ppu_dat`** (un búfer de 4 KiB leído de la SRAM CHR por el lado de la FPGA, con el transceptor de la PPU cerrado).
-O sea, él tampoco sirve `$4031` desde la SRAM tal cual: lo resuelve con su propia BIOS.
+O sea, él tampoco sirve `$4031` desde la SRAM tal cual.
+
+**Esos 8 KiB son la BIOS de Nintendo Rev 1 modificada** (reconstruidos del netlist el 2026-11-18: cada bit coincide
+con la Rev 1 en el ~87 %, mismo orden y polaridad; vectores idénticos). Difieren 1625 bytes en 23 tramos: parches
+pequeños justo en las rutinas de disco (`$E1CE-$E1D2` transferencia por IRQ, `$E57A`, `$E6BB-$E734` control y
+estado, `$EEBB-$EFEA`, `$F56D-$F5AC`) y ~1,7 KiB de código suyo en `$F735-$FE2D`. Es decir: Krikzz hizo lo mismo que
+se propone aquí (parchear las rutinas de disco de la BIOS), pero **distribuye la BIOS de Nintendo dentro del RBF**,
+cosa que un proyecto GPL no puede hacer. Nada de su código se usa: solo confirma qué rutinas hay que tocar.
 
 ## Propuesta: BIOS del usuario parcheada en memoria + ventana de disco
 1. **BIOS**: la pone el usuario en la SD (no se distribuye: es de Nintendo), p. ej. `EDFC/DISKSYS.ROM` (8 KiB; se
