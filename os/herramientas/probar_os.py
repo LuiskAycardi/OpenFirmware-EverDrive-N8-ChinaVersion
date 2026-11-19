@@ -278,8 +278,8 @@ def imagen3(nombre, fragmentar=False, fragmentar_roms=(), fat=32):
 
 
 def visto(nombre):
-    """Cómo sale un archivo en el menú: sin «.nes»."""
-    return nombre[:-4] if nombre.lower().endswith('.nes') else nombre
+    """Cómo sale un archivo en el menú: sin «.nes» ni «.fds»."""
+    return nombre[:-4] if nombre.lower().endswith(('.nes', '.fds')) else nombre
 
 def ir_a_nombre(m, texto, maximo=40):
     """Lleva el cursor a la fila `texto`: la busca en la página (derecha pasa a la siguiente, dando la vuelta) y
@@ -881,6 +881,101 @@ img7b = imagen7('e7b.img', lista='zelda.nes\nJUEGO.NES\n')
 m4, ok4 = encender(pathlib.Path(img7b).read_bytes(), prgram=ram)
 m4.correr(1_000_000, nmi_cada=9000)
 comprobar(titulo_banco(m4.pantalla()) == 'Modo banco  1/2', 'otra BANCO.TXT (otro tamaño): empieza por la primera aunque la RAM guarde otra entrada')
+
+# ------------------------------------------------------------------ FDS: reconocer discos y la BIOS (fds.s)
+import zlib
+sys.path.insert(0, str(RAIZ / 'tools/fds'))
+import fds as fdsmod
+
+def forzar_crc(datos, pos, objetivo):
+    """Cambia datos[pos:pos+4] para que zlib.crc32(datos) == objetivo (el CRC es lineal: 32 ecuaciones)."""
+    d = bytearray(datos)
+    d[pos:pos + 4] = bytes(4)
+    base = zlib.crc32(d)
+    base_v = {}                                 # base de los efectos de cada bit, por su bit más alto
+    for b in range(32):
+        e = bytearray(d)
+        e[pos + b // 8] ^= 1 << (b % 8)
+        v, m = zlib.crc32(e) ^ base, 1 << b
+        while v:
+            h = v.bit_length() - 1
+            if h not in base_v:
+                base_v[h] = (v, m)
+                break
+            v ^= base_v[h][0]
+            m ^= base_v[h][1]
+    meta, x = objetivo ^ base, 0
+    for h in sorted(base_v, reverse=True):
+        if meta >> h & 1:
+            meta ^= base_v[h][0]
+            x ^= base_v[h][1]
+    assert meta == 0
+    d[pos:pos + 4] = x.to_bytes(4, 'little')
+    assert zlib.crc32(d) == objetivo
+    return bytes(d)
+
+def cara_fds(codigo=b'ABC', rev=2, cara=0, semilla=1):
+    """Una cara sintética (formato público del FDS): bloque 1, bloque 2 con un archivo, bloques 3 y 4."""
+    b1 = bytes([1]) + fdsmod.FIRMA + bytes([0x01]) + codigo + b' ' + bytes([rev, cara, 0, 0, 0, 0x0F]) + bytes([0xFF] * 5)
+    b1 = b1 + bytes(56 - len(b1))
+    datos = bytes((i * 13 + semilla) & 0xFF for i in range(1024))
+    c = b1 + bytes([2, 1]) + bytes([3, 0, 0]) + b'PROGRAMA' + bytes([0x00, 0x60, 0x00, 0x04, 0]) + bytes([4]) + datos
+    return c + bytes(fdsmod.CARA - len(c))
+
+FDS2 = cara_fds() + cara_fds(cara=1)
+FDS_FW = b'FDS\x1a' + bytes([1]) + bytes(11) + cara_fds(codigo=b'XYZ', rev=0)
+FDS_MAL = cara_fds() + bytes(10)
+inc = (RAIZ / 'os/src/fds_tablas.inc').read_text()
+malos = [int(l.split('$')[1][:8], 16) for l in inc.split('fds_malos:')[1].split('\n') if '.dword' in l]
+bios_si = [c for c, b in fdsmod.BIOS.items() if b[1] == 'si']
+bios_no = [c for c, b in fdsmod.BIOS.items() if b[1] != 'si']
+FDS_PROPIO = forzar_crc(cara_fds(semilla=7)[:fdsmod.INI], 400, malos[0]) + cara_fds(semilla=7)[fdsmod.INI:]
+RELLENO_BIOS = bytes((i * 101 + 3) & 0xFF for i in range(8192))      # no es la BIOS: datos propios
+
+def imagen_fds(nombre, bios_fds):
+    img = imagen3(nombre)
+    dest = f'{img}@@{8192 * 512}'
+    archivos = [('Disco (Japan).fds', FDS2), ('Con cabecera.FDS', FDS_FW), ('Roto.fds', FDS_MAL),
+                ('Carga propia.fds', FDS_PROPIO)]
+    if bios_fds is not None:
+        archivos.append(('EDFC/DISKSYS.ROM', bios_fds))
+    for n, datos in archivos:
+        f = t / 'tmp.bin'
+        f.write_bytes(datos)
+        subprocess.run(['mcopy', '-i', dest, str(f), f'::{n}'], check=True)
+    return img
+
+imgf = imagen_fds('fds1.img', forzar_crc(RELLENO_BIOS, 100, bios_si[0]))
+m, ok = arrancar(imgf)
+m.correr(PASOS, nmi_cada=9000)
+filas = lista(m.pantalla())
+comprobar('Disco (Japan)' in filas and 'Con cabecera' in filas and 'Roto' in filas,
+          f'los .fds salen en el menú sin la extensión: {[f for f in filas if "fds" in f.lower() or f in ("Roto", "Con cabecera")]}')
+for nombre, info in (('Disco (Japan)', 'Disco FDS  2 caras  ABC r2'), ('Con cabecera', 'Disco FDS  1 cara  XYZ r0'),
+                     ('Roto', 'Imagen FDS no válida'), ('Carga propia', 'Disco FDS con carga propia')):
+    ir_a_nombre(m, nombre)
+    m.correr(300_000, nmi_cada=9000)
+    comprobar(fila25(m.pantalla()) == info, f'información de {nombre}: «{fila25(m.pantalla())}»')
+for bios_fds, mensaje in ((forzar_crc(RELLENO_BIOS, 100, bios_si[0]), 'BIOS FDS bien; falta 254.RBF'),
+                          (forzar_crc(RELLENO_BIOS, 100, bios_si[2]), 'BIOS FDS bien; falta 254.RBF'),
+                          (forzar_crc(RELLENO_BIOS, 100, bios_no[0]), 'BIOS FDS de emulador'),
+                          (RELLENO_BIOS, 'BIOS FDS desconocida'), (RELLENO_BIOS[:4096], 'BIOS FDS desconocida'),
+                          (None, 'Falta EDFC/DISKSYS.ROM')):
+    img = imagen_fds('fds2.img', bios_fds)
+    m = menu3(img, 'Disco (Japan).fds')
+    m.correr(100_000, nmi_cada=9000)
+    ir_a_nombre(m, 'Disco (Japan)')
+    ok = lanzar(m)
+    m.correr(200_000, nmi_cada=9000)
+    comprobar(not ok and mensaje in m.pantalla() and m.ppu_mask & 0x08 and not m.fpga_cfgs[m.n_cfg:] and solo_lectura(m),
+              f'lanzar un .fds con {"sin BIOS" if bios_fds is None else f"BIOS de {len(bios_fds)} B CRC {zlib.crc32(bios_fds):08X}"}: «{mensaje}», sin tocar el FPGA ni escribir')
+for nombre, mensaje in (('Roto', 'Imagen FDS no válida'), ('Carga propia', 'Disco FDS con carga propia')):
+    m = menu3(imgf, 'Disco (Japan).fds')
+    ir_a_nombre(m, nombre)
+    ok = lanzar(m)
+    m.correr(200_000, nmi_cada=9000)
+    comprobar(not ok and mensaje in m.pantalla(), f'lanzar {nombre}: «{mensaje}»')
+
 
 print('pantalla del caso FAT32:')
 m, ok = arrancar(img32)

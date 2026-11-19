@@ -1,13 +1,13 @@
 # Makefile del OS propio (etapa 1). Salida: build/OS.BIN (32 KiB). Necesita cc65 (ca65, ld65) y Python 3.
 B := build
-OBJS := $(B)/arranque.o $(B)/principal.o $(B)/sd.o $(B)/fat.o $(B)/lanzar.o $(B)/partida.o $(B)/orden.o $(B)/banco.o
+OBJS := $(B)/arranque.o $(B)/principal.o $(B)/sd.o $(B)/fat.o $(B)/lanzar.o $(B)/partida.o $(B)/orden.o $(B)/banco.o $(B)/fds.o
 
 all: $(B)/OS.BIN
 
 $(B)/fuente.chr: herramientas/fuente.py | $(B)
 	python3 -I $< $@
 
-$(B)/%.o: src/%.s src/os.inc $(B)/fuente.chr | $(B)
+$(B)/%.o: src/%.s src/os.inc src/fds_tablas.inc $(B)/fuente.chr | $(B)
 	ca65 -I src --bin-include-dir $(B) -o $@ $<
 
 $(B)/OS.BIN: $(OBJS) n8os.cfg

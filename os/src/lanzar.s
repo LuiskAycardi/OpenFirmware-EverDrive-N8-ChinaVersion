@@ -22,6 +22,7 @@
         .export lanzar, l_error, l_rbf, nombre_rbf, leer_cabecera, l_prg16, l_chr8, l_cfg, abrir_edfc
         .exportzp l_mapper
         .import dir_abrir_raiz, dir_abrir, dir_buscar
+        .import fds_reconocer, fds_bios
         .import arch_abrir, arch_leer, arch_contiguo
         .import arch_lba, arch_tam, arch_ini, fat_error, sector
         .import tramo_ini, tramo_sig, tr_lba, tr_n, tr_fin, fat_desp
@@ -103,7 +104,18 @@ lanzar:
         bcs     falla_sd
         jsr     leer_cabecera
         bcc     @mapper
-        jmp     falla                   ; A = L_*
+        cmp     #L_NOINES
+        bne     @falla
+        jsr     fds_reconocer           ; ¿un disco FDS?
+        bcc     @fds
+        lda     #L_NOINES
+@falla: jmp     falla                   ; A = L_*
+@fds:   tax
+        bne     @falla                  ; imagen mal o disco con carga propia
+        jsr     fds_bios
+        bcs     @falla
+        lda     #L_FDSRBF               ; (etapa F1: aún no hay 254.RBF)
+        jmp     falla
 @mapper:
         ; ---- 1b. partidas
         jsr     tam_partida             ; con la cabecera aún en `sector`

@@ -1,6 +1,7 @@
 # Soporte del Famicom Disk System (FDS): diseño
 
-Estado: propuesta (2026-11-18). Nada implementado todavía.
+Estado (2026-11-19): diseño decidido (BIOS del usuario en la SD, parcheada por nuestro OS). Hecho: análisis de
+BIOS e imágenes (`tools/fds`, [fds-compatibilidad.md](fds-compatibilidad.md)) y reconocimiento en el OS (`os/src/fds.s`).
 
 ## El problema de fondo: la SRAM no se puede direccionar byte a byte
 En el N8 clon, **A0-A9 de las SRAM (PRG, PRG-RAM y CHR) vienen directos del bus de la consola**; la FPGA solo pone
@@ -24,7 +25,8 @@ cosa que un proyecto GPL no puede hacer. Nada de su código se usa: solo confirm
 
 ## Propuesta: BIOS del usuario parcheada en memoria + ventana de disco
 1. **BIOS**: la pone el usuario en la SD (no se distribuye: es de Nintendo), p. ej. `EDFC/DISKSYS.ROM` (8 KiB; se
-   aceptan las Rev 0/Rev 1, comprobadas por CRC). Nuestro OS la copia a la SRAM PRG y le aplica **parches propios**
+   aceptan Rev 1, Rev 0 y Twin Famicom, comprobadas por CRC32; las de emulador no: GameCube, 3DS y Game & Watch
+   llevan opcodes trampa o rutinas de disco vaciadas). Nuestro OS la copia a la SRAM PRG y le aplica **parches propios**
    (una lista de direcciones y bytes generada por nuestro código) solo en la copia en memoria.
 2. **Disco en la SRAM PRG**, cara k en `k × 64 KiB` (65 500 B; las 396 imágenes de la colección tienen 1 o 2 caras,
    sin cabecera fwNES; caben hasta 7 caras). BIOS en `0x7E000`.
@@ -33,6 +35,11 @@ cosa que un proyecto GPL no puede hacer. Nada de su código se usa: solo confirm
    el problema de arriba desaparece. Fuera de la transferencia la ventana está apagada (bus abierto, como el FDS).
 4. **Parches de la BIOS**: la transferencia real va por IRQ (`$4031` se lee solo en `$E1CE`/`$E1E5`, `$4024` se
    escribe en `$E1D1`/`$E6C0`; el control `$4025`/`$4030`/`$4032` en ~20 instrucciones de `$E6xx-$E7xx`, Rev 1).
+   El paso de cada byte es `$E7A3` (`CLI` y `JMP *`: espera la IRQ del disco, cuyo manejador en `$E1C7` lee
+   `$4031`, desapila y devuelve el byte) tras `$E794` (prepara `$0101` y `$4025`): enganchando esos dos puntos
+   pasan por nuestra rutina todas las transferencias de la BIOS. Las de fin de bloque (`$E706`, `$E729`) leen el
+   CRC y el estado; el HDL contestará «bien» o se enganchan también. En Rev 0 y Twin Famicom estas rutinas están
+   en las mismas direcciones y son iguales byte a byte.
    Se cambian las rutinas de bajo nivel (empezar bloque, pasar byte, fin de bloque, disco listo) por otras que
    mueven una «cabeza» sobre la ventana. Todo lo que está por encima (LoadFiles, WriteFile, la pantalla de arranque
    y las rutinas de utilidad que llaman los juegos) queda intacto. Carga varias veces más rápida que el disco real.
@@ -47,7 +54,7 @@ cosa que un proyecto GPL no puede hacer. Nada de su código se usa: solo confirm
    la SD y escribe solo los que cambiaron. **Apagar sin RESET pierde lo escrito** (igual que en el N8 original):
    se avisa en el LEEME.
 
-Límite conocido: los juegos que traen **su propia rutina de disco** (leen `$4031` sin pasar por la BIOS) no
+Límite conocido (medido: 17 de 396 en la colección, casi todos herramientas de copia): los juegos que traen **su propia rutina de disco** (leen `$4031` sin pasar por la BIOS) no
 cargarán con este método. Se medirán con el banco; si son importantes, se estudia un camino por hardware (búfer M4K).
 
 Alternativa a largo plazo: una **BIOS libre propia** (GPL) con las mismas direcciones de entrada que la de

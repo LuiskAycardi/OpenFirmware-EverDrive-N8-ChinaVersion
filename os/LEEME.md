@@ -211,7 +211,7 @@ encendida: el texto se prepara en la RAM y se sube a la PPU a dos filas por foto
 entradas por carpeta) y 8 carpetas de profundidad («Demasiadas carpetas»).
 
 **Memoria:** la caché de páginas, el texto de la lista y la ruta (clúster, página y fila del cursor y nombre de cada
-carpeta) están en el segmento `GRANDE` (`$E000-$FAFF`), dentro de la imagen del OS en la PRG-RAM: la BIOS lo deja a
+carpeta) están en el segmento `GRANDE` (`$E400-$FAFF`), dentro de la imagen del OS en la PRG-RAM: la BIOS lo deja a
 cero al encender y sobrevive a los resets y a la vuelta de un juego. Por eso, al volver de un juego con RESET, el menú
 abre su carpeta con el cursor sobre él; un reset estando en el menú se queda en la carpeta.
 
@@ -335,7 +335,7 @@ compara lo que se ve (el nombre largo sin `.nes`), hasta 31 caracteres; con clav
   **posición del recorrido** antes de ella (12 bytes) en los bancos 9-11. Esa RAM está libre en el menú: la partida
   del último juego se guarda al arrancar y la del siguiente se vuelve a cargar desde la SD al lanzarlo (si el
   lanzamiento falla, la carpeta se vuelve a recorrer para rehacer las claves).
-- El índice (2 bytes por entrada) va en la imagen del OS (`$D000-$DFFF`) y se ordena con *heapsort*. Cada fila se lee
+- El índice (2 bytes por entrada) va en la imagen del OS (`$D400-$E3FF`) y se ordena con *heapsort*. Cada fila se lee
   directamente desde su posición guardada: una o dos lecturas de la SD.
 - Sin orden (orden de la FAT, como antes): si queda una partida sin guardar en la RAM o la carpeta tiene más de
   **2046** entradas.
@@ -429,3 +429,25 @@ pila y sin ella; B al menú, que se mantiene tras un reset; otra BANCO.TXT vuelv
   LATCH (la consola, colgada o sin vídeo); hubo que apagar. No se repitió en tres tandas más (12 resets).
 
 Pendiente: CRC del juego.
+
+## Etapa F: discos del Famicom Disk System (`src/fds.s`), primera parte: reconocerlos
+
+Todavía no se lanzan (falta el `254.RBF`, ver [docs/fds-diseno.md](../docs/fds-diseno.md)), pero el OS ya los
+reconoce:
+
+- En el menú, los `.fds` salen sin la extensión, como los `.nes`. Con el cursor quieto, la fila 25 dice
+  `Disco FDS  2 caras  ABC r0` (caras, código del juego y revisión del bloque 1; sin código si no son letras o cifras,
+  como en los discos sin licencia), `Imagen FDS no válida` (el tamaño no es un múltiplo de 65 500 bytes, más la
+  cabecera fwNES si la lleva, o falta el bloque 1) o `Disco FDS con carga propia`.
+- «Carga propia» son los 17 discos de la colección que leen el disco sin la BIOS (herramientas de copia y cargadores de
+  Hacker International, ver [docs/fds-compatibilidad.md](../docs/fds-compatibilidad.md)). Se reconocen por el CRC32
+  de sus primeros 496 bytes (`src/fds_tablas.inc`, que genera `tools/fds/analizar.py --inc`).
+- Al lanzar un disco que vale, el OS busca la BIOS del usuario en **`EDFC/DISKSYS.ROM`** (8 KiB, no se distribuye) y
+  la reconoce por su CRC32: Rev 1, Rev 0 y Twin Famicom valen; las de emulador (GameCube, 3DS, Game & Watch) llevan
+  trampas que cuelgan una consola real. Mensajes: `Falta EDFC/DISKSYS.ROM`, `BIOS FDS de emulador`,
+  `BIOS FDS desconocida` y, con una buena, `BIOS FDS bien; falta 254.RBF`. La suma de la BIOS tarda ~1 s (CRC32 de
+  4 en 4 bits: en la ROM del OS no cabe la tabla de 1 KiB).
+- Para hacer sitio, la ROM del OS crece a `$8000-$D3FF`; TRABAJO pasa a `$D400-$E3FF` y GRANDE a `$E400-$FAFF`.
+
+Banco: `probar_os.py` prueba los nombres, la información y los mensajes con discos y BIOS sintéticos (datos propios
+con 4 bytes ajustados para dar el CRC32 que hace falta: ningún byte de Nintendo).

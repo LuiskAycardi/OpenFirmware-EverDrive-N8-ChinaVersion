@@ -13,6 +13,7 @@ Puede llevar delante la cabecera de fwNES (16 B: «FDS», $1A, número de caras,
 import zlib
 
 CARA = 65500
+INI = 496          # el OS identifica un disco por el CRC32 de sus primeros 496 bytes (un sector menos la cabecera fwNES)
 FIRMA = b'*NINTENDO-HVC*'
 
 # BIOS conocidas: CRC32 -> (nombre, estado, explicación). «si» = se puede parchear con los puntos de enganche de la

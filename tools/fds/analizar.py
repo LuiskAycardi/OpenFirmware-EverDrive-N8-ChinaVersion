@@ -30,6 +30,8 @@ ESCRITURA_BIOS = {0xE239: 'WriteFile', 0xE237: 'AppendFile', 0xE301: 'SetFileCou
 def analizar_fds(ruta):
     datos = open(ruta, 'rb').read()
     r = {'archivo': os.path.basename(ruta), 'crc32': f'{zlib.crc32(datos):08X}', 'problemas': []}
+    desp = 16 if datos[:4] == b'FDS\x1a' else 0
+    r['crc_ini'] = f'{zlib.crc32(datos[desp:desp + fds.INI]):08X}'     # el que calcula el OS (lista de los «no»)
     try:
         cs, r['fwnes'] = fds.caras(datos)
     except ValueError as e:
@@ -93,6 +95,7 @@ def main():
     ap.add_argument('carpeta')
     ap.add_argument('--md')
     ap.add_argument('--json')
+    ap.add_argument('--inc', help='tablas para el OS (os/src/fds_tablas.inc)')
     a = ap.parse_args()
     nombres = sorted(os.listdir(a.carpeta), key=str.lower)
     bios = []
@@ -114,8 +117,39 @@ def main():
     if a.json:
         with open(a.json, 'w') as f:
             json.dump({'bios': bios, 'juegos': juegos}, f, ensure_ascii=False, indent=1)
+    if a.inc:
+        escribir_inc(a.inc, juegos)
     if a.md:
         escribir_md(a.md, bios, juegos, cuenta)
+
+
+def escribir_inc(ruta, juegos):
+    """Tablas del OS: CRC32 de las BIOS (primero las que se parchean) y de los primeros fds.INI bytes de los discos
+    que no valen. Solo sumas: ningún byte de Nintendo."""
+    def dw(v):
+        return f'        .dword  ${v:08X}'
+    si_ = [c for c, b in fds.BIOS.items() if b[1] == 'si']
+    no_ = [c for c, b in fds.BIOS.items() if b[1] != 'si']
+    malos = sorted({int(j['crc_ini'], 16): j['archivo'] for j in juegos if j['estado'] == 'no'}.items())
+    L = ['; fds_tablas.inc — generado por tools/fds/analizar.py --inc (no editar a mano). GPL-3.0-or-later.',
+         '; Solo sumas CRC32: ningún byte de las BIOS ni de los juegos.', '',
+         f'FDS_INI     = {fds.INI}                ; bytes del principio del disco que entran en la suma de fds_malos',
+         f'FDS_BIOS_SI = {len(si_)}                  ; las primeras de fds_bios se pueden parchear',
+         f'FDS_BIOS_N  = {len(si_) + len(no_)}', f'FDS_MALOS_N = {len(malos)}', '',
+         'fds_bios_crc:']
+    L += [dw(c) + f'      ; {fds.BIOS[c][0]}' for c in si_ + no_]
+    tabla = []
+    for n in range(16):                       # CRC-32 de 4 en 4 bits: tabla[n] = n pasado 4 veces por el polinomio
+        c = n
+        for _ in range(4):
+            c = (c >> 1) ^ (0xEDB88320 if c & 1 else 0)
+        tabla.append(c)
+    L += ['', '; CRC-32 (polinomio $EDB88320 reflejado) de 4 en 4 bits', 'tabla_crc:']
+    L += [dw(c) for c in tabla]
+    L += ['', '; discos con rutina de disco propia (no cargan con la BIOS parcheada)', 'fds_malos:']
+    L += [dw(c) + f'      ; {n[:-4]}' for c, n in malos]
+    with open(ruta, 'w') as f:
+        f.write('\n'.join(L) + '\n')
 
 
 def si(v):

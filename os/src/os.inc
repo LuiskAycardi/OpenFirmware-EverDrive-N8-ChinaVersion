@@ -65,4 +65,11 @@ M_GUARDADA   = 15
 M_NOGUARDADA = 16               ; (pt_err)
 M_PERDIDA    = 17
 M_NOARCH     = 18               ; modo banco: la ruta de la lista no está en la SD
+; discos FDS (fds.s)
+L_FDSMAL    = 19                ; imagen .fds mal formada (tamaño o bloque 1)
+L_FDSNO     = 20                ; disco con rutina de disco propia: no carga con la BIOS parcheada
+L_SINBIOS   = 21                ; no está EDFC/DISKSYS.ROM
+L_BIOSEMU   = 22                ; BIOS FDS de un emulador (no corre en una consola)
+L_BIOSRARA  = 23                ; BIOS FDS desconocida o de otro tamaño
+L_FDSRBF    = 24                ; BIOS bien, pero aún no hay 254.RBF (etapa F1)
 

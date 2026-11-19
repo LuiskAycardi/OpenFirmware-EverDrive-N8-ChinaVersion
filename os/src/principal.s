@@ -36,6 +36,7 @@
         .import orden_puesto
         .importzp ord_src, ord_k, ord_n
         .import leer_cabecera, l_prg16, l_chr8, l_cfg, arch_abrir, arch_leer
+        .import fds_reconocer, fds_caras, fds_cod, fds_rev
         .importzp l_mapper
         .importzp dir_ent, dir_pos, clus
 
@@ -1217,7 +1218,7 @@ car83:  cmp     #$20
 @raro:  lda     #'?'
 @ya:    rts
 
-; Quita «.nes» (en mayúsculas o minúsculas) del final del nombre de (src).
+; Quita «.nes» o «.fds» (en mayúsculas o minúsculas) del final del nombre de (src).
 quitar_nes:
         ldy     #0
 @l:     lda     (src),y
@@ -1236,14 +1237,22 @@ quitar_nes:
         dey
         lda     (src),y
         ora     #$20
-        cmp     #'e'
-        bne     @no
+        sta     tmp2
         dey
         lda     (src),y
         ora     #$20
         cmp     #'n'
+        bne     @f
+        lda     tmp2
+        cmp     #'e'
         bne     @no
-        dey
+        beq     @p
+@f:     cmp     #'f'
+        bne     @no
+        lda     tmp2
+        cmp     #'d'
+        bne     @no
+@p:     dey
         lda     (src),y
         cmp     #'.'
         bne     @no
@@ -1312,7 +1321,15 @@ info_de_ent:
         rts
 :       jsr     leer_cabecera
         bcc     @rom
-        tax                             ; no se puede lanzar: el mismo texto que al intentarlo
+        cmp     #L_NOINES
+        bne     @msj
+        jsr     fds_reconocer           ; ¿un disco FDS?
+        bcs     @noines
+        tax
+        bne     @msj
+        jmp     info_fds
+@noines: lda    #L_NOINES
+@msj:   tax                             ; no se puede lanzar: el mismo texto que al intentarlo
         lda     mensajes_lo-1,x
         sta     src
         lda     mensajes_hi-1,x
@@ -1379,6 +1396,63 @@ info_de_ent:
         lda     #>t_pila
         sta     src+1
         jmp     copia_src
+@fin:   rts
+
+; «Disco FDS  2 caras  SMB r0» (el código y la revisión del bloque 1, si el código son letras o cifras).
+info_fds:
+        ldy     #0
+        lda     #<t_fds
+        sta     src
+        lda     #>t_fds
+        sta     src+1
+        jsr     copia_src
+        lda     fds_caras
+        ora     #'0'
+        sta     (dst),y
+        iny
+        lda     #<t_caras
+        sta     src
+        lda     #>t_caras
+        sta     src+1
+        lda     fds_caras
+        cmp     #1
+        bne     :+
+        lda     #<t_cara
+        sta     src
+        lda     #>t_cara
+        sta     src+1
+:       jsr     copia_src
+        ldx     #2                      ; ¿código legible?
+@l:     lda     fds_cod,x
+        cmp     #'0'
+        bcc     @fin
+        cmp     #'Z' + 1
+        bcs     @fin
+        dex
+        bpl     @l
+        lda     #' '
+        sta     (dst),y
+        iny
+        sta     (dst),y
+        iny
+        ldx     #0
+@c:     lda     fds_cod,x
+        sta     (dst),y
+        iny
+        inx
+        cpx     #3
+        bne     @c
+        lda     #' '
+        sta     (dst),y
+        iny
+        lda     #'r'
+        sta     (dst),y
+        iny
+        lda     fds_rev
+        sta     w16
+        lda     #0
+        sta     w16+1
+        jsr     dec16
 @fin:   rts
 
 subir_info:
@@ -1906,6 +1980,9 @@ t_vacia:    .byte "(carpeta vac", C_i, "a)", 0
 t_mapper:   .byte "Mapper ", 0
 t_pila:     .byte "  pila", 0
 t_ram:      .byte "RAM", 0
+t_fds:      .byte "Disco FDS  ", 0
+t_caras:    .byte " caras", 0
+t_cara:     .byte " cara", 0
 firma_ult:  .byte "N8UL"
 
 ; fila de la lista -> dirección de la PPU de su cursor (columna 1)
@@ -1966,8 +2043,14 @@ m15:    .byte "Partida guardada", 0
 m16:    .byte "Partida no guardada: ", 0
 m17:    .byte "Partida no encontrada", 0
 m18:    .byte "No encuentro el archivo", 0
-mensajes_lo: .byte <m1, <m2, <m3, <m4, <m5, <m6, <m7, <m8, <m9, <m10, <m11, <m12, <m13, <m14, <m15, <m16, <m17, <m18
-mensajes_hi: .byte >m1, >m2, >m3, >m4, >m5, >m6, >m7, >m8, >m9, >m10, >m11, >m12, >m13, >m14, >m15, >m16, >m17, >m18
+m19:    .byte "Imagen FDS no v", C_a, "lida", 0
+m20:    .byte "Disco FDS con carga propia", 0
+m21:    .byte "Falta EDFC/DISKSYS.ROM", 0
+m22:    .byte "BIOS FDS de emulador", 0
+m23:    .byte "BIOS FDS desconocida", 0
+m24:    .byte "BIOS FDS bien; falta 254.RBF", 0
+mensajes_lo: .byte <m1, <m2, <m3, <m4, <m5, <m6, <m7, <m8, <m9, <m10, <m11, <m12, <m13, <m14, <m15, <m16, <m17, <m18, <m19, <m20, <m21, <m22, <m23, <m24
+mensajes_hi: .byte >m1, >m2, >m3, >m4, >m5, >m6, >m7, >m8, >m9, >m10, >m11, >m12, >m13, >m14, >m15, >m16, >m17, >m18, >m19, >m20, >m21, >m22, >m23, >m24
 
 cifras:
         .byte   "0123456789ABCDEF"
