@@ -35,14 +35,8 @@ INSTR_FOTOGRAMA = 29780 // 3
 
 class Maquina:
     def __init__(self, bios, parche, caras):
-        self.sram = bytearray(512 * 1024)
-        for k, c in enumerate(caras):
-            self.sram[k * 0x10000:k * 0x10000 + len(c)] = c
-        self.sram[0x7D000:0x7D000 + len(parche)] = parche
-        self.sram[0x7DFFF] = len(caras)
-        b = bytearray(bios)
-        self.enganches = aplicar(b, parche)
-        self.sram[0x7E000:0x80000] = b
+        self.sram = fds.montar_sram(bios, parche, caras)
+        self.enganches = fds.aplicar_parche(bytearray(bios), parche)
         self.ram = bytearray(0x800)
         self.wram = bytearray(0x8000)               # $6000-$DFFF
         self.vram = bytearray(0x4000)
@@ -250,22 +244,6 @@ def prueba_api(m, caras):
     else:
         res.append((True, f'cara 1: sin escritura (el último archivo mide {len(d)} B)'))
     return res
-
-
-def aplicar(bios, parche):
-    """Aplica a la BIOS (bytearray de 8 KiB) la tabla de enganches del bloque del parche. Devuelve la lista."""
-    assert parche[:5] == b'N8FDS', 'el bloque del parche no empieza por N8FDS'
-    p = (parche[6] | parche[7] << 8) - 0x5000
-    hechos = []
-    while True:
-        dire = parche[p] | parche[p + 1] << 8
-        if dire == 0:
-            return hechos
-        n = parche[p + 2]
-        datos = parche[p + 3:p + 3 + n]
-        bios[dire - 0xE000:dire - 0xE000 + n] = datos
-        hechos.append((dire, bytes(datos)))
-        p += 3 + n
 
 
 def comprobar_carga(m, cara):

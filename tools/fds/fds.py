@@ -108,3 +108,49 @@ def accesos(datos, base):
             nombre = LEER.get(op) or ESCRIBIR[op]
             r.setdefault((nombre, a), []).append(base + i)
     return r
+
+
+# ------------------------------------------------------------------ la SRAM PRG del N8 con un disco cargado
+SRAM = 512 * 1024
+DIR_PARCHE = 0x7D000            # bloque del parche (corre en $5000); en 0x7DFFF, el número de caras
+DIR_BIOS = 0x7E000              # la BIOS parcheada (corre en $E000)
+
+
+def aplicar_parche(bios, parche):
+    """Aplica a la BIOS (bytearray de 8 KiB) la tabla de enganches del bloque del parche (os/src/fds_parche.s).
+    Devuelve la lista de (dirección, bytes) aplicados."""
+    if parche[:5] != b'N8FDS':
+        raise ValueError('el bloque del parche no empieza por N8FDS')
+    p = (parche[6] | parche[7] << 8) - 0x5000
+    hechos = []
+    while True:
+        dire = parche[p] | parche[p + 1] << 8
+        if dire == 0:
+            return hechos
+        n = parche[p + 2]
+        datos = parche[p + 3:p + 3 + n]
+        bios[dire - 0xE000:dire - 0xE000 + n] = datos
+        hechos.append((dire, bytes(datos)))
+        p += 3 + n
+
+
+def montar_sram(bios, parche, caras):
+    """La SRAM PRG tal y como la deja el OS antes de lanzar un disco (ver hdl/rtl/mapper_fds.v)."""
+    if len(caras) > 7:
+        raise ValueError(f'{len(caras)} caras: caben 7')
+    s = bytearray(SRAM)
+    for k, c in enumerate(caras):
+        s[k * 0x10000:k * 0x10000 + len(c)] = c
+    s[DIR_PARCHE:DIR_PARCHE + len(parche)] = parche
+    s[DIR_PARCHE + 0xFFF] = len(caras)
+    b = bytearray(bios)
+    aplicar_parche(b, parche)
+    s[DIR_BIOS:DIR_BIOS + 0x2000] = b
+    return s
+
+
+def imagen_ines(bios, parche, caras):
+    """Contenedor iNES (mapper 254, 512 KiB de PRG = la SRAM montada, CHR-RAM) para el simulador del N8: es lo
+    mismo que el OS deja en la SRAM al lanzar el disco. Solo para pruebas locales: lleva la BIOS del usuario."""
+    cab = b'NES\x1a' + bytes([32, 0, 0xE0, 0xF0]) + bytes(8)
+    return cab + bytes(montar_sram(bios, parche, caras))

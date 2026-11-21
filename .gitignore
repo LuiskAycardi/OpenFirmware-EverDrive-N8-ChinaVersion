@@ -74,3 +74,4 @@ __pycache__/
 
 # OS propio: salida de compilación
 /os/build/
+tools/fds/salida_mesen/
