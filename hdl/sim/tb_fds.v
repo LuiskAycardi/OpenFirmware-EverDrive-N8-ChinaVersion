@@ -44,21 +44,31 @@ module tb_fds;
         cpu_write(16'h5000, 8'h00);
         check(!last_prg_we && !last_ram_ce, "FDS: el parche no se escribe");
 
-        // ================================================= ventana del disco
+        // ================================================= ventana del disco y cabeza
         cpu_read(16'h4800);
         check(!last_prg_ce && !last_ram_ce, "FDS: ventana apagada al empezar");
-        cpu_write(16'h4211, 8'hFF);
         cpu_write(16'h4212, 8'hFD);
-        expect_read(16'h4211, 8'hFF, 8'h1F, "FDS: $4211 = banco (5 bits)");
+        cpu_write(16'h4213, 8'hFF);
+        cpu_write(16'h4214, 8'hFB);
         expect_read(16'h4212, 8'hFF, 8'h05, "FDS: $4212 = cara (3 bits)");
+        expect_read(16'h4213, 8'hFF, 8'hFF, "FDS: $4213 = cabeza, byte bajo");
+        expect_read(16'h4214, 8'hFF, 8'hFB, "FDS: $4214 = cabeza, byte alto");
+        cpu_write(16'h4215, 8'h00);
+        expect_read(16'h4213, 8'hFF, 8'h00, "FDS: $4215 avanza la cabeza (bajo)");
+        expect_read(16'h4214, 8'hFF, 8'hFC, "FDS: y lleva al byte alto");
         cpu_write(16'h4210, 8'h01);
-        expect_prg(16'h4800, 19'h5F800, "FDS: ventana = cara 5, banco 31");
-        expect_prg(16'h4FFF, 19'h5FFFF, "FDS: final de la ventana");
-        cpu_write(16'h4C01, 8'h77);
-        check(last_prg_we && last_prg_ce && !last_ram_ce && last_prg_addr == 19'h5FC01, "FDS: escribir el disco");
-        cpu_write(16'h4211, 8'h00);
+        expect_prg(16'h4800, 19'h5FC00, "FDS: ventana = cara 5, banco de 1 KB de la cabeza ($FC00)");
+        expect_prg(16'h4BFF, 19'h5FFFF, "FDS: final de la ventana");
+        cpu_read(16'h4C00);
+        check(!last_prg_ce, "FDS: $4C00 ya no es ventana");
+        cpu_write(16'h4A01, 8'h77);
+        check(last_prg_we && last_prg_ce && !last_ram_ce && last_prg_addr == 19'h5FE01, "FDS: escribir el disco");
+        cpu_write(16'h4216, 8'h3C);
+        expect_read(16'h4216, 8'hFF, 8'h3C, "FDS: $4216 byte de apoyo");
         cpu_write(16'h4212, 8'h00);
-        expect_prg(16'h4800, 19'h00000, "FDS: cara 0, banco 0 = 0x00000");
+        cpu_write(16'h4213, 8'h00);
+        cpu_write(16'h4214, 8'h00);
+        expect_prg(16'h4800, 19'h00000, "FDS: cara 0, cabeza 0 = 0x00000");
         cpu_write(16'h4210, 8'h00);
         cpu_read(16'h4800);
         check(!last_prg_ce, "FDS: ventana apagada otra vez");
@@ -126,7 +136,7 @@ module tb_fds;
         // ================================================= vuelta al menú
         back_to_menu;
         check(!irq_on, "OS: sin IRQ en el menu");
-        expect_read(16'h4211, 8'h00, 8'h00, "OS: $4211 no conduce");
+        expect_read(16'h4213, 8'h00, 8'h00, "OS: $4213 no conduce");
         cpu_write(16'h4C00, 8'h01);
         check(last_prg_we && last_prg_ce, "OS: $4C00 vuelve a ser la ventana del OS (escribe)");
 

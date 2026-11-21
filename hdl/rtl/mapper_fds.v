@@ -12,7 +12,8 @@
 // CPU: $E000-$FFFF  BIOS (SRAM PRG 0x7E000, solo lectura)
 //      $6000-$DFFF  RAM del FDS, 32 KB: PRG-RAM, bancos de 8 KB 0-3
 //      $5000-$5FFF  código del parche (SRAM PRG 0x7D000, solo lectura)
-//      $4800-$4FFF  ventana del disco (con $4210 D0 = 1): SRAM PRG {cara, banco, A10-A0}, lectura y escritura
+//      $4800-$4BFF  ventana del disco (con $4210 D0 = 1): 1 KB de la cara en el banco de la cabeza, SRAM PRG
+//                   {cara, cabeza[15:10], A9-A0}, lectura y escritura
 //      registros del FDS (NESdev, «Family Computer Disk System»):
 //        $4020/$4021 recarga del temporizador (byte bajo/alto)
 //        $4022       D0 = repetir, D1 = activar (con $4023 D0): copia la recarga en el contador; con D1 = 0 la
@@ -27,8 +28,10 @@
 //         la IRQ igual, porque la FPGA ve la dirección)
 //      registros privados (para la BIOS parcheada):
 //        $4210       D0 = ventana del disco activa
-//        $4211       D4-D0 = banco de 2 KB de la cara (A15-A11), legible
 //        $4212       D2-D0 = cara (A18-A16), legible
+//        $4213/$4214 posición de la cabeza en la cara (byte bajo/alto), legible
+//        $4215       (escr.) la cabeza avanza un byte
+//        $4216       un byte de apoyo para el parche (que no puede usar la RAM del juego), legible
 //        $4230 (lect.) como $4030 (también reconoce la IRQ)
 // Temporizador: con la IRQ activa, en cada ciclo de CPU: si el contador vale 0, pide IRQ y recarga (y sin
 // «repetir» se para); si no, resta 1. Mismo comportamiento que Mesen2 (leído para los detalles, nada copiado).
@@ -69,11 +72,12 @@ module mapper_fds (
     reg        t_rep, t_act, t_irq;
     reg        disco_en, sonido_en, mir_h;
     reg        ventana_en;
-    reg [4:0]  banco;
+    reg [15:0] cabeza;
+    reg [7:0]  apoyo;
     reg [2:0]  cara;
     initial begin
         recarga = 0; cuenta = 0; t_rep = 0; t_act = 0; t_irq = 0;
-        disco_en = 1; sonido_en = 1; mir_h = 0; ventana_en = 0; banco = 0; cara = 0;
+        disco_en = 1; sonido_en = 1; mir_h = 0; ventana_en = 0; cabeza = 0; apoyo = 0; cara = 0;
     end
 
     wire io     = romsel_n && (cpu_a[14:8] == 7'h40);              // $4000-$40FF
@@ -86,7 +90,7 @@ module mapper_fds (
     always @(negedge m2) begin
         if (rst) begin
             recarga <= 0; cuenta <= 0; t_rep <= 0; t_act <= 0; t_irq <= 0;
-            disco_en <= 1; sonido_en <= 1; mir_h <= 0; ventana_en <= 0; banco <= 0; cara <= 0;
+            disco_en <= 1; sonido_en <= 1; mir_h <= 0; ventana_en <= 0; cabeza <= 0; apoyo <= 0; cara <= 0;
         end else begin
             // temporizador: un paso por ciclo de CPU
             c_cuenta = cuenta; c_act = t_act; c_irq = t_irq;
@@ -121,8 +125,11 @@ module mapper_fds (
             if (!cpu_rw && priv) begin
                 case (cpu_a[7:0])
                     8'h10: ventana_en <= cpu_d[0];
-                    8'h11: banco <= cpu_d[4:0];
                     8'h12: cara  <= cpu_d[2:0];
+                    8'h13: cabeza[7:0]  <= cpu_d;
+                    8'h14: cabeza[15:8] <= cpu_d;
+                    8'h15: cabeza <= cabeza + 16'd1;
+                    8'h16: apoyo <= cpu_d;
                     default: ;
                 endcase
             end
@@ -136,12 +143,12 @@ module mapper_fds (
     wire ram_hi  = !romsel_n && (cpu_a[14:13] != 2'b11);           // $8000-$DFFF
     wire ram_6   = romsel_n && (cpu_a[14:13] == 2'b11);            // $6000-$7FFF
     wire parche  = romsel_n && (cpu_a[14:12] == 3'b101);           // $5000-$5FFF
-    wire ventana = romsel_n && (cpu_a[14:11] == 4'b1001) && ventana_en;   // $4800-$4FFF
+    wire ventana = romsel_n && (cpu_a[14:10] == 5'b10010) && ventana_en;  // $4800-$4BFF
     wire [1:0] banco_ram = ram_6 ? 2'd0 : (cpu_a[14:13] + 2'd1);   // $6000=0, $8000=1, $A000=2, $C000=3
 
     assign prg_a = bios    ? {6'b111111, cpu_a[12:10]} :            // 0x7E000
                    parche  ? {7'b1111101, cpu_a[11:10]} :           // 0x7D000
-                   ventana ? {cara, banco, cpu_a[10]} :
+                   ventana ? {cara, cabeza[15:10]} :
                              {4'd0, banco_ram, cpu_a[12:10]};       // PRG-RAM 8 KB * banco_ram
     assign prg_rom_en = bios || ((parche || ventana) && m2);
     assign prg_ram_en = (ram_6 || ram_hi) && m2;
@@ -152,19 +159,23 @@ module mapper_fds (
     wire r30  = io && cpu_a[7:0] == 8'h30 && disco_en;
     wire r32  = io && cpu_a[7:0] == 8'h32 && disco_en;
     wire r33  = io && cpu_a[7:0] == 8'h33 && disco_en;
-    wire p11  = priv && cpu_a[7:0] == 8'h11;
     wire p12  = priv && cpu_a[7:0] == 8'h12;
+    wire p13  = priv && cpu_a[7:0] == 8'h13;
+    wire p14  = priv && cpu_a[7:0] == 8'h14;
+    wire p16  = priv && cpu_a[7:0] == 8'h16;
     wire p30  = priv && cpu_a[7:0] == 8'h30;
     assign cpu_doe  = !cpu_rw ? 8'h00 :
                       (r30 || p30) ? 8'hDB :          // D2 y D5: bus abierto
                       r32 ? 8'h07 :
                       r33 ? 8'h80 :
-                      (p11 || p12) ? 8'hFF : 8'h00;
+                      (p12 || p13 || p14 || p16) ? 8'hFF : 8'h00;
     assign cpu_dout = (r30 || p30) ? estado :
                       r32 ? 8'h00 :
                       r33 ? 8'h80 :
-                      p11 ? {3'b000, banco} :
-                      p12 ? {5'b00000, cara} : 8'h00;
+                      p12 ? {5'b00000, cara} :
+                      p13 ? cabeza[7:0] :
+                      p14 ? cabeza[15:8] :
+                      p16 ? apoyo : 8'h00;
 
     // ---------------------------------------------------------------- PPU e IRQ
     assign chr_a     = {6'd0, ppu_a[12:10]};
