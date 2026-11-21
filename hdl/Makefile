@@ -6,7 +6,7 @@
 #   make clean
 
 RTL  := $(wildcard rtl/*.v)
-TBS  := tb_nrom tb_fase1 tb_mmc3 tb_fase3 tb_fase3b tb_fase3c tb_sonido tb_fase3d tb_n163 tb_fase4 tb_mmc5 tb_mmc5_ext tb_mmc5_bus tb_snd_mmc5 tb_fase4_rest tb_misc4_direct tb_jy_direct tb_mmc3c_direct tb_fk23c_direct tb_eeprom_direct tb_vrc7_golden tb_pirate_direct tb_prueba254 tb_255
+TBS  := tb_nrom tb_fase1 tb_mmc3 tb_fase3 tb_fase3b tb_fase3c tb_sonido tb_fase3d tb_n163 tb_fase4 tb_mmc5 tb_mmc5_ext tb_mmc5_bus tb_snd_mmc5 tb_fase4_rest tb_misc4_direct tb_jy_direct tb_mmc3c_direct tb_fk23c_direct tb_eeprom_direct tb_vrc7_golden tb_pirate_direct tb_fds tb_255
 OUT  := out
 QDIR := quartus
 RBFS := 100 101 102 103 104 105 106 254 255

@@ -310,8 +310,8 @@ module n8_top (
     `N8_MAPPER_S(mapper_vrc7,      m085, bus_085, snd_085)   // VRC7 con su sonido FM (vrc7_fm.v)
 `endif
 `ifdef N8_RBF_254
-    // 254.RBF: de momento, la prueba F0 del FDS (escribir la SRAM PRG en modo juego, lecturas en $40xx)
-    `N8_MAPPER_D(mapper_prueba254, m254, bus_254, do_254, doe_254)
+    // 254.RBF: Famicom Disk System (BIOS del usuario parcheada por el OS; docs/fds-diseno.md)
+    `N8_MAPPER_D(mapper_fds, m254, bus_254, do_254, doe_254)
 `endif
     reg [26:0] g;
     always @(*) begin

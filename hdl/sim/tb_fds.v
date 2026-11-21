@@ -1,0 +1,137 @@
+// tb_fds.v — Testbench autoverificable del mapper FDS (254, mapper_fds.v): BIOS, RAM de 32 KB, zona del parche,
+// ventana del disco, temporizador IRQ, mirroring, CHR-RAM y lecturas conducidas. tb_bus.vh vigila además que la FPGA
+// solo conduzca en lecturas de registro. Ejecutar: make -C hdl sim
+`timescale 1ns/1ps
+
+module tb_fds;
+
+`include "tb_bus.vh"
+
+    // RAM del FDS: dirección que ve la PRG-RAM en el último ciclo
+    task expect_ram(input [15:0] addr, input wr, input [18:0] want, input [8*64-1:0] msg);
+        begin
+            cpu_cycle(addr, !wr, 8'h5A);
+            check(last_ram_ce && !last_prg_ce && last_prg_addr == want && (last_ram_we == wr) && !last_prg_we, msg);
+            if (!(last_ram_ce && last_prg_addr == want))
+                $display("      ram_ce %b prg_ce %b dir 0x%05h, esperada 0x%05h", last_ram_ce, last_prg_ce,
+                         last_prg_addr, want);
+        end
+    endtask
+
+    task ciclos(input integer n);
+        integer i;
+        begin for (i = 0; i < n; i = i + 1) cpu_read(16'h0000); end
+    endtask
+
+    wire irq_on = (irq_n === 1'b0);
+
+    initial begin
+        repeat (4) cpu_read(16'h0000);
+        start_game(8'd254, 5'b00000, CHR_RAM, 8'd0);
+
+        // ================================================= memoria
+        expect_prg(16'hE000, 19'h7E000, "FDS: $E000 = BIOS (0x7E000)");
+        expect_prg(16'hFFFC, 19'h7FFFC, "FDS: vectores de la BIOS");
+        cpu_write(16'hE123, 8'h00);
+        check(!last_prg_we && !last_ram_we, "FDS: la BIOS no se escribe");
+        expect_ram(16'h6000, 0, 19'h00000, "FDS: $6000 = RAM 0x0000");
+        expect_ram(16'h7FFF, 1, 19'h01FFF, "FDS: escribir $7FFF = RAM 0x1FFF");
+        expect_ram(16'h8000, 1, 19'h02000, "FDS: escribir $8000 = RAM 0x2000");
+        expect_ram(16'hC123, 0, 19'h06123, "FDS: $C123 = RAM 0x6123");
+        expect_ram(16'hDFFF, 1, 19'h07FFF, "FDS: escribir $DFFF = RAM 0x7FFF");
+        expect_prg(16'h5000, 19'h7D000, "FDS: $5000 = parche (0x7D000)");
+        expect_prg(16'h5FFF, 19'h7DFFF, "FDS: $5FFF = parche (0x7DFFF)");
+        cpu_write(16'h5000, 8'h00);
+        check(!last_prg_we && !last_ram_ce, "FDS: el parche no se escribe");
+
+        // ================================================= ventana del disco
+        cpu_read(16'h4800);
+        check(!last_prg_ce && !last_ram_ce, "FDS: ventana apagada al empezar");
+        cpu_write(16'h4211, 8'hFF);
+        cpu_write(16'h4212, 8'hFD);
+        expect_read(16'h4211, 8'hFF, 8'h1F, "FDS: $4211 = banco (5 bits)");
+        expect_read(16'h4212, 8'hFF, 8'h05, "FDS: $4212 = cara (3 bits)");
+        cpu_write(16'h4210, 8'h01);
+        expect_prg(16'h4800, 19'h5F800, "FDS: ventana = cara 5, banco 31");
+        expect_prg(16'h4FFF, 19'h5FFFF, "FDS: final de la ventana");
+        cpu_write(16'h4C01, 8'h77);
+        check(last_prg_we && last_prg_ce && !last_ram_ce && last_prg_addr == 19'h5FC01, "FDS: escribir el disco");
+        cpu_write(16'h4211, 8'h00);
+        cpu_write(16'h4212, 8'h00);
+        expect_prg(16'h4800, 19'h00000, "FDS: cara 0, banco 0 = 0x00000");
+        cpu_write(16'h4210, 8'h00);
+        cpu_read(16'h4800);
+        check(!last_prg_ce, "FDS: ventana apagada otra vez");
+
+        // ================================================= temporizador
+        check(!irq_on, "FDS: sin IRQ al empezar");
+        cpu_write(16'h4020, 8'h05);
+        cpu_write(16'h4021, 8'h00);
+        cpu_write(16'h4022, 8'h02);                 // activa, sin repetir: cuenta 5..0 y pide en el 6.º ciclo
+        ciclos(5);
+        check(!irq_on, "FDS: 5 ciclos: aun sin IRQ");
+        ciclos(1);
+        check(irq_on, "FDS: 6.o ciclo: IRQ");
+        expect_read(16'h4030, 8'hDB, 8'h01, "FDS: $4030 D0 = IRQ");
+        check(!irq_on, "FDS: leer $4030 reconoce");
+        ciclos(20);
+        check(!irq_on, "FDS: sin repetir no vuelve");
+        cpu_write(16'h4022, 8'h03);                 // repetir
+        ciclos(6);
+        check(irq_on, "FDS: repetir: IRQ a los 6");
+        expect_read(16'h4230, 8'hDB, 8'h01, "FDS: $4230 = estado");
+        check(!irq_on, "FDS: leer $4230 reconoce");
+        ciclos(4);
+        check(!irq_on, "FDS: repetir: recarga con $4020/$4021 (aun sin IRQ)");
+        ciclos(1);
+        check(irq_on, "FDS: repetir: otra IRQ (periodo 6 contando la lectura)");
+        cpu_write(16'h4022, 8'h00);
+        check(!irq_on, "FDS: $4022 con D1 = 0 reconoce");
+        cpu_write(16'h4022, 8'h03);
+        ciclos(3);
+        cpu_write(16'h4023, 8'h00);
+        check(!irq_on, "FDS: $4023 D0 = 0 para");
+        ciclos(20);
+        check(!irq_on, "FDS: y no vuelve");
+        cpu_write(16'h4022, 8'h02);
+        ciclos(20);
+        check(!irq_on, "FDS: con el disco apagado ($4023) no se activa");
+        cpu_write(16'h4023, 8'h83);
+        cpu_write(16'h4020, 8'h00);
+        cpu_write(16'h4021, 8'h01);                 // 256
+        cpu_write(16'h4022, 8'h02);
+        ciclos(256);
+        check(!irq_on, "FDS: recarga de 16 bits: 256 ciclos sin IRQ");
+        ciclos(1);
+        check(irq_on, "FDS: y al 257.o, IRQ");
+        cpu_read(16'h4030);
+
+        // ================================================= mirroring, CHR, estado
+        cpu_write(16'h4025, 8'h00);
+        expect_a10(14'h2400, 1'b1, "FDS: vertical: $2400 = A10");
+        expect_a10(14'h2800, 1'b0, "FDS: vertical: $2800 = 0");
+        cpu_write(16'h4025, 8'h08);
+        expect_a10(14'h2400, 1'b0, "FDS: horizontal: $2400 = 0");
+        expect_a10(14'h2800, 1'b1, "FDS: horizontal: $2800 = A11");
+        expect_read(16'h4030, 8'hDB, 8'h08, "FDS: $4030 D3 = mirroring");
+        expect_read(16'h4032, 8'h07, 8'h00, "FDS: $4032 = dentro, listo, sin proteccion");
+        expect_read(16'h4033, 8'h80, 8'h80, "FDS: $4033 D7 = bateria bien");
+        expect_read(16'h4031, 8'h00, 8'h00, "FDS: $4031 no se conduce");
+        expect_read(16'h4210, 8'h00, 8'h00, "FDS: $4210 no se lee");
+        expect_chr(14'h1FFF, 19'h01FFF, "FDS: CHR-RAM de 8 KB");
+        ppu_access(14'h0123, 1);
+        check(!chr_we_n && !chr_ce_n, "FDS: la CHR-RAM se escribe");
+        ppu_access(14'h0000, 0);
+
+        // ================================================= vuelta al menú
+        back_to_menu;
+        check(!irq_on, "OS: sin IRQ en el menu");
+        expect_read(16'h4211, 8'h00, 8'h00, "OS: $4211 no conduce");
+        cpu_write(16'h4C00, 8'h01);
+        check(last_prg_we && last_prg_ce, "OS: $4C00 vuelve a ser la ventana del OS (escribe)");
+
+        if (errors == 0) $display("tb_fds: todo bien");
+        else $display("tb_fds: %0d FALLO(S)", errors);
+        $finish;
+    end
+endmodule

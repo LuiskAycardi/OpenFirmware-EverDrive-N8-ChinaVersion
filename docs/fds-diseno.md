@@ -75,7 +75,15 @@ Nintendo. Evita pedir la BIOS al usuario, pero es mucho más trabajo (los juegos
 ## Etapas
 - **F0, prueba en la consola** (hecha, ver arriba): un RBF mínimo que escriba la SRAM PRG en modo juego y conduzca lecturas en
   `$4020-$4FFF` (confirma que el CPLD no lo bloquea).
-- **F1, HDL**: `mapper_fds.v` (registros, IRQ del temporizador, ventana, mirroring) en un RBF 254 propio, con
+- **F1, HDL** (hecha el 2026-11-20): `hdl/rtl/mapper_fds.v` en el `254.RBF`, `hdl/sim/tb_fds.v` (con 5 mutaciones
+  que el banco detecta). Mapa:
+  - SRAM PRG: cara k en `k × 64 KiB` (k = 0-6), código del parche en `0x7D000` (4 KiB), BIOS en `0x7E000` (8 KiB).
+  - CPU: `$E000-$FFFF` BIOS; `$6000-$DFFF` RAM de 32 KiB (PRG-RAM, bancos 0-3); `$5000-$5FFF` parche (solo
+    lectura); `$4800-$4FFF` ventana del disco con `$4210` D0 = 1, cara en `$4212` (D2-D0) y banco de 2 KiB en
+    `$4211` (D4-D0), los dos legibles; `$4230` = `$4030` (legible en la NES).
+  - FDS: `$4020-$4023` temporizador y habilitación, `$4025` D3 mirroring; `$4030` D0 IRQ / D3 mirroring (leerlo
+    reconoce), `$4032` = dentro y listo, `$4033` D7 = batería bien (estas tres solo llegan si la placa lo deja).
+  - Sin sonido (F6) ni IRQ del disco (la BIOS parcheada no la usa).
   testbench y mutaciones; MAPROUT[254] = 254.
 - **F2, parches**: `os/herramientas/` saca de la BIOS del usuario las direcciones que hay que tocar y comprueba
   la versión; el parche va en el OS (código propio).

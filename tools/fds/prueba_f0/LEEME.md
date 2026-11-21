@@ -4,7 +4,8 @@ Comprueba en la consola lo único del soporte FDS que depende del hardware y no 
 **escribir la SRAM PRG en modo juego** (ahí vivirán la BIOS y las caras del disco) y **conducir lecturas en
 `$40xx`** (los registros del FDS). Ver [docs/fds-diseno.md](../../../docs/fds-diseno.md).
 
-- `hdl/rtl/mapper_prueba254.v`: mapper 254 de prueba, solo en el `254.RBF` (`make -C hdl out/254.RBF`).
+- `hdl/rtl/mapper_prueba254.v` (retirado al llegar el mapper FDS; está en el commit b4ac387): mapper 254 de prueba,
+  en el `254.RBF` de entonces.
   Ventana `$4800-$4FFF` a la SRAM PRG (banco en `$40F0`); en las lecturas de `$4020-$7FFF` (salvo `$4400-$45FF` y la
   ventana) conduce `$A5`, y en `$40F2` el banco. No toca la PRG-RAM.
 - `f0.s`: la ROM (`make` aquí → `PRUEBA_F0.nes`, mapper 254). Lee 19 direcciones de `$4020-$7FFF`, escribe y relee
