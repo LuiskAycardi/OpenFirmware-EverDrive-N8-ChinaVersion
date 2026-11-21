@@ -19,6 +19,7 @@
 `ifndef N8_RBF_104
 `ifndef N8_RBF_105
 `ifndef N8_RBF_106
+`ifndef N8_RBF_254
 `define N8_RBF_100
 `define N8_RBF_101
 `define N8_RBF_102
@@ -26,6 +27,8 @@
 `define N8_RBF_104
 `define N8_RBF_105
 `define N8_RBF_106
+`define N8_RBF_254
+`endif
 `endif
 `endif
 `endif
@@ -306,6 +309,10 @@ module n8_top (
 `ifdef N8_RBF_106
     `N8_MAPPER_S(mapper_vrc7,      m085, bus_085, snd_085)   // VRC7 con su sonido FM (vrc7_fm.v)
 `endif
+`ifdef N8_RBF_254
+    // 254.RBF: de momento, la prueba F0 del FDS (escribir la SRAM PRG en modo juego, lecturas en $40xx)
+    `N8_MAPPER_D(mapper_prueba254, m254, bus_254, do_254, doe_254)
+`endif
     reg [26:0] g;
     always @(*) begin
         case (mapper_id)
@@ -400,6 +407,9 @@ module n8_top (
 `ifdef N8_RBF_106
             8'd85:                             g = bus_085;
 `endif
+`ifdef N8_RBF_254
+            8'd254:                            g = bus_254;
+`endif
             default:                          g = bus_000;
         endcase
     end
@@ -434,6 +444,9 @@ module n8_top (
             8'd121,8'd165,8'd219,8'd248: begin g_dout=do_504; g_doe=doe_504; end
             8'd59,8'd83: begin g_dout=do_559; g_doe=doe_559; end
 `endif
+`ifdef N8_RBF_254
+            8'd254: begin g_dout=do_254; g_doe=doe_254; end
+`endif
             default: ;
         endcase
     end
@@ -464,8 +477,9 @@ module n8_top (
     // PRG A12-A10 van siempre directos de la CPU en el juego: ningún mapper tiene bancos de PRG de menos de
     // 8 KB (comprobado en todos los módulos el 2026-11-05). Así el selector no los multiplexa (en el OS no:
     // su ventana de $4800 es de 2 KB).
-    // Excepciones: 31 (bancos de 4 KB) y 103 (página de RAM en $B800-$D7FF, desplazada) dan A12-A10 ellos mismos.
-    wire prg_low_map = (mapper_id == 8'd31) || (mapper_id == 8'd103);
+    // Excepciones: 31 (bancos de 4 KB), 103 (página de RAM en $B800-$D7FF, desplazada) y 254 (ventana de 2 KB a la
+    // SRAM PRG en $4800) dan A12-A10 ellos mismos.
+    wire prg_low_map = (mapper_id == 8'd31) || (mapper_id == 8'd103) || (mapper_id == 8'd254);
     wire [18:10] s_prg_a  = os_mode ? os_prg_a      : prg_low_map ? g_prg_a : {g_prg_a[18:13], cpu_a[12:10]};
     wire [18:10] s_chr_a  = os_mode ? os_chr_a      :
                             nt_ram  ? {NT_RAM_BANK, ppu_a[11:10]} : g_chr_a;
@@ -482,7 +496,9 @@ module n8_top (
     wire s_ciram_a10      = os_mode ? os_ciram_a10  : g_ciram_a10;
     wire s_irq            = os_mode ? 1'b0          : g_irq;
 
-    wire [4:0] prg_mask = os_mode ? 5'b11111  : prg_size;
+    // 254 (FDS): la SRAM PRG entera (BIOS y caras del disco), sin la máscara PRG_SIZE del OS.
+    wire prg_raw = (mapper_id == 8'd254);
+    wire [4:0] prg_mask = (os_mode || prg_raw) ? 5'b11111 : prg_size;
     wire [5:0] chr_mask = (os_mode || nt_ram || g_chr_raw) ? 6'b111111 : chr_size;   // RAM de 4 pantallas y CHR-RAM extra: sin máscara
 
     // ------------------------------------------------------------ pines
@@ -508,7 +524,9 @@ module n8_top (
 
     assign prg_oe_n = !cpu_rw || cpu_drive;
     assign ram_oe_n = !cpu_rw || cpu_drive;
-    assign prg_we_n = !(os_mode && s_prg_wr);   // la ROM del juego solo se escribe desde el OS
+    // La ROM del juego solo se escribe desde el OS, salvo en el 254 (FDS): el disco vive en la SRAM PRG y el juego
+    // lo escribe por la ventana de $4800 (el mapper pide prg_rom_en y prg_wr a la vez).
+    assign prg_we_n = !(os_mode ? s_prg_wr : (prg_raw && s_prg_wr && s_prg_rom_en));
     assign ram_we_n = !s_prg_wr;
 
     assign chr_ce_n = !(!mem_off && s_chr_en);
