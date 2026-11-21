@@ -79,7 +79,7 @@ def leer_cara(c):
     while p + 16 <= len(c) and c[p] == 3:
         cab = c[p:p + 16]
         tam = cab[13] | cab[14] << 8
-        arch = {'n': cab[1], 'id': cab[2], 'nombre': cab[3:11].decode('latin-1', 'replace').rstrip('\0 '),
+        arch = {'cab': cab, 'n': cab[1], 'id': cab[2], 'nombre': cab[3:11].decode('latin-1', 'replace').rstrip('\0 '),
                 'dir': cab[11] | cab[12] << 8, 'tam': tam, 'tipo': cab[15], 'oculto': n >= r['declarados']}
         p += 16
         if p >= len(c) or c[p] != 4:

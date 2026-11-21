@@ -140,41 +140,55 @@ class Maquina:
 
     # ------------------------------------------------------------------ ejecución
     def correr(self, max_fotogramas):
+        """Arranca desde el reset. 'juego' cuando la BIOS salta al vector de reset del juego ($DFFC, en la RAM)."""
         cpu = self.cpu
         cpu.reset()
-        en_bios = True
+        prev = cpu.pc
         for f in range(max_fotogramas):
             for _ in range(INSTR_FOTOGRAMA):
                 pc = cpu.pc
-                if en_bios and 0x6000 <= pc < 0xE000:
-                    return 'juego', f, pc
+                if prev >= 0xE000 and pc < 0xE000:
+                    vec = self.wram[0xDFFC - 0x6000] | self.wram[0xDFFD - 0x6000] << 8
+                    if pc == vec:
+                        return 'juego', f, pc
+                prev = pc
                 if not cpu.paso():
                     return 'ilegal', f, cpu.ilegal
             self.vblank = 1
             if self.ppuctrl & 0x80:
+                prev = 0                                # la NMI entra por la BIOS: no es el salto al juego
                 cpu.nmi()
         return 'tiempo', max_fotogramas, cpu.pc
 
 
-STUB = 0x0400                                       # código de prueba en la RAM de la CPU
-DATOS = 0x0500
+ZONAS = (0x0400, 0x0200, 0x0600)                    # código y datos de prueba (0x180 bytes) en la RAM de la CPU
 
 
-def llamar(m, rutina, params, a=0, max_instr=4_000_000):
+def zona_libre(dire, tam):
+    """Una zona de la RAM de la CPU para el código de prueba que no pise [dire, dire + tam)."""
+    for z in ZONAS:
+        if dire + tam <= z or dire >= z + 0x180:
+            return z
+    return ZONAS[0]
+
+
+def llamar(m, rutina, params, a=0, zona=ZONAS[0], max_instr=40_000_000):
     """JSR rutina con los parámetros en línea (palabras), A = a; devuelve (A al volver, Y) o None si no vuelve."""
     codigo = [0x20, rutina & 0xFF, rutina >> 8]
     for w in params:
         codigo += [w & 0xFF, w >> 8]
-    fin = STUB + len(codigo)
-    codigo += [0x8D, 0xF0, 0x07, 0x8C, 0xF1, 0x07, 0x4C, (fin + 6) & 0xFF, (fin + 6) >> 8]   # sta $7F0, sty $7F1
+    fin = zona + len(codigo)
+    res = zona + 0x170
+    codigo += [0x8D, res & 0xFF, res >> 8, 0x8C, (res + 1) & 0xFF, (res + 1) >> 8,
+               0x4C, (fin + 6) & 0xFF, (fin + 6) >> 8]
     for i, b in enumerate(codigo):
-        m.ram[STUB + i] = b
+        m.ram[zona + i] = b
     m.ppuctrl = 0                                    # sin NMI del juego mientras tanto
     cpu = m.cpu
-    cpu.pc, cpu.a, cpu.s, cpu.i = STUB, a, 0xFF, 1
+    cpu.pc, cpu.a, cpu.s, cpu.i = zona, a, 0xFF, 1
     for _ in range(max_instr):
         if cpu.pc == fin + 6:
-            return m.ram[0x7F0], m.ram[0x7F1]
+            return m.ram[res], m.ram[res + 1]
         if not cpu.paso():
             return None
     return None
@@ -190,18 +204,23 @@ def prueba_api(m, caras):
     res = []
     if len(caras) > 1:
         c2 = fds.leer_cara(caras[1])
-        poner(m, DATOS, caras[1][15:25])             # ID de la cara 2
         vistos = set()
         for a in reversed(c2['archivos']):             # el último de cada ID es el que queda en memoria
             if a['id'] in vistos or a['oculto']:
                 continue
             vistos.add(a['id'])
-            poner(m, DATOS + 0x10, [a['id'], 0xFF])
-            r = llamar(m, 0xE1F8, [DATOS, DATOS + 0x10])
+            z = zona_libre(a['dir'], len(a['datos'])) if a['tipo'] == 0 else ZONAS[0]
+            datos = z + 0x80
+            poner(m, datos, caras[1][15:25])         # ID de la cara 2
+            poner(m, datos + 0x10, [a['id'], 0xFF])
+            r = llamar(m, 0xE1F8, [datos, datos + 0x10], zona=z)
             d = a['datos']
             if a['tipo'] == 0:
-                ok = 0x6000 <= a['dir'] and a['dir'] + len(d) <= 0xE000 and \
-                    bytes(m.wram[a['dir'] - 0x6000:a['dir'] - 0x6000 + len(d)]) == d
+                if a['dir'] + len(d) <= 0x0800:
+                    ok = bytes(m.ram[a['dir']:a['dir'] + len(d)]) == d
+                else:
+                    ok = 0x6000 <= a['dir'] and a['dir'] + len(d) <= 0xE000 and \
+                        bytes(m.wram[a['dir'] - 0x6000:a['dir'] - 0x6000 + len(d)]) == d
             else:
                 ok = bytes(m.vram[a['dir']:a['dir'] + len(d)]) == d
             ok = ok and r is not None and r[0] == 0 and m.cara == 1
@@ -213,16 +232,16 @@ def prueba_api(m, caras):
     a = arch[-1]
     n = len(arch) - 1
     d = bytearray(a['datos'])
-    if 0 < len(d) <= 0x200:
+    if 0 < len(d) <= 0xC0:
         d[0] ^= 0xFF
-        nombre = a['nombre'].encode('latin-1')[:8].ljust(8, b' ')
-        cab = bytes([a['id']]) + nombre + bytes([a['dir'] & 0xFF, a['dir'] >> 8, len(d) & 0xFF, len(d) >> 8,
-                                                 a['tipo'], (DATOS + 0x40) & 0xFF, (DATOS + 0x40) >> 8, 0])
-        poner(m, DATOS, caras[0][15:25])
-        poner(m, DATOS + 0x10, cab)
-        poner(m, DATOS + 0x40, d)
+        z = zona_libre(a['dir'], len(d)) if a['tipo'] == 0 else ZONAS[0]
+        datos = z + 0x80
+        cab = bytes(a['cab'][2:16]) + bytes([(datos + 0x30) & 0xFF, (datos + 0x30) >> 8, 0])   # id, nombre, dir., tamaño, tipo
+        poner(m, datos, caras[0][15:25])
+        poner(m, datos + 0x10, cab)
+        poner(m, datos + 0x30, d)
         antes = bytes(m.sram[0:len(caras[0])])
-        r = llamar(m, 0xE239, [DATOS, DATOS + 0x10], a=n)
+        r = llamar(m, 0xE239, [datos, datos + 0x10], a=n, zona=z)
         despues = bytes(m.sram[0:len(caras[0])])
         difs = [i for i in range(len(antes)) if antes[i] != despues[i]]
         ok = r is not None and r[0] == 0 and len(difs) == 1 and despues[difs[0]] == d[0]
@@ -250,25 +269,38 @@ def aplicar(bios, parche):
 
 
 def comprobar_carga(m, cara):
-    """Archivos de arranque de la cara: ¿están en la RAM o en la VRAM? Devuelve (bien, mal, detalles)."""
+    """Archivos de arranque de la cara, en el orden del disco (uno posterior pisa a uno anterior en la misma
+    dirección): monta la imagen esperada de la RAM de la CPU, la RAM del FDS y la VRAM y la compara byte a byte con
+    la máquina. Devuelve (bien, mal, detalles)."""
     r = fds.leer_cara(cara)
     arranque = r.get('arranque', 0)
-    bien, mal, det = 0, 0, []
+    cpu, ppu, det = {}, {}, []
     for a in r['archivos']:
         if a['id'] > arranque or a['oculto']:
             continue
-        d = a['datos']
-        if a['tipo'] == 0:
-            ok = 0x6000 <= a['dir'] and a['dir'] + len(d) <= 0xE000 and \
-                bytes(m.wram[a['dir'] - 0x6000:a['dir'] - 0x6000 + len(d)]) == d
-            donde = f'RAM ${a["dir"]:04X}'
+        dest = cpu if a['tipo'] == 0 else ppu
+        for i, b in enumerate(a['datos']):
+            dest[(a['dir'] + i) & (0xFFFF if a['tipo'] == 0 else 0x3FFF)] = (b, a['nombre'])
+        det.append(f'{a["nombre"]:8s} id {a["id"]:02X} {len(a["datos"]):5d} B '
+                   f'{"RAM" if a["tipo"] == 0 else "VRAM"} ${a["dir"]:04X}')
+    mal = {}
+    for d, (b, n) in cpu.items():
+        if d < 0x2000:
+            v = m.ram[d & 0x7FF]
+        elif 0x6000 <= d < 0xE000:
+            v = m.wram[d - 0x6000]
         else:
-            ok = bytes(m.vram[a['dir']:a['dir'] + len(d)]) == d
-            donde = f'VRAM ${a["dir"]:04X}'
-        bien += ok
-        mal += not ok
-        det.append(f'{a["nombre"]:8s} id {a["id"]:02X} {len(d):5d} B {donde}: {"bien" if ok else "MAL"}')
-    return bien, mal, det
+            continue                                  # registros o la BIOS: no se puede cargar ahí
+        if v != b:
+            mal[n] = mal.get(n, 0) + 1
+    for d, (b, n) in ppu.items():
+        if d >= 0x3F00:
+            continue                                  # paletas: la PPU mínima no las separa
+        if m.vram[d] != b:
+            mal[n] = mal.get(n, 0) + 1
+    for n, k in mal.items():
+        det.append(f'  {n}: {k} bytes distintos')
+    return len(det) - len(mal), len(mal), det
 
 
 def main():
