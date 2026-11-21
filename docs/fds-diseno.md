@@ -85,7 +85,18 @@ Nintendo. Evita pedir la BIOS al usuario, pero es mucho más trabajo (los juegos
     reconoce), `$4032` = dentro y listo, `$4033` D7 = batería bien (estas tres solo llegan si la placa lo deja).
   - Sin sonido (F6) ni IRQ del disco (la BIOS parcheada no la usa).
   testbench y mutaciones; MAPROUT[254] = 254.
-- **F2, parches**: `os/herramientas/` saca de la BIOS del usuario las direcciones que hay que tocar y comprueba
+- **F2, parches** (hecha el 2026-11-21): `os/src/fds_parche.s` (316 bytes en `$5000`, con su tabla de enganches) y
+  `tools/fds/probar_parche.py` (6502 propio, modelo del mapper, PPU mínima; `--api` llama a `LoadFiles` en la cara 2
+  y a `WriteFile`). Enganches de la Rev 1 (iguales en Rev 0 y Twin Famicom): `$E7A3` xfer, `$E794` inicio,
+  `$E706`/`$E729`/`$E57A` fin (sin CRC), `$E64D` arranque (sin mirar la pila en `$4033`), `$E4D4` saltar (bytes
+  que la BIOS se saltaba con IRQ del disco) y los 5 `JSR $E445` → `buscar_cara` (cambio de cara automático por el
+  ID). La cabeza del disco vive en la FPGA (`$4213`-`$4216`): el parche no toca la RAM del juego.
+  Resultado con la BIOS Rev 1 sobre los 364 discos «sí» del análisis: **327 todo bien** (arranque con los archivos
+  idénticos al disco, cada archivo de la cara 2 por `LoadFiles` y `WriteFile` cambiando solo el byte tocado);
+  14 sin archivos de arranque en la cara A (discos 2, «Kouhen»: tampoco arrancan en la consola); 7 con el mismo ID
+  en las dos caras (el cambio automático no sabe elegir: hará falta cambiar la cara a mano); 16 con problemas de
+  arranque (11 sin licencia o de desarrollo, Doremikko y Tantei Club II Kouhen), a mirar en F3 con Mesen2 (el banco
+  no lleva la cuenta de ciclos real). Rev 0 y Twin Famicom: Zelda y Super Mario Bros. 2 arrancan igual.
   la versión; el parche va en el OS (código propio).
 - **F3, simulador**: `tools/n8sim` con el RBF 254, la BIOS parcheada y un `.fds`, comparado con el FDS de Mesen2.
 - **F4, OS**: `.fds` en el menú, carga de BIOS y caras, lanzamiento, marca N8FD, guardado al volver.
