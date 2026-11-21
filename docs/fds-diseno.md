@@ -60,8 +60,20 @@ cargarán con este método. Se medirán con el banco; si son importantes, se est
 Alternativa a largo plazo: una **BIOS libre propia** (GPL) con las mismas direcciones de entrada que la de
 Nintendo. Evita pedir la BIOS al usuario, pero es mucho más trabajo (los juegos llaman a decenas de rutinas).
 
+## Resultado de F0 en la NES (2026-11-20)
+- **La SRAM PRG se escribe en modo juego:** el disco puede vivir ahí y el juego escribirlo (448 KiB, 0 errores).
+- **Las lecturas que conduce la FPGA no llegan en `$4000-$41FF`** (bus abierto) y sí en `$4200-$7FFF`. Por eso:
+  - la BIOS parcheada no lee `$4030`/`$4031`/`$4032`: lee el estado y los datos por la ventana y por registros
+    propios en `$42xx` o más arriba;
+  - los juegos que leen `$4032` (340 de 396) verán `$40`: bit 0 = 0 (disco dentro), bit 1 = 0 (listo), bit 2 = 0
+    (no protegido), que es justo lo que deben ver;
+  - los que leen `$4030` para reconocer la IRQ del temporizador la reconocen igual (la FPGA ve la dirección aunque no
+    pueda dar el dato), pero leerán `$40` (bit 6 = 1, «fin de la cabeza»); hay que comprobar que ninguno lo use;
+  - las lecturas del sonido (`$4090`, `$4092`) dan `$40`; casi nadie las usa;
+  - en el N8 de Famicom, sin transceptores, puede que todo llegue (sin medir).
+
 ## Etapas
-- **F0, prueba en la consola**: un RBF mínimo que escriba la SRAM PRG en modo juego y conduzca lecturas en
+- **F0, prueba en la consola** (hecha, ver arriba): un RBF mínimo que escriba la SRAM PRG en modo juego y conduzca lecturas en
   `$4020-$4FFF` (confirma que el CPLD no lo bloquea).
 - **F1, HDL**: `mapper_fds.v` (registros, IRQ del temporizador, ventana, mirroring) en un RBF 254 propio, con
   testbench y mutaciones; MAPROUT[254] = 254.

@@ -1,7 +1,8 @@
 ; f0.s — Prueba F0 del soporte FDS en la consola (docs/fds-diseno.md). GPL-3.0-or-later, código propio.
 ; Con el mapper 254 de prueba (hdl/rtl/mapper_prueba254.v) comprueba, con la pantalla apagada:
-;   1. $40F1 se lee como $A5 (la FPGA conduce lecturas en $40xx);
-;   2. $40F2 devuelve el banco escrito en $40F0 (los 256 valores);
+;   1-2. (en la pantalla) qué se lee en $40F1-$40F6: $A5 y el banco, sin memoria seleccionada, con el /CE de la
+;      SRAM PRG y con el /CE de la PRG-RAM (¿abre el CPLD el transceptor solo con una memoria seleccionada?), y el bus
+;      abierto en $40F7;
 ;   3. la SRAM PRG se escribe en modo juego: un patrón distinto en cada banco $10-$FF de la ventana $4800 (448 KiB)
 ;      y luego se lee entero (un banco que se pisa con otro, o una línea de dirección pegada, da errores);
 ;   4. los bancos 0-15 vistos por la ventana son la propia ROM ($8000-$FFFF).
@@ -27,12 +28,11 @@ q:      .res 2                  ; puntero a la ROM
 banco:  .res 1
 pag:    .res 1
 xpag:   .res 1                  ; parte del patrón que cambia con la página de 256 bytes
-err1:   .res 1
-err2:   .res 1
 err3:   .res 2
 err4:   .res 2
 t:      .res 2                  ; texto a escribir
-fila:   .res 1
+lect:   .res 24                 ; lo leído en cada dirección de la tabla `dirs`
+n:      .res 1
 
         .segment "CODE"
 reset:  sei
@@ -47,27 +47,31 @@ reset:  sei
         bpl     :-
 :       bit     PPUSTATUS
         bpl     :-
+        lda     #0
+        sta     err3
+        sta     err3+1
+        sta     err4
+        sta     err4+1
+        ; ---- 1-2. qué direcciones de $4020-$7FFF llegan a la CPU (el mapper conduce $A5; $40F2 = banco $5A)
+        lda     #$5A
+        sta     BANCO
         ldx     #0
-        stx     err1
-        stx     err2
-        stx     err3
-        stx     err3+1
-        stx     err4
-        stx     err4+1
-        ; ---- 1. $40F1 = $A5
-@c1:    lda     CONST
-        cmp     #$A5
-        beq     :+
-        inc     err1
-:       dex
-        bne     @c1
-        ; ---- 2. eco del banco
-@c2:    stx     BANCO
-        cpx     ECO
-        beq     :+
-        inc     err2
-:       inx
-        bne     @c2
+@lx:    lda     dirs,x
+        sta     q
+        lda     dirs+1,x
+        sta     q+1
+        ldy     #0
+        lda     (q),y
+        pha
+        txa
+        lsr
+        tay
+        pla
+        sta     lect,y
+        inx
+        inx
+        cpx     #NDIRS * 2
+        bne     @lx
         ; ---- 3. escribir los bancos $10-$FF y leerlos
         lda     #$10
         sta     banco
@@ -158,9 +162,7 @@ pantalla:
         sta     PPUADDR
         lda     #$00
         sta     PPUADDR
-        lda     err1
-        ora     err2
-        ora     err3
+        lda     err3
         ora     err3+1
         ora     err4
         ora     err4+1
@@ -200,23 +202,11 @@ pantalla:
         dex
         bne     @at
         ; textos
-        ldx     #8
+        ldx     #6
         lda     #<t_titulo
         ldy     #>t_titulo
         jsr     linea
-        ldx     #11
-        lda     #<t_c1
-        ldy     #>t_c1
-        jsr     linea
-        lda     err1
-        jsr     veredicto
-        ldx     #13
-        lda     #<t_c2
-        ldy     #>t_c2
-        jsr     linea
-        lda     err2
-        jsr     veredicto
-        ldx     #15
+        ldx     #9
         lda     #<t_c3
         ldy     #>t_c3
         jsr     linea
@@ -227,7 +217,7 @@ pantalla:
         jsr     hex
         lda     err3
         jsr     hex
-        ldx     #17
+        ldx     #11
         lda     #<t_c4
         ldy     #>t_c4
         jsr     linea
@@ -238,6 +228,44 @@ pantalla:
         jsr     hex
         lda     err4
         jsr     hex
+        ldx     #13
+        lda     #<t_esp
+        ldy     #>t_esp
+        jsr     linea
+        ; 3 por fila desde la 15: «4020=40 4030=40 4032=40»
+        lda     #0
+        sta     n
+@fl:    lda     n                       ; fila = 15 + n / 3
+        ldx     #15
+@d3:    cmp     #3
+        bcc     @f3
+        sbc     #3
+        inx
+        bne     @d3
+@f3:    cmp     #0
+        bne     @mismo
+        lda     #<t_nada
+        ldy     #>t_nada
+        jsr     linea
+@mismo: lda     n
+        asl
+        tax
+        lda     dirs+1,x
+        jsr     hex
+        lda     n
+        asl
+        tax
+        lda     dirs,x
+        jsr     hex
+        lda     #'='
+        sta     PPUDATA
+        ldx     n
+        lda     lect,x
+        jsr     hex_esp
+        inc     n
+        lda     n
+        cmp     #NDIRS
+        bne     @fl
         lda     #0
         sta     PPUSCROLL
         sta     PPUSCROLL
@@ -249,7 +277,7 @@ pantalla:
 ; Pone el cursor de la PPU en la fila X, columna 3, y escribe el texto A/Y (terminado en 0).
 linea:  sta     t
         sty     t+1
-        stx     fila
+
         lda     #0
         sta     p+1
         txa
@@ -274,6 +302,12 @@ linea:  sta     t
         iny
         bne     @l
 @f:     rts
+
+hex_esp:
+        jsr     hex
+        lda     #' '
+        sta     PPUDATA
+        rts
 
 ; A = 0: «BIEN »; si no, «MAL  ».
 veredicto:
@@ -313,14 +347,17 @@ nmi:
 irq:    rti
 
         .segment "RODATA"
-t_titulo: .byte "PRUEBA F0 DEL FDS", 0
-t_c1:   .byte "LECTURA $40F1   ", 0
-t_c2:   .byte "ECO   $40F2     ", 0
+t_titulo: .byte "PRUEBA F0 DEL FDS (3)", 0
 t_c3:   .byte "SRAM PRG ESCRITA ", 0
-t_c4:   .byte "ROM POR VENTANA ", 0
+t_c4:   .byte "ROM POR VENTANA  ", 0
+t_esp:  .byte "LECTURAS (A5 = LLEGA; 40F2=5A)", 0
+t_nada: .byte 0
 t_bien: .byte "BIEN ", 0
 t_mal:  .byte "MAL  ", 0
 cifras: .byte "0123456789ABCDEF"
+dirs:   .word $4020, $4030, $4032, $4090, $40F1, $40F2, $4100, $4200, $4300, $4600
+        .word $4700, $47FF, $5000, $5100, $5800, $5FFF, $6000, $7000, $7FFF
+NDIRS = 19
 
         .segment "VECTORS"
         .word   nmi, reset, irq

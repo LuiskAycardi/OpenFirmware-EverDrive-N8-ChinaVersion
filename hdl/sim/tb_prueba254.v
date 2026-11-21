@@ -27,9 +27,16 @@ module tb_prueba254;
         expect_read(16'h40F1, 8'hFF, 8'hA5, "254: $40F1 = $A5");
         expect_read(16'h40F2, 8'hFF, 8'h00, "254: banco 0 al empezar");
         expect_read(16'hC0F1, 8'h00, 8'h00, "254: $C0F1 (ROM) no conduce");
-        expect_read(16'h40F0, 8'h00, 8'h00, "254: $40F0 no se lee");
+        expect_read(16'h4020, 8'hFF, 8'hA5, "254: $4020 = $A5");
+        expect_read(16'h5FFF, 8'hFF, 8'hA5, "254: $5FFF = $A5");
+        expect_read(16'h7FFF, 8'hFF, 8'hA5, "254: $7FFF = $A5");
+        expect_read(16'h401F, 8'h00, 8'h00, "254: $401F (APU) no conduce");
+        expect_read(16'h4400, 8'h00, 8'h00, "254: $4400 (CPLD) no conduce");
+        expect_read(16'h45FF, 8'h00, 8'h00, "254: $45FF (CPLD) no conduce");
+
         cpu_write(16'h40F0, 8'h37);
         expect_read(16'h40F2, 8'hFF, 8'h37, "254: $40F2 devuelve el banco");
+
         expect_prg(16'h4800, 19'h1B800, "254: ventana $4800 = banco $37");
         expect_prg(16'h4C00, 19'h1BC00, "254: $4C00 = A10 de la CPU");
         expect_prg(16'h4FFF, 19'h1BFFF, "254: $4FFF");

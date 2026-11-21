@@ -148,6 +148,16 @@ testbenches vigilan esas reglas en todos los ciclos (tb_bus.vh) y hay mutaciones
 - El pack de fábrica de este clon trae ese tipo de RBF (005 = MMC5), así que el CPLD del clon deja
   pasar esas lecturas. Falta comprobarlo en la consola antes de dar por buena la parte eléctrica.
 
+**Medido en la NES real (2026-11-20, prueba F0, `tools/fds/prueba_f0`):**
+- La **SRAM PRG se puede escribir en modo juego** (`prg_we_n` desde la FPGA, CPLD en modo `01`): 448 KiB escritos y
+  releídos por una ventana en `$4800`, 0 errores en tres pasadas.
+- Lo que **conduce la FPGA** en una lectura de la CPU **llega en `$4200-$7FFF`** y **no llega en `$4000-$41FF`**: ahí
+  la CPU lee el bus abierto (`$40` en `$40xx`, `$41` en `$4100`), aunque se active el `/CE` de la SRAM PRG o de la
+  PRG-RAM. Probado con `$A5` en 19 direcciones de `$4020` a `$7FFF`. Las lecturas de la fase 3d no se habían
+  comprobado nunca en la consola: los mappers que leen en `$41xx` (Sachen 133/136/143/147/150, TXC 36/132/172/173,
+  243) no funcionarán en el N8 de NES. `$5xxx` (MMC5, 115) y `$6000-$7FFF` (EEPROM Bandai) sí. Falta medir el N8 de
+  Famicom (sin transceptores).
+
 **Registros que usa el OS v13 en `$4400`:** 9, 10, 128–130, 132–134, 136, 138–140, más el 131
 (escrito de forma indirecta). 138 se **lee** en `$4401`, y la FPGA nunca conduce el bus, así que
 138–140 (y 9–10) son del CPLD. Libres conocidos: 135 (GG), 137, 141 en adelante.

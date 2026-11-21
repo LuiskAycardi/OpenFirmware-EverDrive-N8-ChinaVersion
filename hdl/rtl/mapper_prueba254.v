@@ -8,8 +8,10 @@
 //
 // CPU: $8000-$FFFF  32 KB de PRG (banco 0-15 de 2 KB), como un NROM
 //      $40F0 (escr.) banco de la ventana: A18-A11 de la SRAM PRG
-//      $40F1 (lect.) $A5 (constante)
 //      $40F2 (lect.) el banco escrito en $40F0
+//      resto de $4020-$7FFF (lect.), salvo $4400-$45FF (registros del CPLD) y la ventana: $A5 (constante)
+//      (2026-11-20: en la NES, $40F1-$40F7 se leen como bus abierto aunque se active el /CE de una memoria; la
+//       ventana $4800 sí llega. Esta versión sirve para ver qué rangos deja pasar el CPLD hacia la consola.)
 //      $4800-$4FFF   ventana de lectura y escritura a la SRAM PRG: {banco, A10}
 //      $6000-$7FFF   nada (no toca la PRG-RAM con pila: el OS guarda ahí sus marcas)
 // PPU: CHR de 8 KB (ROM o RAM según cfg[7]) y mirroring de la cabecera, como el NROM.
@@ -56,15 +58,18 @@ module mapper_prueba254 (
         else if (!cpu_rw && reg_40f && cpu_a[3:0] == 4'h0) banco <= cpu_d;
     end
 
+    wire cpld = romsel_n && (cpu_a[14:9] == 6'b100010);           // $4400-$45FF
+    wire apu  = romsel_n && (cpu_a[14:5] == 10'b1000000000);      // $4000-$401F (dentro de la consola)
+    wire eco  = reg_40f && cpu_a[3:0] == 4'h2;
+    wire zona = romsel_n && cpu_a[14] && !apu && !cpld && !ventana; // $4020-$7FFF menos lo de arriba
+
     assign prg_a      = ventana ? {banco, cpu_a[10]} : {4'd0, cpu_a[14:10]};
     assign prg_rom_en = !romsel_n || (ventana && m2);
     assign prg_ram_en = 1'b0;
     assign prg_wr     = !cpu_rw && ventana && m2;                   // con prg_rom_en: escribe la SRAM PRG
 
-    wire lee_a5    = reg_40f && cpu_a[3:0] == 4'h1;
-    wire lee_banco = reg_40f && cpu_a[3:0] == 4'h2;
-    assign cpu_doe  = (cpu_rw && (lee_a5 || lee_banco)) ? 8'hFF : 8'h00;
-    assign cpu_dout = lee_a5 ? 8'hA5 : banco;
+    assign cpu_doe  = (cpu_rw && zona) ? 8'hFF : 8'h00;
+    assign cpu_dout = eco ? banco : 8'hA5;
 
     assign chr_a     = {6'd0, ppu_a[12:10]};
     assign chr_en    = !ppu_a[13];
