@@ -13,7 +13,7 @@ Comprueba en la consola lo único del soporte FDS que depende del hardware y no 
 - En la SD: `EDFC/MAPS/254.RBF`, `EDFC/MAPROUT.BIN` con 254 → 254 (`hdl/tools/gen_maprout.py`; frente a la
   v0.5.1-beta solo cambia esa entrada) y la ROM.
 
-`simulador.png`: el resultado en Mesen2 con nuestro HDL (tools/n8sim), 790 fotogramas.
+`simulador.png`: la primera versión de la ROM en Mesen2 con nuestro HDL (tools/n8sim), 790 fotogramas; en el simulador todas las lecturas llegan (no modela el CPLD).
 
 ## Resultado en la NES (2026-11-20)
 
