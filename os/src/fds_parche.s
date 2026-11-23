@@ -30,6 +30,7 @@ CAB_LO    = $4213
 CAB_HI    = $4214
 AVANZA    = $4215
 APOYO     = $4216
+FILTRO    = $4217               ; filtro de las lecturas de $403x (ver hdl/rtl/mapper_fds.v)
 REG_4025  = $4025
 REG_4026  = $4026
 COPIA4025 = $FA                 ; la BIOS guarda aquí lo último escrito en $4025 (D2 = 1: lectura)
@@ -47,81 +48,121 @@ cabecera:
 ; ------------------------------------------------------------------ xfer (en lugar de $E7A3)
 ; Entrada: A = byte a escribir (modo escritura). Salida: A = X = el byte (leído o escrito); Y y el acarreo, como
 ; estaban; I = 1 (la BIOS sale de su IRQ sin RTI, así que también deja las interrupciones cerradas).
+; Cada byte pasa por el filtro de $4217: al leer, las lecturas de $4030/$4032/$4033 del juego pasan a $42xx (que sí
+; llegan a la CPU en la NES); al escribir, se deshace el cambio para que el disco quede como era.
 xfer:   php
         sta     APOYO
         ldx     CAB_LO
+        lda     COPIA4025
+        and     #$04
+        bne     @lee
+        lda     APOYO                       ; escritura: lo que va al disco, sin el cambio
+        sta     FILTRO
         lda     CAB_HI
         and     #$03                        ; página de 256 bytes dentro del KB de la ventana
+        beq     @e0
+        cmp     #$01
+        beq     @e1
+        cmp     #$02
+        beq     @e2
+        lda     FILTRO
+        sta     VENTANA + $300,x
+        jmp     @esc
+@e2:    lda     FILTRO
+        sta     VENTANA + $200,x
+        jmp     @esc
+@e1:    lda     FILTRO
+        sta     VENTANA + $100,x
+        jmp     @esc
+@e0:    lda     FILTRO
+        sta     VENTANA,x
+@esc:   lda     APOYO
+        jmp     @fin
+@lee:   lda     CAB_HI
+        and     #$03
         beq     @p0
         cmp     #$01
         beq     @p1
         cmp     #$02
         beq     @p2
-        lda     COPIA4025
-        and     #$04
-        beq     @e3
         lda     VENTANA + $300,x
-        jmp     @fin
-@e3:    lda     APOYO
-        sta     VENTANA + $300,x
-        jmp     @fin
-@p2:    lda     COPIA4025
-        and     #$04
-        beq     @e2
-        lda     VENTANA + $200,x
-        jmp     @fin
-@e2:    lda     APOYO
-        sta     VENTANA + $200,x
-        jmp     @fin
-@p1:    lda     COPIA4025
-        and     #$04
-        beq     @e1
-        lda     VENTANA + $100,x
-        jmp     @fin
-@e1:    lda     APOYO
-        sta     VENTANA + $100,x
-        jmp     @fin
-@p0:    lda     COPIA4025
-        and     #$04
-        beq     @e0
-        lda     VENTANA,x
-        jmp     @fin
-@e0:    lda     APOYO
-        sta     VENTANA,x
+        jmp     @fil
+@p2:    lda     VENTANA + $200,x
+        jmp     @fil
+@p1:    lda     VENTANA + $100,x
+        jmp     @fil
+@p0:    lda     VENTANA,x
+@fil:   sta     FILTRO
+        lda     FILTRO
 @fin:   sta     AVANZA                      ; la cabeza avanza (el valor da igual)
+        sta     APOYO
+        ; sigue en residuo
+
+; ------------------------------------------------------------------ residuo (final común de xfer e inicio)
+; Entrada: P del que llama apilado (php) y APOYO = el byte que se devuelve. La BIOS pasa cada byte esperando la IRQ
+; del disco en $E7A4 (CLI y JMP *), así que la IRQ deja debajo de la pila $E7, $A4 y P (con I = 0 y B = 0), que su
+; manejador desapila sin borrarlos. Hay juegos que usan esos restos como protección (Quick Hunter salta a una
+; dirección sacada de $01F0): se dejan los mismos tres bytes en los mismos sitios. Sale con A = X = el byte, el
+; acarreo como estaba e I = 1.
+residuo:
+        tsx                                 ; X = s - 1 (s: la cima de la pila al entrar)
+        lda     $0101,x                     ; P del que llama
+        and     #$EB                        ; B = 0, I = 0
+        ora     #$20
+        sta     a:$00FF,x                   ; s - 2: P
+        lda     #$A4
+        sta     $0100,x                     ; s - 1: byte bajo de la vuelta ($E7A4)
         plp
+        lda     #$E7
+        sta     $0101,x                     ; s: byte alto
         sei
+        lda     APOYO
         tax
         rts
 
 ; ------------------------------------------------------------------ inicio (en lugar de $E794)
-; Lo mismo que hace la BIOS al empezar un bloque ($0101 = $40, $4025 D7 = 1) y luego: en lectura, el primer byte
-; del bloque (su tipo); en escritura, nada: la marca $80 que trae A no va en el .fds.
-inicio: pha
-        lda     #$40
-        sta     MODO_IRQ
-        lda     COPIA4025
-        ora     #$80
-        sta     COPIA4025
-        sta     REG_4025
+; Lo mismo que hace la BIOS al empezar un bloque ($0101 = $40, $4025 D7 = 1, y los flags que deja: N = 1 por
+; cargar $4025 en X) y luego: en lectura, el primer byte del bloque (su tipo); en escritura, nada (la marca $80
+; que trae A no va en el .fds), pero con los restos en la pila de la IRQ que la BIOS esperaba.
+inicio: ldx     #$40
+        stx     MODO_IRQ
+        rol     COPIA4025
+        sec
+        ror     COPIA4025                   ; D7 = 1, el resto igual
+        ldx     COPIA4025
+        stx     REG_4025
+        php                                 ; los flags de la BIOS en $E7A3
+        pha
+        txa
         and     #$04
         bne     @lee
         pla
-        sei
-        tax
-        rts
+        sta     APOYO
+        jmp     residuo                     ; escritura (el P de la BIOS sigue apilado)
 @lee:   pla
+        plp
         jmp     xfer
 
 ; ------------------------------------------------------------------ fin (en lugar de $E706 y $E729)
-; Deja $4025 como la BIOS al acabar un bloque (lectura, transferencia parada) sin leer CRC ni estado.
-fin:    lda     COPIA4025
+; Deja $4025 como la BIOS al acabar un bloque (lectura, transferencia parada) sin leer CRC ni estado. La BIOS
+; espera aquí los 2 bytes de CRC (un nivel de pila más abajo; el segundo con N = 1 tras poner $4025 D4): se dejan
+; sus restos en la pila con crc.
+fin:    jsr     crc
+        lda     COPIA4025
+        ora     #$10
+        sta     COPIA4025
+        sta     REG_4025
+        jsr     crc
+        lda     COPIA4025
         and     #$2F
         ora     #$04
         sta     COPIA4025
         sta     REG_4025
         clc
         rts
+
+crc:    php
+        jmp     residuo
 
 ; ------------------------------------------------------------------ arranque (en lugar de $E64D)
 ; Motor en marcha y disco listo, como la BIOS ($4026 D7, $4025 = motor y lectura, conservando el mirroring), con la

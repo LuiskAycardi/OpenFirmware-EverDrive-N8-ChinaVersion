@@ -110,6 +110,29 @@ def accesos(datos, base):
     return r
 
 
+# ------------------------------------------------------------------ filtro de $4217 (hdl/rtl/mapper_fds.v)
+# Al cargar, el parche pasa cada byte por un filtro de la FPGA que cambia las lecturas absolutas de $4030/$4032/$4033
+# por las de $4230/$4232/$4233 (que en el N8 de NES sí llegan a la CPU); al escribir el disco deshace el cambio.
+OPS_LEER = {0xAD, 0xAE, 0xAC, 0x2C, 0xBD, 0xB9, 0xBE, 0xBC, 0x0D, 0x2D, 0x4D, 0xCD, 0xEC, 0xCC}
+REGS_FILTRO = {0x30, 0x32, 0x33}
+
+
+def filtro(h2, h1, v, leer=True):
+    """Lo que devuelve el filtro para el byte v, con h2 y h1 los dos bytes anteriores de la transferencia."""
+    if h2 in OPS_LEER and h1 in REGS_FILTRO and v == (0x40 if leer else 0x42):
+        return 0x42 if leer else 0x40
+    return v
+
+
+def filtrar(datos):
+    """Los datos de un archivo tal y como quedan en memoria al cargarlos con el parche (el filtro empieza el bloque
+    4 con historia «$04» y el tipo del archivo, que no casan nunca)."""
+    r = bytearray(datos)
+    for i in range(2, len(r)):
+        r[i] = filtro(datos[i - 2], datos[i - 1], datos[i])
+    return bytes(r)
+
+
 # ------------------------------------------------------------------ la SRAM PRG del N8 con un disco cargado
 SRAM = 512 * 1024
 DIR_PARCHE = 0x7D000            # bloque del parche (corre en $5000); en 0x7DFFF, el número de caras

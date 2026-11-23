@@ -32,11 +32,27 @@
 //        $4213/$4214 posición de la cabeza en la cara (byte bajo/alto), legible
 //        $4215       (escr.) la cabeza avanza un byte
 //        $4216       un byte de apoyo para el parche (que no puede usar la RAM del juego), legible
+//        $4217       filtro de lectura de $403x: escribir un byte del disco y leer lo que debe ver la CPU (ver abajo)
 //        $4230 (lect.) como $4030 (también reconoce la IRQ)
+//        $4232 (lect.) como $4032, con el disco «fuera» un rato cuando el juego espera a que se saque (ver abajo)
+//        $4233 (lect.) como $4033: $80
+// Disco fuera: muchos juegos (165 de 396 en la colección; Zelda, Metroid, SMB2...) esperan leyendo $4032 a que se
+// saque el disco para cambiar de cara, y en el N8 de NES $4032 da siempre $40 (dentro). Por eso el parche cambia, al
+// cargar el código del juego, cada lectura absoluta de $4030/$4032/$4033 por la de $4230/$4232/$4233: el filtro de
+// $4217 recuerda los dos bytes anteriores y, si son un opcode de lectura y $30/$32/$33, al leer convierte el $40
+// siguiente en $42 (y al escribir el disco, $42 en $40: el .fds no cambia). En $4232 el disco se saca solo como en
+// el FDS de Mesen2 (leído para el criterio, nada copiado): si el juego lo lee más de 20 veces sin pausas de 100
+// fotogramas, y han pasado 77 fotogramas desde la última actividad del disco, queda fuera 77 fotogramas; luego
+// vuelve a estar dentro (la cara la elige el parche al leer la cabecera) y no puede volver a salir en 234.
+// $4032 sigue dando «dentro»: es lo que ve la BIOS (en la NES no le llega otra cosa).
 // Temporizador: con la IRQ activa, en cada ciclo de CPU: si el contador vale 0, pide IRQ y recarga (y sin
 // «repetir» se para); si no, resta 1. Mismo comportamiento que Mesen2 (leído para los detalles, nada copiado).
 // PPU: CHR-RAM de 8 KB en $0000-$1FFF; CIRAM según $4025 D3.
 // El sonido del FDS ($4040-$4097) es otra etapa (F6).
+
+`ifndef FDS_FOTOGRAMA
+`define FDS_FOTOGRAMA 29781                    // ciclos de CPU por fotograma (NTSC); el testbench lo acorta
+`endif
 
 module mapper_fds (
     input  wire [14:0] cpu_a,
@@ -75,7 +91,16 @@ module mapper_fds (
     reg [15:0] cabeza;
     reg [7:0]  apoyo;
     reg [2:0]  cara;
+    reg        modo_lee;                       // $4025 D2
+    reg [7:0]  h1, h2, filtro;                 // filtro de $4217
+    reg [14:0] pre;                            // ciclos de CPU de un fotograma
+    reg [7:0]  espera;                         // fotogramas hasta que el disco pueda salir
+    reg [6:0]  hueco, fuera_cta;               // fotogramas desde la última lectura de $4232; disco fuera
+    reg [4:0]  lecturas;
+    reg        fuera;
     initial begin
+        modo_lee = 1; h1 = 0; h2 = 0; filtro = 0; pre = 0; espera = 8'd77; hueco = 7'd100; fuera_cta = 0;
+        lecturas = 0; fuera = 0;
         recarga = 0; cuenta = 0; t_rep = 0; t_act = 0; t_irq = 0;
         disco_en = 1; sonido_en = 1; mir_h = 0; ventana_en = 0; cabeza = 0; apoyo = 0; cara = 0;
     end
@@ -83,6 +108,11 @@ module mapper_fds (
     wire io     = romsel_n && (cpu_a[14:8] == 7'h40);              // $4000-$40FF
     wire priv   = romsel_n && (cpu_a[14:8] == 7'h42);              // $4200-$42FF
     wire es_lee = cpu_rw;
+    wire lee_42   = es_lee && priv && cpu_a[7:0] == 8'h32;
+    wire op_lee   = (h2 == 8'hAD) || (h2 == 8'hAE) || (h2 == 8'hAC) || (h2 == 8'h2C) || (h2 == 8'hBD) ||
+                    (h2 == 8'hB9) || (h2 == 8'hBE) || (h2 == 8'hBC) || (h2 == 8'h0D) || (h2 == 8'h2D) ||
+                    (h2 == 8'h4D) || (h2 == 8'hCD) || (h2 == 8'hEC) || (h2 == 8'hCC);
+    wire reg_est  = (h1 == 8'h30) || (h1 == 8'h32) || (h1 == 8'h33);
     wire lee_estado = es_lee && ((io && cpu_a[7:0] == 8'h30) || (priv && cpu_a[7:0] == 8'h30));
 
     reg [15:0] c_cuenta;
@@ -91,7 +121,27 @@ module mapper_fds (
         if (rst) begin
             recarga <= 0; cuenta <= 0; t_rep <= 0; t_act <= 0; t_irq <= 0;
             disco_en <= 1; sonido_en <= 1; mir_h <= 0; ventana_en <= 0; cabeza <= 0; apoyo <= 0; cara <= 0;
+            modo_lee <= 1; h1 <= 0; h2 <= 0; filtro <= 0; pre <= 0; espera <= 8'd77; hueco <= 7'd100;
+            fuera_cta <= 0; lecturas <= 0; fuera <= 0;
         end else begin
+            // disco fuera (ver la cabecera): un paso por fotograma y las lecturas de $4232
+            if (pre == `FDS_FOTOGRAMA - 1) begin
+                pre <= 0;
+                if (espera != 0) espera <= espera - 8'd1;
+                if (hueco != 7'd100) hueco <= hueco + 7'd1;
+                if (fuera) begin
+                    if (fuera_cta == 0) begin fuera <= 0; espera <= 8'd234; end
+                    else fuera_cta <= fuera_cta - 7'd1;
+                end
+            end else
+                pre <= pre + 15'd1;
+            if (lee_42 && !fuera) begin
+                hueco <= 0;
+                if (hueco == 7'd100) lecturas <= 0;
+                else if (lecturas == 5'd20) begin
+                    if (espera == 0) begin fuera <= 1; fuera_cta <= 7'd77; lecturas <= 0; hueco <= 7'd100; end
+                end else lecturas <= lecturas + 5'd1;
+            end
             // temporizador: un paso por ciclo de CPU
             c_cuenta = cuenta; c_act = t_act; c_irq = t_irq;
             if (c_act) begin
@@ -118,7 +168,10 @@ module mapper_fds (
                         sonido_en <= cpu_d[1];
                         if (!cpu_d[0]) begin c_act = 1'b0; c_irq = 1'b0; end
                     end
-                    8'h25: if (disco_en) mir_h <= cpu_d[3];
+                    8'h25: begin
+                        if (disco_en) mir_h <= cpu_d[3];
+                        modo_lee <= cpu_d[2];
+                    end
                     default: ;
                 endcase
             end
@@ -126,10 +179,16 @@ module mapper_fds (
                 case (cpu_a[7:0])
                     8'h10: ventana_en <= cpu_d[0];
                     8'h12: cara  <= cpu_d[2:0];
-                    8'h13: cabeza[7:0]  <= cpu_d;
-                    8'h14: cabeza[15:8] <= cpu_d;
-                    8'h15: cabeza <= cabeza + 16'd1;
+                    8'h13: begin cabeza[7:0]  <= cpu_d; espera <= 8'd77; end
+                    8'h14: begin cabeza[15:8] <= cpu_d; espera <= 8'd77; end
+                    8'h15: begin cabeza <= cabeza + 16'd1; espera <= 8'd77; end
                     8'h16: apoyo <= cpu_d;
+                    8'h17: begin
+                        filtro <= (op_lee && reg_est && cpu_d == (modo_lee ? 8'h40 : 8'h42)) ?
+                                  (modo_lee ? 8'h42 : 8'h40) : cpu_d;
+                        h2 <= h1;
+                        h1 <= cpu_d;
+                    end
                     default: ;
                 endcase
             end
@@ -163,15 +222,20 @@ module mapper_fds (
     wire p13  = priv && cpu_a[7:0] == 8'h13;
     wire p14  = priv && cpu_a[7:0] == 8'h14;
     wire p16  = priv && cpu_a[7:0] == 8'h16;
+    wire p17  = priv && cpu_a[7:0] == 8'h17;
     wire p30  = priv && cpu_a[7:0] == 8'h30;
+    wire p32  = priv && cpu_a[7:0] == 8'h32;
+    wire p33  = priv && cpu_a[7:0] == 8'h33;
     assign cpu_doe  = !cpu_rw ? 8'h00 :
                       (r30 || p30) ? 8'hDB :          // D2 y D5: bus abierto
                       r32 ? 8'h07 :
-                      r33 ? 8'h80 :
-                      (p12 || p13 || p14 || p16) ? 8'hFF : 8'h00;
+                      (r33 || p33) ? 8'h80 :
+                      (p12 || p13 || p14 || p16 || p17 || p32) ? 8'hFF : 8'h00;
     assign cpu_dout = (r30 || p30) ? estado :
                       r32 ? 8'h00 :
-                      r33 ? 8'h80 :
+                      (r33 || p33) ? 8'h80 :
+                      p32 ? {5'b01000, fuera, fuera, fuera} :    // $40 como el bus abierto de $4032
+                      p17 ? filtro :
                       p12 ? {5'b00000, cara} :
                       p13 ? cabeza[7:0] :
                       p14 ? cabeza[15:8] :

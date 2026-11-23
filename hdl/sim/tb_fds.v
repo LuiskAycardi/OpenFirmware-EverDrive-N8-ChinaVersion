@@ -2,6 +2,7 @@
 // ventana del disco, temporizador IRQ, mirroring, CHR-RAM y lecturas conducidas. tb_bus.vh vigila además que la FPGA
 // solo conduzca en lecturas de registro. Ejecutar: make -C hdl sim
 `timescale 1ns/1ps
+`define FDS_FOTOGRAMA 200                     // fotogramas cortos para el banco
 
 module tb_fds;
 
@@ -128,6 +129,42 @@ module tb_fds;
         expect_read(16'h4033, 8'h80, 8'h80, "FDS: $4033 D7 = bateria bien");
         expect_read(16'h4031, 8'h00, 8'h00, "FDS: $4031 no se conduce");
         expect_read(16'h4210, 8'h00, 8'h00, "FDS: $4210 no se lee");
+
+        // ================================================= filtro de $4217 y disco fuera ($4232)
+        cpu_write(16'h4025, 8'h0C);                 // lectura
+        cpu_write(16'h4217, 8'hAD); cpu_write(16'h4217, 8'h32); cpu_write(16'h4217, 8'h40);
+        expect_read(16'h4217, 8'hFF, 8'h42, "FDS: filtro: LDA $4032 -> $4232");
+        cpu_write(16'h4217, 8'h2C); cpu_write(16'h4217, 8'h30); cpu_write(16'h4217, 8'h40);
+        expect_read(16'h4217, 8'hFF, 8'h42, "FDS: filtro: BIT $4030 -> $4230");
+        cpu_write(16'h4217, 8'hAE); cpu_write(16'h4217, 8'h33); cpu_write(16'h4217, 8'h40);
+        expect_read(16'h4217, 8'hFF, 8'h42, "FDS: filtro: LDX $4033 -> $4233");
+        cpu_write(16'h4217, 8'h8D); cpu_write(16'h4217, 8'h32); cpu_write(16'h4217, 8'h40);
+        expect_read(16'h4217, 8'hFF, 8'h40, "FDS: filtro: STA $4032 no cambia");
+        cpu_write(16'h4217, 8'hAD); cpu_write(16'h4217, 8'h31); cpu_write(16'h4217, 8'h40);
+        expect_read(16'h4217, 8'hFF, 8'h40, "FDS: filtro: LDA $4031 no cambia");
+        cpu_write(16'h4217, 8'hAD); cpu_write(16'h4217, 8'h32); cpu_write(16'h4217, 8'h42);
+        expect_read(16'h4217, 8'hFF, 8'h42, "FDS: filtro: al leer, $42 se queda");
+        cpu_write(16'h4025, 8'h08);                 // escritura
+        cpu_write(16'h4217, 8'hAD); cpu_write(16'h4217, 8'h32); cpu_write(16'h4217, 8'h42);
+        expect_read(16'h4217, 8'hFF, 8'h40, "FDS: filtro: al escribir, $4232 vuelve a $4032");
+        cpu_write(16'h4217, 8'hAD); cpu_write(16'h4217, 8'h32); cpu_write(16'h4217, 8'h40);
+        expect_read(16'h4217, 8'hFF, 8'h40, "FDS: filtro: al escribir, $4032 se queda");
+        expect_read(16'h4233, 8'h80, 8'h80, "FDS: $4233 = $80");
+        expect_read(16'h4232, 8'hFF, 8'h40, "FDS: $4232 = dentro");
+        cpu_write(16'h4215, 8'h00);                 // actividad del disco: 77 fotogramas sin poder salir
+        repeat (30) cpu_read(16'h4232);
+        expect_read(16'h4232, 8'hFF, 8'h40, "FDS: recien leido el disco no sale");
+        ciclos(77 * 200);
+        repeat (22) cpu_read(16'h4232);
+        expect_read(16'h4232, 8'hFF, 8'h47, "FDS: 22 lecturas seguidas: disco fuera");
+        expect_read(16'h4032, 8'h07, 8'h00, "FDS: $4032 (la BIOS) sigue viendo el disco");
+        ciclos(70 * 200);
+        expect_read(16'h4232, 8'hFF, 8'h47, "FDS: 70 fotogramas despues sigue fuera");
+        ciclos(10 * 200);
+        expect_read(16'h4232, 8'hFF, 8'h40, "FDS: a los 78 vuelve a estar dentro");
+        repeat (30) cpu_read(16'h4232);
+        expect_read(16'h4232, 8'hFF, 8'h40, "FDS: y no vuelve a salir enseguida");
+        cpu_write(16'h4025, 8'h0C);
         expect_chr(14'h1FFF, 19'h01FFF, "FDS: CHR-RAM de 8 KB");
         ppu_access(14'h0123, 1);
         check(!chr_we_n && !chr_ce_n, "FDS: la CHR-RAM se escribe");
