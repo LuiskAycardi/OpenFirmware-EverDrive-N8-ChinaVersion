@@ -18,6 +18,8 @@ import argparse
 import concurrent.futures as cf
 import json
 import os
+import queue
+import traceback
 import pathlib
 import re
 import shutil
@@ -85,24 +87,41 @@ def main():
     ap.add_argument('--guion', default='', help='botones, como en difftest: "120-126:start;300-306:a"')
     ap.add_argument('--salida', default=str(RAIZ / 'tools' / 'fds' / 'salida_mesen'))
     ap.add_argument('--hilos', type=int, default=max(1, (os.cpu_count() or 2) - 1))
-    ap.add_argument('fds', nargs='+')
+    ap.add_argument('--lista', help='archivo con una ruta de .fds por línea')
+    ap.add_argument('fds', nargs='*')
     a = ap.parse_args()
     bios = open(a.bios, 'rb').read()
     crc, nom, estado, _ = fds.bios_info(bios)
     if estado != 'si':
         sys.exit(f'BIOS {nom or "?"} ({crc:08X}): no se puede parchear')
     parche = open(a.parche, 'rb').read()
-    salida = pathlib.Path(a.salida)
+    salida = pathlib.Path(a.salida).resolve()       # Mesen2 corre en su carpeta: las rutas, absolutas
     salida.mkdir(parents=True, exist_ok=True)
     res = []
+    libres = queue.Queue()                           # una carpeta de Mesen2 por tarea a la vez
+    for i in range(a.hilos):
+        libres.put(i)
+
+    def tarea(ruta):
+        slot = libres.get()
+        try:
+            return comparar(slot, ruta, bios, parche, a, salida)
+        except Exception as e:                        # un juego que falla no para la tanda
+            return {'juego': os.path.basename(ruta), 'estado': 'error', 'error': f'{e}',
+                    'traza': traceback.format_exc(limit=3)}
+        finally:
+            libres.put(slot)
+
+    rutas = [r for r in a.fds if r.strip()]
+    if a.lista:
+        rutas += [l.strip() for l in open(a.lista) if l.strip()]
     with cf.ThreadPoolExecutor(a.hilos) as ex:
-        fut = {ex.submit(comparar, i % a.hilos, r, bios, parche, a, salida): r for i, r in enumerate(a.fds)}
-        for f in cf.as_completed(fut):
-            r = f.result()
+        for r in ex.map(tarea, rutas):
             res.append(r)
             print(f"{r['estado']:9s} {r['juego'][:70]}  "
                   + (f"pantallas {r['en_ref']}/{r['pantallas_n8']} en la ref., última {'sí' if r['ultima'] else 'no'}"
-                     if 'coincide' in r else f"fotogramas ref {r['fot_ref']}, n8 {r['fot_n8']}"), flush=True)
+                     if 'coincide' in r else r.get('error', f"fotogramas ref {r.get('fot_ref')}, n8 {r.get('fot_n8')}")),
+                  flush=True)
     (salida / 'resultados.json').write_text(json.dumps(sorted(res, key=lambda r: r['juego']), ensure_ascii=False,
                                                        indent=1))
 
