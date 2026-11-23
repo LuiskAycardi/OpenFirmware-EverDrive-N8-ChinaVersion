@@ -98,7 +98,14 @@ Nintendo. Evita pedir la BIOS al usuario, pero es mucho más trabajo (los juegos
   arranque (11 sin licencia o de desarrollo, Doremikko y Tantei Club II Kouhen), a mirar en F3 con Mesen2 (el banco
   no lleva la cuenta de ciclos real). Rev 0 y Twin Famicom: Zelda y Super Mario Bros. 2 arrancan igual.
   la versión; el parche va en el OS (código propio).
-- **F3, simulador**: `tools/n8sim` con el RBF 254, la BIOS parcheada y un `.fds`, comparado con el FDS de Mesen2.
+- **F3, simulador** (hecha el 2026-11-23): `tools/fds/comparar_mesen.py` pone cada `.fds` en el FDS de Mesen2 (BIOS
+  sin tocar, cambio de cara automático) y el mismo disco como iNES 254 (la SRAM que dejará el OS) en Mesen2 con
+  nuestro HDL (`tools/n8sim`), y mide cuántas pantallas del N8 salen también en la referencia. Resultados (BIOS Rev 1):
+  - los 16 discos con arranque raro en el banco de Python: funcionan 14; fallan **Quick Hunter** (se queda en NOW
+    LOADING, esperas en `$E157`/`$E1C5`, a investigar) y **Kosodate Gokko** (rutina de disco propia, esperado);
+  - muestra de 26 discos «sí» (uno de cada 14): los 26 arrancan y juegan. Dos marcas falsas de la medida: Golf
+    («distinto»: la demo sale con otro viento) y Fruits Mahjong 3 Disk 2 («quieto»: un disco 2 tampoco arranca en
+    la referencia). Zelda y Super Mario Bros. 2 juegan igual que en la referencia.
 - **F4, OS**: `.fds` en el menú, carga de BIOS y caras, lanzamiento, marca N8FD, guardado al volver.
 - **F5, consola**: tanda de juegos FDS en la Famicom (y en la NES, sin sonido de expansión).
 - **F6, sonido FDS**.
