@@ -85,6 +85,7 @@ def leer_cara(c):
         if p >= len(c) or c[p] != 4:
             r['problemas'].append(f'archivo {n}: falta el bloque 4')
             break
+        arch['pos'] = p + 1                    # dónde empiezan los datos en la cara
         arch['datos'] = c[p + 1:p + 1 + tam]
         if len(arch['datos']) < tam:
             r['problemas'].append(f'archivo {n}: cortado al final de la cara')
@@ -110,26 +111,49 @@ def accesos(datos, base):
     return r
 
 
-# ------------------------------------------------------------------ filtro de $4217 (hdl/rtl/mapper_fds.v)
-# Al cargar, el parche pasa cada byte por un filtro de la FPGA que cambia las lecturas absolutas de $4030/$4032/$4033
-# por las de $4230/$4232/$4233 (que en el N8 de NES sí llegan a la CPU); al escribir el disco deshace el cambio.
+# ------------------------------------------------------------------ lecturas de $4030/$4032/$4033 (lo hace el OS)
+# En el N8 de NES las lecturas de $4000-$41FF no llegan a la CPU, así que el juego no vería el disco fuera (ver
+# hdl/rtl/mapper_fds.v). Al montar el disco en la SRAM, el OS cambia en los archivos de programa cada lectura absoluta
+# de $4030/$4032/$4033 por la de $422E/$4230/$4231: byte bajo - 2 y byte alto + 2, así la suma de los bytes no
+# cambia (Ai Senshi Nicol suma su código y se reinicia si no cuadra). Al guardar el disco en la SD se deshace.
 OPS_LEER = {0xAD, 0xAE, 0xAC, 0x2C, 0xBD, 0xB9, 0xBE, 0xBC, 0x0D, 0x2D, 0x4D, 0xCD, 0xEC, 0xCC}
-REGS_FILTRO = {0x30, 0x32, 0x33}
+REGS_CAMBIO = {0x30, 0x32, 0x33}
 
 
-def filtro(h2, h1, v, leer=True):
-    """Lo que devuelve el filtro para el byte v, con h2 y h1 los dos bytes anteriores de la transferencia."""
-    if h2 in OPS_LEER and h1 in REGS_FILTRO and v == (0x40 if leer else 0x42):
-        return 0x42 if leer else 0x40
-    return v
-
-
-def filtrar(datos):
-    """Los datos de un archivo tal y como quedan en memoria al cargarlos con el parche (el filtro empieza el bloque
-    4 con historia «$04» y el tipo del archivo, que no casan nunca)."""
+def cambiar(datos):
+    """(datos cambiados, posiciones del byte bajo de cada lectura cambiada) de un archivo de programa."""
     r = bytearray(datos)
-    for i in range(2, len(r)):
-        r[i] = filtro(datos[i - 2], datos[i - 1], datos[i])
+    pos = []
+    for i in range(len(datos) - 2):
+        if datos[i] in OPS_LEER and datos[i + 1] in REGS_CAMBIO and datos[i + 2] == 0x40:
+            r[i + 1] = datos[i + 1] - 2
+            r[i + 2] = 0x42
+            pos.append(i + 1)
+    return bytes(r), pos
+
+
+def cambiar_cara(c):
+    """La cara con las lecturas cambiadas en sus archivos de programa (también los ocultos) y la lista de posiciones
+    (en la cara) para deshacerlo."""
+    r = bytearray(c)
+    pos = []
+    for a in leer_cara(c)['archivos']:
+        if a['tipo'] != 0:
+            continue
+        d, p = cambiar(a['datos'])
+        r[a['pos']:a['pos'] + len(d)] = d
+        pos += [a['pos'] + x for x in p]
+    return bytes(r), pos
+
+
+def deshacer_cara(c, pos):
+    """Deshace cambiar_cara antes de guardar el disco. Solo donde sigue el cambio: si el juego reescribió ese
+    archivo, lo que escribió se queda."""
+    r = bytearray(c)
+    for p in pos:
+        if r[p] + 2 in REGS_CAMBIO and r[p + 1] == 0x42:
+            r[p] += 2
+            r[p + 1] = 0x40
     return bytes(r)
 
 
@@ -158,12 +182,13 @@ def aplicar_parche(bios, parche):
 
 
 def montar_sram(bios, parche, caras):
-    """La SRAM PRG tal y como la deja el OS antes de lanzar un disco (ver hdl/rtl/mapper_fds.v)."""
+    """La SRAM PRG tal y como la deja el OS antes de lanzar un disco (ver hdl/rtl/mapper_fds.v), con las lecturas de
+    $403x cambiadas (cambiar_cara)."""
     if len(caras) > 7:
         raise ValueError(f'{len(caras)} caras: caben 7')
     s = bytearray(SRAM)
     for k, c in enumerate(caras):
-        s[k * 0x10000:k * 0x10000 + len(c)] = c
+        s[k * 0x10000:k * 0x10000 + len(c)] = cambiar_cara(c)[0]
     s[DIR_PARCHE:DIR_PARCHE + len(parche)] = parche
     s[DIR_PARCHE + 0xFFF] = len(caras)
     b = bytearray(bios)

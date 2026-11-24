@@ -47,8 +47,6 @@ class Maquina:
         self.leido = 0
         # mapper
         self.cara = self.cabeza = self.apoyo = 0
-        self.modo_lee = 1
-        self.h1 = self.h2 = self.filtro = 0
         self.ventana = 0
         self.mir_h = 0
         self.escrituras_disco = 0
@@ -83,13 +81,11 @@ class Maquina:
             return self.cabeza >> 8
         if a == 0x4216:
             return self.apoyo
-        if a == 0x4217:
-            return self.filtro
-        if a == 0x4230:
+        if a == 0x422E:
             return self.mir_h << 3
-        if a == 0x4232:
+        if a == 0x4230:
             return 0x40                              # disco dentro (el banco no cuenta fotogramas)
-        if a == 0x4233:
+        if a == 0x4231:
             return 0x80
         if 0x4800 <= a < 0x4C00 and self.ventana:
             return self.sram[self.dir_ventana(a)]
@@ -124,7 +120,6 @@ class Maquina:
                 self.ppuaddr = (self.ppuaddr + (32 if self.ppuctrl & 4 else 1)) & 0x3FFF
         elif a == 0x4025:
             self.mir_h = (v >> 3) & 1
-            self.modo_lee = (v >> 2) & 1
         elif a == 0x4210:
             self.ventana = v & 1
         elif a == 0x4212:
@@ -137,9 +132,6 @@ class Maquina:
             self.cabeza = (self.cabeza + 1) & 0xFFFF
         elif a == 0x4216:
             self.apoyo = v
-        elif a == 0x4217:
-            self.filtro = fds.filtro(self.h2, self.h1, v, self.modo_lee)
-            self.h2, self.h1 = self.h1, v
         elif 0x4800 <= a < 0x4C00 and self.ventana:
             self.sram[self.dir_ventana(a)] = v
             self.escrituras_disco += 1
@@ -222,7 +214,7 @@ def prueba_api(m, caras):
             poner(m, datos, caras[1][15:25])         # ID de la cara 2
             poner(m, datos + 0x10, [a['id'], 0xFF])
             r = llamar(m, 0xE1F8, [datos, datos + 0x10], zona=z)
-            d = fds.filtrar(a['datos'])
+            d = fds.cambiar(a['datos'])[0] if a['tipo'] == 0 else a['datos']
             if a['tipo'] == 0:
                 if a['dir'] + len(d) <= 0x0800:
                     ok = bytes(m.ram[a['dir']:a['dir'] + len(d)]) == d
@@ -271,7 +263,7 @@ def comprobar_carga(m, cara):
         if a['id'] > arranque or a['oculto']:
             continue
         dest = cpu if a['tipo'] == 0 else ppu
-        for i, b in enumerate(fds.filtrar(a['datos'])):
+        for i, b in enumerate(fds.cambiar(a['datos'])[0] if a['tipo'] == 0 else a['datos']):
             dest[(a['dir'] + i) & (0xFFFF if a['tipo'] == 0 else 0x3FFF)] = (b, a['nombre'])
         det.append(f'{a["nombre"]:8s} id {a["id"]:02X} {len(a["datos"]):5d} B '
                    f'{"RAM" if a["tipo"] == 0 else "VRAM"} ${a["dir"]:04X}')

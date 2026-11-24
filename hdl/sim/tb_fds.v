@@ -90,8 +90,8 @@ module tb_fds;
         cpu_write(16'h4022, 8'h03);                 // repetir
         ciclos(6);
         check(irq_on, "FDS: repetir: IRQ a los 6");
-        expect_read(16'h4230, 8'hDB, 8'h01, "FDS: $4230 = estado");
-        check(!irq_on, "FDS: leer $4230 reconoce");
+        expect_read(16'h422E, 8'hDB, 8'h01, "FDS: $422E = estado");
+        check(!irq_on, "FDS: leer $422E reconoce");
         ciclos(4);
         check(!irq_on, "FDS: repetir: recarga con $4020/$4021 (aun sin IRQ)");
         ciclos(1);
@@ -130,41 +130,23 @@ module tb_fds;
         expect_read(16'h4031, 8'h00, 8'h00, "FDS: $4031 no se conduce");
         expect_read(16'h4210, 8'h00, 8'h00, "FDS: $4210 no se lee");
 
-        // ================================================= filtro de $4217 y disco fuera ($4232)
-        cpu_write(16'h4025, 8'h0C);                 // lectura
-        cpu_write(16'h4217, 8'hAD); cpu_write(16'h4217, 8'h32); cpu_write(16'h4217, 8'h40);
-        expect_read(16'h4217, 8'hFF, 8'h42, "FDS: filtro: LDA $4032 -> $4232");
-        cpu_write(16'h4217, 8'h2C); cpu_write(16'h4217, 8'h30); cpu_write(16'h4217, 8'h40);
-        expect_read(16'h4217, 8'hFF, 8'h42, "FDS: filtro: BIT $4030 -> $4230");
-        cpu_write(16'h4217, 8'hAE); cpu_write(16'h4217, 8'h33); cpu_write(16'h4217, 8'h40);
-        expect_read(16'h4217, 8'hFF, 8'h42, "FDS: filtro: LDX $4033 -> $4233");
-        cpu_write(16'h4217, 8'h8D); cpu_write(16'h4217, 8'h32); cpu_write(16'h4217, 8'h40);
-        expect_read(16'h4217, 8'hFF, 8'h40, "FDS: filtro: STA $4032 no cambia");
-        cpu_write(16'h4217, 8'hAD); cpu_write(16'h4217, 8'h31); cpu_write(16'h4217, 8'h40);
-        expect_read(16'h4217, 8'hFF, 8'h40, "FDS: filtro: LDA $4031 no cambia");
-        cpu_write(16'h4217, 8'hAD); cpu_write(16'h4217, 8'h32); cpu_write(16'h4217, 8'h42);
-        expect_read(16'h4217, 8'hFF, 8'h42, "FDS: filtro: al leer, $42 se queda");
-        cpu_write(16'h4025, 8'h08);                 // escritura
-        cpu_write(16'h4217, 8'hAD); cpu_write(16'h4217, 8'h32); cpu_write(16'h4217, 8'h42);
-        expect_read(16'h4217, 8'hFF, 8'h40, "FDS: filtro: al escribir, $4232 vuelve a $4032");
-        cpu_write(16'h4217, 8'hAD); cpu_write(16'h4217, 8'h32); cpu_write(16'h4217, 8'h40);
-        expect_read(16'h4217, 8'hFF, 8'h40, "FDS: filtro: al escribir, $4032 se queda");
-        expect_read(16'h4233, 8'h80, 8'h80, "FDS: $4233 = $80");
-        expect_read(16'h4232, 8'hFF, 8'h40, "FDS: $4232 = dentro");
+        // ================================================= $4231 y disco fuera ($4230)
+        expect_read(16'h4217, 8'h00, 8'h00, "FDS: $4217 no se conduce");
+        expect_read(16'h4231, 8'h80, 8'h80, "FDS: $4231 = $80");
+        expect_read(16'h4230, 8'hFF, 8'h40, "FDS: $4230 = dentro");
         cpu_write(16'h4215, 8'h00);                 // actividad del disco: 77 fotogramas sin poder salir
-        repeat (30) cpu_read(16'h4232);
-        expect_read(16'h4232, 8'hFF, 8'h40, "FDS: recien leido el disco no sale");
+        repeat (30) cpu_read(16'h4230);
+        expect_read(16'h4230, 8'hFF, 8'h40, "FDS: recien leido el disco no sale");
         ciclos(77 * 200);
-        repeat (22) cpu_read(16'h4232);
-        expect_read(16'h4232, 8'hFF, 8'h47, "FDS: 22 lecturas seguidas: disco fuera");
+        repeat (22) cpu_read(16'h4230);
+        expect_read(16'h4230, 8'hFF, 8'h47, "FDS: 22 lecturas seguidas: disco fuera");
         expect_read(16'h4032, 8'h07, 8'h00, "FDS: $4032 (la BIOS) sigue viendo el disco");
         ciclos(70 * 200);
-        expect_read(16'h4232, 8'hFF, 8'h47, "FDS: 70 fotogramas despues sigue fuera");
+        expect_read(16'h4230, 8'hFF, 8'h47, "FDS: 70 fotogramas despues sigue fuera");
         ciclos(10 * 200);
-        expect_read(16'h4232, 8'hFF, 8'h40, "FDS: a los 78 vuelve a estar dentro");
-        repeat (30) cpu_read(16'h4232);
-        expect_read(16'h4232, 8'hFF, 8'h40, "FDS: y no vuelve a salir enseguida");
-        cpu_write(16'h4025, 8'h0C);
+        expect_read(16'h4230, 8'hFF, 8'h40, "FDS: a los 78 vuelve a estar dentro");
+        repeat (30) cpu_read(16'h4230);
+        expect_read(16'h4230, 8'hFF, 8'h40, "FDS: y no vuelve a salir enseguida");
         expect_chr(14'h1FFF, 19'h01FFF, "FDS: CHR-RAM de 8 KB");
         ppu_access(14'h0123, 1);
         check(!chr_we_n && !chr_ce_n, "FDS: la CHR-RAM se escribe");

@@ -18,8 +18,9 @@
 ;   $E64D  motor y disco listo    -> arranque  (cabeza al principio de la cara; sin mirar la pila en $4033)
 ;   $E4D4  esperar a que las IRQ del disco se salten $0101 bytes (el nombre del archivo, mientras la CPU compara
 ;          el ID)                 -> saltar    (avanza la cabeza esos bytes de golpe)
-;   JSR $E445 en $E21A, $E26B, $E290, $E2AB y $E2F7 (comprobar la cabecera del disco) -> buscar_cara, que elige la
-;          cara cuyo ID coincide con el que pide el juego y luego salta a $E445: cambio de cara automático.
+;   $E445  comprobar la cabecera del disco (CheckDiskHeader, entrada pública: la llaman la BIOS y algunos juegos,
+;          p. ej. Doki Doki Panic) -> buscar_cara, que elige la cara cuyo ID coincide con el que pide el juego, hace
+;          lo que había en $E445 (JSR $E6E3) y sigue en $E448: cambio de cara automático.
 
         .setcpu "6502"
 
@@ -30,7 +31,6 @@ CAB_LO    = $4213
 CAB_HI    = $4214
 AVANZA    = $4215
 APOYO     = $4216
-FILTRO    = $4217               ; filtro de las lecturas de $403x (ver hdl/rtl/mapper_fds.v)
 REG_4025  = $4025
 REG_4026  = $4026
 COPIA4025 = $FA                 ; la BIOS guarda aquí lo último escrito en $4025 (D2 = 1: lectura)
@@ -38,7 +38,8 @@ COPIA4026 = $F9
 MODO_IRQ  = $0101               ; la BIOS: $40 = la próxima IRQ es del disco
 CARAS     = $5FFF               ; lo escribe el OS
 ID_BIOS   = $00                 ; puntero al ID que pide el juego (lo deja la BIOS antes de $E445)
-COMPROBAR = $E445               ; comprobar la cabecera (de la BIOS)
+MOTOR     = $E6E3               ; lo primero que hace $E445 (la BIOS)
+COMPROBAR = $E448               ; el resto de $E445
 
         .segment "PARCHE"
 cabecera:
@@ -48,16 +49,12 @@ cabecera:
 ; ------------------------------------------------------------------ xfer (en lugar de $E7A3)
 ; Entrada: A = byte a escribir (modo escritura). Salida: A = X = el byte (leído o escrito); Y y el acarreo, como
 ; estaban; I = 1 (la BIOS sale de su IRQ sin RTI, así que también deja las interrupciones cerradas).
-; Cada byte pasa por el filtro de $4217: al leer, las lecturas de $4030/$4032/$4033 del juego pasan a $42xx (que sí
-; llegan a la CPU en la NES); al escribir, se deshace el cambio para que el disco quede como era.
 xfer:   php
         sta     APOYO
         ldx     CAB_LO
         lda     COPIA4025
         and     #$04
         bne     @lee
-        lda     APOYO                       ; escritura: lo que va al disco, sin el cambio
-        sta     FILTRO
         lda     CAB_HI
         and     #$03                        ; página de 256 bytes dentro del KB de la ventana
         beq     @e0
@@ -65,18 +62,17 @@ xfer:   php
         beq     @e1
         cmp     #$02
         beq     @e2
-        lda     FILTRO
+        lda     APOYO
         sta     VENTANA + $300,x
-        jmp     @esc
-@e2:    lda     FILTRO
+        jmp     @fin
+@e2:    lda     APOYO
         sta     VENTANA + $200,x
-        jmp     @esc
-@e1:    lda     FILTRO
+        jmp     @fin
+@e1:    lda     APOYO
         sta     VENTANA + $100,x
-        jmp     @esc
-@e0:    lda     FILTRO
+        jmp     @fin
+@e0:    lda     APOYO
         sta     VENTANA,x
-@esc:   lda     APOYO
         jmp     @fin
 @lee:   lda     CAB_HI
         and     #$03
@@ -86,16 +82,14 @@ xfer:   php
         cmp     #$02
         beq     @p2
         lda     VENTANA + $300,x
-        jmp     @fil
+        jmp     @leido
 @p2:    lda     VENTANA + $200,x
-        jmp     @fil
+        jmp     @leido
 @p1:    lda     VENTANA + $100,x
-        jmp     @fil
+        jmp     @leido
 @p0:    lda     VENTANA,x
-@fil:   sta     FILTRO
-        lda     FILTRO
+@leido: sta     APOYO
 @fin:   sta     AVANZA                      ; la cabeza avanza (el valor da igual)
-        sta     APOYO
         ; sigue en residuo
 
 ; ------------------------------------------------------------------ residuo (final común de xfer e inicio)
@@ -203,7 +197,7 @@ saltar: txa
         lda     #0
         rts
 
-; ------------------------------------------------------------------ buscar_cara (antes de $E445)
+; ------------------------------------------------------------------ buscar_cara (en lugar de $E445)
 ; Busca, desde la cara 0, la primera cuyo ID (bytes 15-24 del bloque 1) coincide con los 10 bytes que pide el
 ; juego en (ID_BIOS),y ($FF = cualquiera, como en la BIOS). Si ninguna coincide, deja la cara que había: la BIOS
 ; dará su error de disco equivocado, como en la consola.
@@ -227,7 +221,7 @@ buscar_cara:
         cpy     #10
         bne     @byte
         pla                                 ; esta vale
-        jmp     COMPROBAR
+        jmp     sigue
 @otra:  ldx     CARA
         inx
         txa
@@ -235,6 +229,7 @@ buscar_cara:
         bcc     @cara
         pla                                 ; ninguna: la de antes
         sta     CARA
+sigue:  jsr     MOTOR                       ; las instrucciones de $E445 que tapa el enganche
         jmp     COMPROBAR
 
 ; ------------------------------------------------------------------ tabla de enganches para el OS
@@ -254,14 +249,6 @@ enganches:
         .byte   3, $4C, <arranque, >arranque
         .word   $E4D4
         .byte   3, $4C, <saltar, >saltar
-        .word   $E21B                       ; operando de un JSR $E445
-        .byte   2, <buscar_cara, >buscar_cara
-        .word   $E26C                       ; operando de un JSR $E445
-        .byte   2, <buscar_cara, >buscar_cara
-        .word   $E291                       ; operando de un JSR $E445
-        .byte   2, <buscar_cara, >buscar_cara
-        .word   $E2AC                       ; operando de un JSR $E445
-        .byte   2, <buscar_cara, >buscar_cara
-        .word   $E2F8                       ; operando de un JSR $E445
-        .byte   2, <buscar_cara, >buscar_cara
+        .word   $E445
+        .byte   3, $4C, <buscar_cara, >buscar_cara
         .word   0

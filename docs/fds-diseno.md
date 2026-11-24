@@ -80,13 +80,13 @@ Nintendo. Evita pedir la BIOS al usuario, pero es mucho más trabajo (los juegos
   - SRAM PRG: cara k en `k × 64 KiB` (k = 0-6), código del parche en `0x7D000` (4 KiB), BIOS en `0x7E000` (8 KiB).
   - CPU: `$E000-$FFFF` BIOS; `$6000-$DFFF` RAM de 32 KiB (PRG-RAM, bancos 0-3); `$5000-$5FFF` parche (solo
     lectura); `$4800-$4FFF` ventana del disco con `$4210` D0 = 1, cara en `$4212` (D2-D0) y banco de 2 KiB en
-    `$4211` (D4-D0), los dos legibles; `$4230` = `$4030` (legible en la NES); `$4232` = `$4032` con «disco
-    fuera» emulado y `$4233` = `$80` (ver F3); `$4217` filtro de la carga.
+    `$4211` (D4-D0), los dos legibles; `$422E` = `$4030` (legible en la NES); `$4230` = `$4032` con «disco
+    fuera» emulado y `$4231` = `$4033` = `$80` (ver F3).
   - FDS: `$4020-$4023` temporizador y habilitación, `$4025` D3 mirroring; `$4030` D0 IRQ / D3 mirroring (leerlo
     reconoce), `$4032` = dentro y listo, `$4033` D7 = batería bien (estas tres solo llegan si la placa lo deja).
   - Sin sonido (F6) ni IRQ del disco (la BIOS parcheada no la usa).
   testbench y mutaciones; MAPROUT[254] = 254.
-- **F2, parches** (hecha el 2026-11-21): `os/src/fds_parche.s` (316 bytes en `$5000`, 414 tras F3, con su tabla de enganches) y
+- **F2, parches** (hecha el 2026-11-21): `os/src/fds_parche.s` (316 bytes en `$5000`, 383 tras F3, con su tabla de enganches) y
   `tools/fds/probar_parche.py` (6502 propio, modelo del mapper, PPU mínima; `--api` llama a `LoadFiles` en la cara 2
   y a `WriteFile`). Enganches de la Rev 1 (iguales en Rev 0 y Twin Famicom): `$E7A3` xfer, `$E794` inicio,
   `$E706`/`$E729`/`$E57A` fin (sin CRC), `$E64D` arranque (sin mirar la pila en `$4033`), `$E4D4` saltar (bytes
@@ -107,23 +107,37 @@ Nintendo. Evita pedir la BIOS al usuario, pero es mucho más trabajo (los juegos
   - muestra de 26 discos «sí» (uno de cada 14): los 26 arrancan y juegan. Dos marcas falsas de la medida: Golf
     («distinto»: la demo sale con otro viento) y Fruits Mahjong 3 Disk 2 («quieto»: un disco 2 tampoco arranca en
     la referencia). Zelda y Super Mario Bros. 2 juegan igual que en la referencia.
-  - **Quick Hunter, arreglado** (2026-11-23). Dos causas, y la primera afecta a muchos más:
+  - **Quick Hunter y el cambio de cara, arreglados** (2026-11-23). Tres causas; la primera afecta a muchos más:
     1. **Sacar el disco.** 165 de los 396 discos esperan en `$4032` bit 0 a que se saque el disco antes de pedir
        la otra cara (Zelda, Metroid, SMB2, Quick Hunter…). En el N8 de NES `$4032` da `$40` (bus abierto): el
        disco nunca sale y el juego se cuelga. Arreglo: el HDL emula el «disco fuera» con el mismo criterio que
        el cambio automático de Mesen2 (más de 20 lecturas de `$4032` con huecos de menos de 100 fotogramas y
-       77 fotogramas sin leer el disco → fuera 77 fotogramas, luego dentro), y lo da en `$4232`, que sí llega.
-       Para que el juego lea `$4232`, el parche pasa cada byte cargado por el filtro de `$4217`: los opcodes de
-       lectura absoluta (LDA/LDX/LDY/BIT/ORA/AND/EOR/CMP/CPX/CPY, también indexados) sobre `$4030`/`$4032`/
-       `$4033` pasan a `$42xx`; al escribir el disco se deshace, así el `.fds` guardado queda igual. La BIOS
-       sigue viendo `$4032` = dentro.
+       77 fotogramas sin leer el disco → fuera 77 fotogramas, luego dentro), y lo da en `$4230`, que sí llega.
+       Para que el juego lo lea, **el OS cambia la imagen al montarla en la SRAM** (`fds.cambiar_cara`): en los
+       archivos de programa (también los ocultos), cada lectura absoluta (LDA/LDX/LDY/BIT/ORA/AND/EOR/CMP/CPX/
+       CPY, también indexadas) de `$4030`/`$4032`/`$4033` pasa a `$422E`/`$4230`/`$4231`: byte bajo − 2 y byte
+       alto + 2, así **la suma de los bytes no cambia** (Ai Senshi Nicol suma su código al arrancar y se reinicia
+       si no cuadra: un primer filtro en la FPGA que solo cambiaba el byte alto lo rompía). Al guardar el disco
+       en la SD, el OS lo deshace en las posiciones apuntadas (`fds.deshacer_cara`), solo donde el cambio sigue.
+       En la colección: 340 discos, 1839 lecturas; en los 396 la suma de cada cara queda igual y deshacer da el
+       disco original. La BIOS sigue viendo `$4032` = dentro.
     2. **Restos en la pila.** La BIOS espera cada byte con `CLI; JMP $E7A4`; la IRQ del disco apila `$E7`, `$A4`
        y P, y su manejador los desapila sin borrarlos. Quick Hunter lee ese resto (`$01F0` = `$A0`, código que
        ejecuta en `$6855`). El parche deja los mismos bytes en la pila en xfer, inicio y las dos esperas del CRC
-       de fin (la segunda con N = 1, como tras `STA $4025`). El parche mide ahora 414 bytes.
-    Resultado: Quick Hunter llega a las mismas pantallas que la referencia; Zelda y SMB2 siguen igual; el banco
-    de Python sobre los 364 discos «sí» da **337 todo bien** (antes 327, sin retrocesos). Falta comprobar en
-    Mesen2 y en la consola un cambio de cara completo con el «disco fuera».
-- **F4, OS**: `.fds` en el menú, carga de BIOS y caras, lanzamiento, marca N8FD, guardado al volver.
+       de fin (la segunda con N = 1, como tras `STA $4025`).
+    3. **CheckDiskHeader directo.** El cambio de cara automático enganchaba las 5 llamadas de la BIOS a `$E445`,
+       pero 18 discos la llaman ellos mismos (Doki Doki Panic se quedaba en «A B SIDE ERR 07», Shin Onigashima
+       Zenpen, Deep Dungeon...). Ahora se engancha `$E445` (igual en Rev 0, Rev 1 y Twin Famicom): `buscar_cara`
+       elige la cara, hace el `JSR $E6E3` que tapa el enganche y sigue en `$E448`. El parche mide 383 bytes.
+    Resultado en Mesen2 (N8 simulado frente al FDS de Mesen2): el cambio de cara completo, con el «disco fuera»,
+    funciona. Zelda saca el disco en el fotograma 640 y lee la cara B en el 719; Doki Doki Panic, en el 695 y el
+    805; Ai Senshi Nicol ya no se reinicia y cambia en el 2573 y el 2653; Quick Hunter llega a las pantallas de
+    la referencia. El banco de Python sobre los 364 discos «sí» da **336 todo bien**. Quick Hunter pasa a bien.
+    Bishoujo Kachinuki Renju y Jingorou pasan a fallo, pero en el banco pasan o fallan según cuántas
+    instrucciones cuente por fotograma, también con el parche anterior: activan la NMI escribiendo en `$2000`
+    durante la carga, y el banco no cuenta ciclos. En Mesen2, que sí los cuenta, los dos juegan. Falta
+    comprobarlo en la consola (F5).
+- **F4, OS**: `.fds` en el menú, carga de BIOS y caras (con `cambiar_cara`), lanzamiento, marca N8FD, guardado al
+  volver (con `deshacer_cara`).
 - **F5, consola**: tanda de juegos FDS en la Famicom (y en la NES, sin sonido de expansión).
 - **F6, sonido FDS**.

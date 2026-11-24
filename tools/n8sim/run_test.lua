@@ -18,8 +18,30 @@ for n in string.gmatch(os.getenv("N8_DUMPS") or "", "%d+") do dumps[tonumber(n)]
 for n in string.gmatch(os.getenv("N8_SHOTS") or "", "%d+") do shots[tonumber(n)] = true end
 
 local stateMode = (os.getenv("N8_STATE") or "0") ~= "0"
+
 local out = io.open(outPath, "w")
 local frame = 0
+
+-- N8_WATCH (opcional): direcciones de la CPU en hexadecimal, separadas por comas, p. ej. "4212,4032,4232". Cada
+-- escritura y cada lectura que cambia de valor van a N8_WATCH_OUT como "fotograma w|r dirección valor".
+-- Sirve para ver el cambio de cara del FDS: la cara que elige el parche ($4212) y el «disco fuera» ($4032/$4232).
+local watchOut = nil
+if (os.getenv("N8_WATCH") or "") ~= "" then
+    watchOut = io.open(os.getenv("N8_WATCH_OUT") or (outPath .. ".watch"), "w")
+    local last = {}
+    for h in string.gmatch(os.getenv("N8_WATCH"), "%x+") do
+        local adr = tonumber(h, 16)
+        emu.addMemoryCallback(function(a, v)
+            watchOut:write(string.format("%d w %04X %02X\n", frame, a, v))
+        end, emu.callbackType.write, adr, adr)
+        emu.addMemoryCallback(function(a, v)
+            if last[a] ~= v then
+                last[a] = v
+                watchOut:write(string.format("%d r %04X %02X\n", frame, a, v))
+            end
+        end, emu.callbackType.read, adr, adr)
+    end
+end
 
 -- Generador congruencial (determinista e independiente de la versión de Lua)
 local rng = seed & 0x7FFFFFFF
@@ -121,6 +143,7 @@ emu.addEventCallback(function()
         f:write(table.concat(parts)); f:close()
     end
     if frame >= frames then
+        if watchOut then watchOut:close() end
         out:close()
         emu.stop(0)
     end
