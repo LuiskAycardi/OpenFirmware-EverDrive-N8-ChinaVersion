@@ -47,6 +47,8 @@ class Maquina:
         self.leido = 0
         # mapper
         self.cara = self.cabeza = self.apoyo = 0
+        self.avisos_boton = 0                    # B + Select vistos por el parche (el banco no cuenta fotogramas)
+        self.n_caras = 1
         self.ventana = 0
         self.mir_h = 0
         self.escrituras_disco = 0
@@ -81,6 +83,8 @@ class Maquina:
             return self.cabeza >> 8
         if a == 0x4216:
             return self.apoyo
+        if a == 0x4217:
+            return 0
         if a == 0x422E:
             return self.mir_h << 3
         if a == 0x4230:
@@ -132,6 +136,10 @@ class Maquina:
             self.cabeza = (self.cabeza + 1) & 0xFFFF
         elif a == 0x4216:
             self.apoyo = v
+        elif a == 0x4217:
+            self.avisos_boton += 1
+        elif a == 0x4219:
+            self.n_caras = v & 7
         elif 0x4800 <= a < 0x4C00 and self.ventana:
             self.sram[self.dir_ventana(a)] = v
             self.escrituras_disco += 1

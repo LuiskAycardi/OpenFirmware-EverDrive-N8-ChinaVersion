@@ -20,7 +20,13 @@
 ;          el ID)                 -> saltar    (avanza la cabeza esos bytes de golpe)
 ;   $E445  comprobar la cabecera del disco (CheckDiskHeader, entrada pública: la llaman la BIOS y algunos juegos,
 ;          p. ej. Doki Doki Panic) -> buscar_cara, que elige la cara cuyo ID coincide con el que pide el juego, hace
-;          lo que había en $E445 (JSR $E6E3) y sigue en $E448: cambio de cara automático.
+;          lo que había en $E445 (JSR $E6E3) y sigue en $E448: cambio de cara automático. Busca desde la cara
+;          que está puesta: si el juego pide un ID que tienen varias caras (14 discos de la colección, casi todos de
+;          Hacker International, con el ID a cero), se queda la que haya elegido el jugador con el botón.
+;   $EA09  final de ReadPads ($E9EB, la lectura de los mandos a la que llaman todas las rutinas de mandos de la
+;          BIOS)                  -> mandos    (si ve B + Select, se lo dice a la FPGA ($4217), que lleva la cuenta
+;          del cambio de cara a mano: ver hdl/rtl/mapper_fds.v. La FPGA también espía $4016, para los juegos que
+;          leen el mando ellos mismos)
 
         .setcpu "6502"
 
@@ -31,6 +37,12 @@ CAB_LO    = $4213
 CAB_HI    = $4214
 AVANZA    = $4215
 APOYO     = $4216
+BOTON     = $4217               ; escribir: B + Select vistos (cambio de cara a mano)
+N_CARAS   = $4219               ; escribir: número de caras (para el cambio de cara a mano)
+PAD1      = $F5                 ; ReadPads: mando 1 (A = bit 7 ... derecha = bit 0)
+PAD_EXP   = $00                 ;           y el mando de expansión de la Famicom
+COMBO     = $60                 ; B + Select
+LEE_PADS  = $E9F7               ; el bucle de ReadPads
 REG_4025  = $4025
 REG_4026  = $4026
 COPIA4025 = $FA                 ; la BIOS guarda aquí lo último escrito en $4025 (D2 = 1: lectura)
@@ -198,17 +210,18 @@ saltar: txa
         rts
 
 ; ------------------------------------------------------------------ buscar_cara (en lugar de $E445)
-; Busca, desde la cara 0, la primera cuyo ID (bytes 15-24 del bloque 1) coincide con los 10 bytes que pide el
-; juego en (ID_BIOS),y ($FF = cualquiera, como en la BIOS). Si ninguna coincide, deja la cara que había: la BIOS
-; dará su error de disco equivocado, como en la consola.
+; Busca, empezando por la cara puesta y dando la vuelta, la primera cuyo ID (bytes 15-24 del bloque 1) coincide con
+; los 10 bytes que pide el juego en (ID_BIOS),y ($FF = cualquiera, como en la BIOS). Si ninguna coincide, deja la
+; cara que había: la BIOS dará su error de disco equivocado, como en la consola.
 buscar_cara:
-        lda     CARA
-        pha
         lda     #1
         sta     VENT_ON
-        lda     #0
-@cara:  sta     CARA
-        lda     #0
+        lda     CARAS                       ; caras que faltan por mirar
+        sta     APOYO
+        sta     N_CARAS                     ; (y para el cambio de cara a mano)
+        lda     CARA
+        pha                                 ; la de antes
+@cara:  lda     #0
         sta     CAB_LO
         sta     CAB_HI
         ldy     #0
@@ -222,15 +235,42 @@ buscar_cara:
         bne     @byte
         pla                                 ; esta vale
         jmp     sigue
-@otra:  ldx     CARA
+@otra:  lda     APOYO
+        sec
+        sbc     #1
+        sta     APOYO
+        beq     @ninguna
+        ldx     CARA                        ; la siguiente, dando la vuelta
         inx
-        txa
-        cmp     CARAS
-        bcc     @cara
+        cpx     CARAS
+        bcc     :+
+        ldx     #0
+:       stx     CARA
+        jmp     @cara
+@ninguna:
         pla                                 ; ninguna: la de antes
         sta     CARA
 sigue:  jsr     MOTOR                       ; las instrucciones de $E445 que tapa el enganche
         jmp     COMPROBAR
+
+; ------------------------------------------------------------------ mandos (en el final de ReadPads, $EA09)
+; Lo que había: DEX, BNE al bucle y RTS. Al acabar, si B + Select están pulsados (en el mando 1 o en el de
+; expansión), avisa a la FPGA. Sale como la BIOS: X = 0, A y las banderas como estaban (Z = 1: hay rutinas que la
+; miran).
+mandos: dex
+        beq     @fin
+        jmp     LEE_PADS
+@fin:   php
+        pha
+        lda     PAD1
+        ora     PAD_EXP
+        and     #COMBO
+        cmp     #COMBO
+        bne     @sale
+        sta     BOTON
+@sale:  pla
+        plp
+        rts
 
 ; ------------------------------------------------------------------ tabla de enganches para el OS
 ; Por entrada: dirección en la BIOS, número de bytes y los bytes. Termina con la dirección 0.
@@ -251,4 +291,6 @@ enganches:
         .byte   3, $4C, <saltar, >saltar
         .word   $E445
         .byte   3, $4C, <buscar_cara, >buscar_cara
+        .word   $EA09
+        .byte   3, $4C, <mandos, >mandos
         .word   0

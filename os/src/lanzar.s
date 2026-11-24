@@ -22,7 +22,7 @@
         .export lanzar, l_error, l_rbf, nombre_rbf, leer_cabecera, l_prg16, l_chr8, l_cfg, abrir_edfc
         .exportzp l_mapper
         .import dir_abrir_raiz, dir_abrir, dir_buscar
-        .import fds_reconocer, fds_bios, banco_marca, dir_lba, dir_idx
+        .import fds_reconocer, banco_marca, dir_lba, dir_idx
         .import __FDSOVL_LOAD__, __FDSOVL_RUN__, __FDSOVL_SIZE__
         .import arch_abrir, arch_leer, arch_contiguo
         .import arch_lba, arch_tam, arch_ini, fat_error, sector
@@ -410,6 +410,9 @@ fds_carga:
 fds_pend:
         jsr     banco_marca
         jmp     __FDSOVL_RUN__ + 3
+fds_bios:                               ; la BIOS del usuario a la SRAM PRG y su CRC32
+        jsr     banco_marca
+        jmp     __FDSOVL_RUN__ + 6
 
 ; Al encender (antes de usar la zona de trabajo, donde viene en el OS.BIN): copia el código del FDS al banco 8.
 fds_copiar:

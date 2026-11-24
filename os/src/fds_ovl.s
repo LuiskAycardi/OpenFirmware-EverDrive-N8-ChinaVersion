@@ -5,10 +5,15 @@
 ; esa zona, el OS lo copia al banco 8 de la PRG-RAM ($7000, con pila: sobrevive a los resets). Se llama con el banco
 ; 8 en la ventana $6000 (lanzar.s: fds_carga y fds_pend) y nunca cambia el reg 129.
 ;
+;   $7006 fds_bios       (antes de cargar el RBF) busca EDFC/DISKSYS.ROM, la copia a la SRAM PRG (0x7E000) y la
+;                        reconoce por su CRC32 (con una tabla de 256 entradas que se hace en el banco 8): acarreo = 0
+;                        y A = índice si se sabe parchear; si no, acarreo = 1 y A = L_SINBIOS, L_BIOSEMU, L_BIOSRARA
+;                        o L_SD. Lee la BIOS una sola vez (antes, una para la suma y otra para copiarla).
 ;   $7000 fds_cargar     con el 254.RBF ya en el FPGA (modo OS): bloque del parche en 0x7D000 y número de caras en
-;                        0x7DFFF, BIOS del usuario en 0x7E000 con los enganches del parche, cara k en k x 64 KiB con
-;                        las lecturas de $4030/$4032/$4033 cambiadas (como tools/fds/fds.py: cambiar_cara) y la marca
-;                        N8FD. Acarreo = 1 si falla: A = L_SD (fat_error) o L_SINBIOS
+;                        0x7DFFF, los enganches del parche en la BIOS de 0x7E000, cara k en k x 64 KiB con las
+;                        lecturas de $4030/$4032/$4033 cambiadas (como tools/fds/fds.py: cambiar_cara) y la marca
+;                        N8FD. Las caras se leen por tramos de clústeres seguidos (una lectura múltiple por tramo) y
+;                        van del SPI a la ventana sin pasar por un búfer. Acarreo = 1 si falla: A = L_SD (fat_error)
 ;   $7003 fds_pendiente  si hay marca N8FD: deshace el cambio (fds.py: deshacer_cara) y escribe en el .fds los
 ;                        sectores que el juego cambió. A = 0 (nada), M_DISCO (guardado), M_PERDIDA (el archivo o el
 ;                        disco de la SRAM ya no son los de la marca: se borra sin escribir) con acarreo = 0; con
@@ -23,8 +28,9 @@
 
         .import tipo_arranque, pt_err, fds_caras, fds_desp, r_ini, l_ent, abrir_edfc
         .import dir_buscar, arch_abrir, arch_leer, arch_avanzar, arch_reabrir, arch_ini, arch_lba, sector
-        .import fat_error, leer_sector, ent_clus, sd_escribir_sector, sd_error
-        .importzp sd_lba, sd_ptr, dir_ent, nombre, clus
+        .import fat_error, leer_sector, ent_clus, sd_escribir_sector, sd_error, arch_tam
+        .import tramo_ini, tramo_sig, tr_lba, tr_n, tr_fin, fat_desp, sd_multi_ini, sd_parar, sd_base
+        .importzp sd_lba, sd_ptr, dir_ent, nombre, clus, E_FIN, E_DATOS
 
 REG_PRG   = 128                 ; banco de 2 KiB de la SRAM PRG en $4800-$4FFF
 VENTANA   = $4800
@@ -42,7 +48,8 @@ o_pos:      .res 2              ; posición en la cara
 o_p:        .res 2              ; puntero en la ventana
 o_bp:       .res 2              ; puntero en el búfer
 o_lp:       .res 2              ; puntero en la lista de cambios
-o_n:        .res 1              ; bytes del trozo (1-128)
+o_n:        .res 1              ; bytes del trozo (1-255)
+o_y0:       .res 1              ; 256 - o_n: los bucles rápidos van con Y de o_y0 a 0 sobre o_bp = o_p - o_y0
 o_t:        .res 1
 
         .segment "FDSBSS"
@@ -54,6 +61,7 @@ o_caras:    .res 1
 o_cuenta:   .res 1
 o_j:        .res 1
 o_y:        .res 1
+o_yb:       .res 1
 o_tam:      .res 2
 o_tipo:     .res 1
 o_fin:      .res 2
@@ -62,6 +70,13 @@ o_base:     .res 2
 o_b1:       .res 1
 o_ncamb:    .res 1
 MARCA_TAM = 22
+o_bloques:  .res 2              ; bloques que quedan del tramo
+o_crc:      .res 4
+o_c:        .res 4
+crc_t0:     .res 256            ; CRC32: los 4 bytes de cada entrada de la tabla, por separado
+crc_t1:     .res 256
+crc_t2:     .res 256
+crc_t3:     .res 256
 o_marca:    .res MARCA_TAM      ; "N8FD", versión, entrada (lba 4, índice 1), clúster (4), tamaño (4), caras,
                                 ; cabecera (0 o 16), cambios, suma
 M_LBA  = 5
@@ -76,6 +91,7 @@ M_SUMA = 21
         .segment "FDSOVL"
         jmp     fds_cargar              ; $7000
         jmp     fds_pendiente           ; $7003
+        jmp     fds_bios                ; $7006
 
 ; ------------------------------------------------------------------------------------------------ cargar
 fds_cargar:
@@ -104,47 +120,7 @@ fds_cargar:
         sta     o_pos+1
         lda     fds_caras
         jsr     escribir_b
-        ; ---- la BIOS (16 sectores) en 0x7E000
-        jsr     abrir_edfc
-        bcs     @sin_bios
-        lda     #<n_bios
-        sta     nombre
-        lda     #>n_bios
-        sta     nombre+1
-        jsr     dir_buscar
-        bcc     :+
-@sin_bios:
-        lda     fat_error
-        bne     @err
-        lda     #L_SINBIOS
-        sec
-        rts
-:       jsr     arch_abrir
-        lda     #<$E000
-        sta     o_pos
-        lda     #>$E000
-        sta     o_pos+1
-        lda     #16
-        sta     o_cuenta
-@bios:  jsr     arch_leer
-        bcs     @err
-        jsr     fijar
-        ldy     #0
-@b1:    lda     sector,y
-        sta     (o_p),y
-        iny
-        bne     @b1
-        inc     o_p+1
-@b2:    lda     sector+256,y
-        sta     (o_p),y
-        iny
-        bne     @b2
-        inc     o_pos+1
-        inc     o_pos+1
-        dec     o_cuenta
-        beq     @enganches
-        jsr     arch_avanzar
-        bcc     @bios
+        jmp     @enganches
 @err:   lda     #L_SD
         sec
         rts
@@ -193,13 +169,13 @@ fds_cargar:
         bcc     @e
         inc     o_bp+1
         jmp     @e
-        ; ---- las caras: cara k en k x 64 KiB
+        ; ---- las caras: cara k en k x 64 KiB, por tramos de clústeres seguidos
 @caras: ldx     #3
 @ini:   lda     r_ini,x
         sta     arch_ini,x
         dex
         bpl     @ini
-        jsr     arch_reabrir
+        jsr     tramo_ini
         lda     fds_caras
         sta     o_caras
         lda     fds_desp
@@ -208,24 +184,59 @@ fds_cargar:
         sta     o_k
         sta     o_pos
         sta     o_pos+1
-        sta     o_sentido
-        lda     #<sector
-        sta     o_bufb
-        lda     #>sector
-        sta     o_bufb+1
-@s:     jsr     arch_leer
+@tramo: jsr     tramo_sig
         bcc     :+
         jmp     @err
-:
-        jsr     procesar
+:       lda     tr_n                    ; bloques del tramo = clústeres x sectores por clúster
+        sta     o_bloques
+        lda     tr_n+1
+        sta     o_bloques+1
+        ldx     fat_desp
+        beq     @lba
+@x:     asl     o_bloques
+        rol     o_bloques+1
+        dex
+        bne     @x
+@lba:   ldx     #3
+@l:     lda     tr_lba,x
+        sta     sd_lba,x
+        dex
+        bpl     @l
+        jsr     sd_multi_ini
+        bcc     :+
+        jmp     @err
+:       lda     #2                      ; ráfaga y tarjeta seleccionada; el dato SPI en $4401
+        sta     REG_SEL
+        lda     sd_base
+        ora     #%00000100
+        sta     REG_DAT
+        lda     #0
+        sta     REG_SEL
+@bloque:
+        jsr     bloque_sd
+        bcs     @err_tramo
         lda     o_k
         cmp     o_caras
-        bcs     @cambiar
-        jsr     arch_avanzar
-        bcc     @s
-        bcc     :+
+        bcs     @todo
+        lda     o_bloques
+        bne     :+
+        dec     o_bloques+1
+:       dec     o_bloques
+        lda     o_bloques
+        ora     o_bloques+1
+        bne     @bloque
+        jsr     sd_parar                ; fin del tramo
+        lda     tr_fin
+        beq     @tramo
+        lda     #<E_FIN                 ; el archivo se acaba antes que las caras
+        sta     fat_error
         jmp     @err
-:
+@err_tramo:
+        jsr     sd_parar
+        lda     #<E_DATOS
+        sta     fat_error
+        jmp     @err
+@todo:  jsr     sd_parar
         ; ---- las lecturas de $4030/$4032/$4033 en los archivos de programa
 @cambiar:
         lda     #0
@@ -511,7 +522,259 @@ fds_pendiente:
         clc
         rts
 
+; ------------------------------------------------------------------------------------------------ BIOS
+fds_bios:
+        jsr     abrir_edfc
+        bcs     @falta
+        lda     #<n_bios
+        sta     nombre
+        lda     #>n_bios
+        sta     nombre+1
+        jsr     dir_buscar
+        bcc     @hay
+@falta: lda     fat_error
+        bne     @sd
+        lda     #L_SINBIOS
+        sec
+        rts
+@hay:   jsr     arch_abrir
+        lda     arch_tam                ; 8192 bytes justos
+        ora     arch_tam+2
+        ora     arch_tam+3
+        bne     @rara_l
+        lda     arch_tam+1
+        cmp     #$20
+        beq     :+
+@rara_l:
+        jmp     @rara
+:       jsr     crc_tabla
+        lda     #$FF
+        ldx     #3
+@c0:    sta     o_crc,x
+        dex
+        bpl     @c0
+        lda     #K_FIJO
+        sta     o_k
+        lda     #<$E000
+        sta     o_pos
+        lda     #>$E000
+        sta     o_pos+1
+        lda     #16
+        sta     o_cuenta
+@s:     jsr     arch_leer
+        bcs     @sd
+        jsr     fijar
+        ldy     #0
+@b1:    lda     sector,y
+        sta     (o_p),y
+        jsr     crc_byte
+        iny
+        bne     @b1
+        inc     o_p+1
+@b2:    lda     sector+256,y
+        sta     (o_p),y
+        jsr     crc_byte
+        iny
+        bne     @b2
+        inc     o_pos+1
+        inc     o_pos+1
+        dec     o_cuenta
+        beq     @suma
+        jsr     arch_avanzar
+        bcc     @s
+@sd:    lda     #L_SD
+        sec
+        rts
+@suma:  ldx     #3
+@f:     lda     o_crc,x
+        eor     #$FF
+        sta     o_crc,x
+        dex
+        bpl     @f
+        ldx     #0                      ; ¿está en la tabla de BIOS conocidas?
+@e:     cpx     #FDS_BIOS_N
+        bcs     @rara
+        txa
+        asl
+        asl
+        tay
+        lda     fds_bios_crc,y
+        cmp     o_crc
+        bne     @sig
+        lda     fds_bios_crc+1,y
+        cmp     o_crc+1
+        bne     @sig
+        lda     fds_bios_crc+2,y
+        cmp     o_crc+2
+        bne     @sig
+        lda     fds_bios_crc+3,y
+        cmp     o_crc+3
+        beq     @esta
+@sig:   inx
+        bne     @e
+@esta:  cpx     #FDS_BIOS_SI
+        bcs     @emu
+        txa
+        clc
+        rts
+@emu:   lda     #L_BIOSEMU
+        sec
+        rts
+@rara:  lda     #L_BIOSRARA
+        sec
+        rts
+
+; Tabla del CRC-32 de zlib (polinomio $EDB88320, reflejado), byte a byte, en crc_t0-crc_t3.
+crc_tabla:
+        ldx     #0
+@i:     stx     o_c
+        lda     #0
+        sta     o_c+1
+        sta     o_c+2
+        sta     o_c+3
+        ldy     #8
+@b:     lsr     o_c+3
+        ror     o_c+2
+        ror     o_c+1
+        ror     o_c
+        bcc     @n
+        lda     o_c+3
+        eor     #$ED
+        sta     o_c+3
+        lda     o_c+2
+        eor     #$B8
+        sta     o_c+2
+        lda     o_c+1
+        eor     #$83
+        sta     o_c+1
+        lda     o_c
+        eor     #$20
+        sta     o_c
+@n:     dey
+        bne     @b
+        lda     o_c
+        sta     crc_t0,x
+        lda     o_c+1
+        sta     crc_t1,x
+        lda     o_c+2
+        sta     crc_t2,x
+        lda     o_c+3
+        sta     crc_t3,x
+        inx
+        bne     @i
+        rts
+
+; crc = (crc >> 8) ^ tabla[(crc ^ A) & $FF]. Usa X; no toca Y.
+crc_byte:
+        eor     o_crc
+        tax
+        lda     o_crc+1
+        eor     crc_t0,x
+        sta     o_crc
+        lda     o_crc+2
+        eor     crc_t1,x
+        sta     o_crc+1
+        lda     o_crc+3
+        eor     crc_t2,x
+        sta     o_crc+2
+        lda     crc_t3,x
+        sta     o_crc+3
+        rts
+
 ; ------------------------------------------------------------------------------------------------ comunes
+; Un bloque de 512 bytes de la lectura múltiple en curso (cada lectura de $4401 saca un byte), repartido entre las
+; caras desde (o_k, o_pos): primero se salta lo que quede de la cabecera fwNES y, acabado el disco, lo que sobre.
+; Acarreo = 1 si no llega el testigo del bloque.
+bloque_sd:
+        ldx     #0
+        ldy     #0
+@t:     lda     REG_DAT
+        cmp     #$FE
+        beq     @datos
+        dex
+        bne     @t
+        dey
+        bne     @t
+        sec
+        rts
+@datos: lda     #0
+        sta     o_i
+        sta     o_i+1
+        ldx     o_hdr
+        beq     @l
+        stx     o_i
+@h:     lda     REG_DAT
+        dex
+        bne     @h
+        stx     o_hdr                   ; X = 0
+@l:     lda     o_i+1
+        cmp     #>512
+        bcs     @crc
+        lda     o_k
+        cmp     o_caras
+        bcs     @resto
+        jsr     medir
+        jsr     fijar
+        jsr     rapido
+@c:     lda     REG_DAT
+        sta     (o_bp),y
+        iny
+        bne     @c
+        jsr     avanzar
+        jmp     @l
+@resto: lda     REG_DAT                 ; lo que sobra detrás de la última cara
+        inc     o_i
+        bne     :+
+        inc     o_i+1
+:       lda     o_i+1
+        cmp     #>512
+        bcc     @resto
+@crc:   lda     REG_DAT                 ; CRC (no se comprueba)
+        lda     REG_DAT
+        clc
+        rts
+
+; o_n = lo menor de 255 y de lo que queda del sector (512 - o_i), de la cara y del banco de 2 KiB de la ventana.
+medir:  lda     #255
+        sta     o_n
+        sec
+        lda     #<512
+        sbc     o_i
+        tax
+        lda     #>512
+        sbc     o_i+1
+        jsr     menor
+        sec
+        lda     #CARA_LO
+        sbc     o_pos
+        tax
+        lda     #CARA_HI
+        sbc     o_pos+1
+        jsr     menor
+        jmp     hasta_banco
+
+; o_i y o_pos avanzan o_n; al final de una cara se pasa a la siguiente.
+avanzar:
+        clc
+        lda     o_i
+        adc     o_n
+        sta     o_i
+        bcc     :+
+        inc     o_i+1
+:       lda     o_n
+        jsr     mas_pos
+        lda     o_pos
+        cmp     #CARA_LO
+        bne     @ya
+        lda     o_pos+1
+        cmp     #CARA_HI
+        bne     @ya
+        lda     #0
+        sta     o_pos
+        sta     o_pos+1
+        inc     o_k
+@ya:    rts
+
 ; Reparte el sector que hay en el búfer (o_bufb) entre las caras, desde (o_k, o_pos): con o_sentido = 0 lo copia
 ; a la SRAM y con 1 copia la SRAM al búfer. Primero se salta lo que quede de la cabecera fwNES.
 procesar:
@@ -531,24 +794,7 @@ procesar:
         lda     o_i+1
         cmp     #>512
         bcs     @fin
-        ; o_n = lo menor de 128, lo que queda del sector, de la cara y del banco de 2 KiB
-        lda     #128
-        sta     o_n
-        sec
-        lda     #<512
-        sbc     o_i
-        tax
-        lda     #>512
-        sbc     o_i+1
-        jsr     menor
-        sec
-        lda     #CARA_LO
-        sbc     o_pos
-        tax
-        lda     #CARA_HI
-        sbc     o_pos+1
-        jsr     menor
-        jsr     hasta_banco
+        jsr     medir
         jsr     fijar
         clc
         lda     o_bufb
@@ -572,26 +818,25 @@ procesar:
         cpy     o_n
         bne     @g
 @avanza:
-        clc
-        lda     o_i
-        adc     o_n
-        sta     o_i
-        bcc     :+
-        inc     o_i+1
-:       lda     o_n
-        jsr     mas_pos
-        lda     o_pos
-        cmp     #CARA_LO
-        bne     @otra
-        lda     o_pos+1
-        cmp     #CARA_HI
-        bne     @otra
-        lda     #0                      ; fin de la cara: la siguiente
-        sta     o_pos
-        sta     o_pos+1
-        inc     o_k
-@otra:  jmp     @l
+        jsr     avanzar
+        jmp     @l
 @fin:   rts
+
+; Prepara un bucle rápido de o_n bytes en la ventana: Y = o_y0 = 256 - o_n y o_bp = o_p - o_y0, así que
+; (o_bp),y recorre o_p ... o_p + o_n - 1 y el bucle acaba cuando Y da la vuelta (sin CPY).
+rapido: sec
+        lda     #0
+        sbc     o_n
+        sta     o_y0
+        sec
+        lda     o_p
+        sbc     o_y0
+        sta     o_bp
+        lda     o_p+1
+        sbc     #0
+        sta     o_bp+1
+        ldy     o_y0
+        rts
 
 ; A:X = un tope (alto:bajo): si es menor que o_n, pasa a ser o_n.
 menor:  cmp     #0
@@ -790,7 +1035,7 @@ escanear:
         lda     o_pos+1
         sbc     o_fin+1
         bcs     @fin
-        lda     #128
+        lda     #255
         sta     o_n
         sec
         lda     o_fin
@@ -801,20 +1046,23 @@ escanear:
         jsr     menor
         jsr     hasta_banco
         jsr     fijar
-        ldy     #0
-@b:     lda     (o_p),y
+        jsr     rapido
+@b:     lda     (o_bp),y
         cmp     #$40
         beq     @hay
 @sig:   iny
-        cpy     o_n
         bne     @b
         lda     o_n
         jsr     mas_pos
         jmp     @trozo
-@hay:   sty     o_y
+@hay:   sty     o_yb                    ; Y del bucle
+        tya
+        sec
+        sbc     o_y0
+        sta     o_y                     ; posición del $40 en el trozo
         jsr     mirar
-        jsr     fijar
-        ldy     o_y
+        jsr     fijar                   ; mirar movió la ventana (o_bp sigue valiendo)
+        ldy     o_yb
         jmp     @sig
 @fin:   rts
 
@@ -881,6 +1129,7 @@ mirar:  lda     o_pos
 firma:      .byte "N8FD", 1
 bloque1:    .byte $01, "*NINTENDO-HVC*"
 n_bios:     .byte "DISKSYS ROM"
+        .include "fds_tablas.inc"        ; fds_bios_crc, FDS_BIOS_N, FDS_BIOS_SI (solo sumas)
 ops:        .byte $AD, $AE, $AC, $2C, $BD, $B9, $BE, $BC, $0D, $2D, $4D, $CD, $EC, $CC
 OPS_N = * - ops
 

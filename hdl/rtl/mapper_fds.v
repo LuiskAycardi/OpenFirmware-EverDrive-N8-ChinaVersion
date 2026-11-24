@@ -32,6 +32,16 @@
 //        $4213/$4214 posición de la cabeza en la cara (byte bajo/alto), legible
 //        $4215       (escr.) la cabeza avanza un byte
 //        $4216       un byte de apoyo para el parche (que no puede usar la RAM del juego), legible
+//        $4217       (escr.) el parche ha visto B + Select en ReadPads de la BIOS; (lect.) fotogramas seguidos con
+//                    la combinación (ver «cambio de cara a mano»)
+//        $4218 (escr.) saca el disco 77 fotogramas, sin esperar a que pueda salir
+//        $4219 (escr.) número de caras del disco (lo escribe el parche al buscar la cara)
+// Cambio de cara a mano: B + Select mantenidos 45 fotogramas (~0,75 s) pasan a la cara siguiente (dando la vuelta)
+// y sacan el disco 77 fotogramas, como al darle la vuelta en la consola. Hace falta cuando varias caras tienen el
+// mismo ID y el cambio automático no sabe cuál quiere el juego. La combinación se ve de dos maneras, que suman en el
+// mismo contador (así una pulsación nunca da dos vueltas): espiando las lecturas del mando 1 en $4016 (D0 y D1, la
+// 2.ª y la 3.ª lectura tras el strobe: B y Select) y por el aviso del parche desde ReadPads de la BIOS. El contador
+// vuelve a cero tras 10 fotogramas sin verla (hay juegos que no leen el mando en todos).
 //        $422E (lect.) como $4030 (también reconoce la IRQ)
 //        $4230 (lect.) como $4032, con el disco «fuera» un rato cuando el juego espera a que se saque (ver abajo)
 //        $4231 (lect.) como $4033: $80
@@ -89,6 +99,11 @@ module mapper_fds (
     reg        ventana_en;
     reg [15:0] cabeza;
     reg [7:0]  apoyo;
+    reg [5:0]  boton;                          // fotogramas con la combinación (45 = ya se dio la vuelta)
+    reg [3:0]  sin_boton;                      // fotogramas seguidos sin verla
+    reg        visto, pad_b;
+    reg [3:0]  pad_i;                          // lecturas de $4016 desde el strobe
+    reg [2:0]  n_caras;
     reg [2:0]  cara;
     reg [14:0] pre;                            // ciclos de CPU de un fotograma
     reg [7:0]  espera;                         // fotogramas hasta que el disco pueda salir
@@ -99,7 +114,8 @@ module mapper_fds (
         pre = 0; espera = 8'd77; hueco = 7'd100; fuera_cta = 0;
         lecturas = 0; fuera = 0;
         recarga = 0; cuenta = 0; t_rep = 0; t_act = 0; t_irq = 0;
-        disco_en = 1; sonido_en = 1; mir_h = 0; ventana_en = 0; cabeza = 0; apoyo = 0; cara = 0;
+        disco_en = 1; sonido_en = 1; mir_h = 0; ventana_en = 0; cabeza = 0; apoyo = 0; boton = 0; cara = 0;
+        sin_boton = 0; visto = 0; pad_b = 0; pad_i = 0; n_caras = 3'd1;
     end
 
     wire io     = romsel_n && (cpu_a[14:8] == 7'h40);              // $4000-$40FF
@@ -113,8 +129,8 @@ module mapper_fds (
     always @(negedge m2) begin
         if (rst) begin
             recarga <= 0; cuenta <= 0; t_rep <= 0; t_act <= 0; t_irq <= 0;
-            disco_en <= 1; sonido_en <= 1; mir_h <= 0; ventana_en <= 0; cabeza <= 0; apoyo <= 0; cara <= 0;
-            pre <= 0; espera <= 8'd77; hueco <= 7'd100;
+            disco_en <= 1; sonido_en <= 1; mir_h <= 0; ventana_en <= 0; cabeza <= 0; apoyo <= 0; boton <= 0;
+            cara <= 0; pre <= 0; sin_boton <= 0; visto <= 0; pad_b <= 0; pad_i <= 0; n_caras <= 3'd1; espera <= 8'd77; hueco <= 7'd100;
             fuera_cta <= 0; lecturas <= 0; fuera <= 0;
         end else begin
             // disco fuera (ver la cabecera): un paso por fotograma y las lecturas de $4230
@@ -126,8 +142,30 @@ module mapper_fds (
                     if (fuera_cta == 0) begin fuera <= 0; espera <= 8'd234; end
                     else fuera_cta <= fuera_cta - 7'd1;
                 end
+                // cambio de cara a mano
+                visto <= 0;
+                if (visto) begin
+                    sin_boton <= 0;
+                    if (boton != 6'd45) begin
+                        boton <= boton + 6'd1;
+                        if (boton == 6'd44) begin
+                            cara <= (cara + 3'd1 >= n_caras) ? 3'd0 : cara + 3'd1;
+                            fuera <= 1; fuera_cta <= 7'd77; lecturas <= 0; hueco <= 7'd100;
+                        end
+                    end
+                end else if (sin_boton == 4'd10)
+                    boton <= 0;
+                else
+                    sin_boton <= sin_boton + 4'd1;
             end else
                 pre <= pre + 15'd1;
+            // el mando 1, espiado: B es la 2.ª lectura de $4016 tras el strobe y Select la 3.ª
+            if (!cpu_rw && io && cpu_a[7:0] == 8'h16) pad_i <= 0;
+            if (cpu_rw && io && cpu_a[7:0] == 8'h16 && pad_i != 4'd8) begin
+                pad_i <= pad_i + 4'd1;
+                if (pad_i == 4'd1) pad_b <= cpu_d[0] | cpu_d[1];
+                if (pad_i == 4'd2 && pad_b && (cpu_d[0] | cpu_d[1])) visto <= 1;
+            end
             if (lee_42 && !fuera) begin
                 hueco <= 0;
                 if (hueco == 7'd100) lecturas <= 0;
@@ -173,6 +211,9 @@ module mapper_fds (
                     8'h14: begin cabeza[15:8] <= cpu_d; espera <= 8'd77; end
                     8'h15: begin cabeza <= cabeza + 16'd1; espera <= 8'd77; end
                     8'h16: apoyo <= cpu_d;
+                    8'h17: visto <= 1;
+                    8'h19: n_caras <= cpu_d[2:0];
+                    8'h18: begin fuera <= 1; fuera_cta <= 7'd77; lecturas <= 0; hueco <= 7'd100; end
                     default: ;
                 endcase
             end
@@ -206,6 +247,7 @@ module mapper_fds (
     wire p13  = priv && cpu_a[7:0] == 8'h13;
     wire p14  = priv && cpu_a[7:0] == 8'h14;
     wire p16  = priv && cpu_a[7:0] == 8'h16;
+    wire p17  = priv && cpu_a[7:0] == 8'h17;
     wire p30  = priv && cpu_a[7:0] == 8'h2E;          // $422E = $4030
     wire p32  = priv && cpu_a[7:0] == 8'h30;          // $4230 = $4032 con el disco fuera
     wire p33  = priv && cpu_a[7:0] == 8'h31;          // $4231 = $4033
@@ -213,7 +255,7 @@ module mapper_fds (
                       (r30 || p30) ? 8'hDB :          // D2 y D5: bus abierto
                       r32 ? 8'h07 :
                       (r33 || p33) ? 8'h80 :
-                      (p12 || p13 || p14 || p16 || p32) ? 8'hFF : 8'h00;
+                      (p12 || p13 || p14 || p16 || p17 || p32) ? 8'hFF : 8'h00;
     assign cpu_dout = (r30 || p30) ? estado :
                       r32 ? 8'h00 :
                       (r33 || p33) ? 8'h80 :
@@ -221,7 +263,8 @@ module mapper_fds (
                       p12 ? {5'b00000, cara} :
                       p13 ? cabeza[7:0] :
                       p14 ? cabeza[15:8] :
-                      p16 ? apoyo : 8'h00;
+                      p16 ? apoyo :
+                      p17 ? {2'b00, boton} : 8'h00;
 
     // ---------------------------------------------------------------- PPU e IRQ
     assign chr_a     = {6'd0, ppu_a[12:10]};

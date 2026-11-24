@@ -162,4 +162,9 @@ Nintendo. Evita pedir la BIOS al usuario, pero es mucho más trabajo (los juegos
     más (mismos juegos y caminos, con encendidos limpios). Lo visto apunta a la imagen del OS en la PRG-RAM pisada
     (firma del estado, fuente, código), pero no se sabe por quién; quizá el estado que dejó el OS anterior en la
     PRG-RAM con pila.
+- **Después de F5** (2026-11-24): carga más rápida (la BIOS se lee una vez y se suma con tabla; las caras, por tramos
+  de clústeres del SPI a la ventana; en el simulador, de 3,45 a 1,88 millones de instrucciones con 2 caras) y
+  **cambio de cara a mano** con B + Select mantenidos ~0,75 s (contador en la FPGA con dos fuentes: espía de `$4016`
+  y aviso del parche desde ReadPads, `$EA09`; `$4217`-`$4219`; `buscar_cara` empieza por la cara puesta). Detalles en
+  [os/LEEME.md](../os/LEEME.md). Falta medirlo en la consola.
 - **F6, sonido FDS**.

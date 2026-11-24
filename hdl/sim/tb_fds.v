@@ -19,6 +19,23 @@ module tb_fds;
         end
     endtask
 
+    // Una lectura en la que el dato lo pone la consola (el mando en $4016: D0 y los bits altos del bus abierto).
+    task lee_consola(input [15:0] addr, input [7:0] dato);
+        begin
+            m2 = 0; cpu_a = addr[14:0]; cur_a15 = addr[15]; cpu_rw = 1; cpu_drive = 1; cpu_dout = dato;
+            #280; m2 = 1; #25; romsel_n = !addr[15]; #255; m2 = 0; #15; romsel_n = 1; #5; cpu_drive = 0;
+        end
+    endtask
+    // Lectura completa del mando 1 como un juego: strobe y 8 lecturas (A, B, Select, Start, arriba ... derecha).
+    task mando(input [7:0] botones);
+        integer i;
+        begin
+            cpu_write(16'h4016, 8'h01);
+            cpu_write(16'h4016, 8'h00);
+            for (i = 7; i >= 0; i = i - 1) lee_consola(16'h4016, {7'b0100000, botones[i]});
+        end
+    endtask
+
     task ciclos(input integer n);
         integer i;
         begin for (i = 0; i < n; i = i + 1) cpu_read(16'h0000); end
@@ -131,7 +148,8 @@ module tb_fds;
         expect_read(16'h4210, 8'h00, 8'h00, "FDS: $4210 no se lee");
 
         // ================================================= $4231 y disco fuera ($4230)
-        expect_read(16'h4217, 8'h00, 8'h00, "FDS: $4217 no se conduce");
+        expect_read(16'h4217, 8'hFF, 8'h00, "FDS: $4217 cuenta del boton, legible (a cero)");
+        expect_read(16'h4219, 8'h00, 8'h00, "FDS: $4219 no se conduce");
         expect_read(16'h4231, 8'h80, 8'h80, "FDS: $4231 = $80");
         expect_read(16'h4230, 8'hFF, 8'h40, "FDS: $4230 = dentro");
         cpu_write(16'h4215, 8'h00);                 // actividad del disco: 77 fotogramas sin poder salir
@@ -147,6 +165,38 @@ module tb_fds;
         expect_read(16'h4230, 8'hFF, 8'h40, "FDS: a los 78 vuelve a estar dentro");
         repeat (30) cpu_read(16'h4230);
         expect_read(16'h4230, 8'hFF, 8'h40, "FDS: y no vuelve a salir enseguida");
+        cpu_write(16'h4218, 8'h00);                 // cambio de cara a mano: fuera aunque no pueda salir
+        expect_read(16'h4230, 8'hFF, 8'h47, "FDS: $4218 saca el disco al momento");
+        ciclos(70 * 200);
+        expect_read(16'h4230, 8'hFF, 8'h47, "FDS: $4218: 70 fotogramas despues sigue fuera");
+        ciclos(10 * 200);
+        expect_read(16'h4230, 8'hFF, 8'h40, "FDS: $4218: a los 78 vuelve a estar dentro");
+
+        // ================================================= cambio de cara a mano (B + Select 45 fotogramas)
+        cpu_write(16'h4219, 8'h02);                 // 2 caras
+        cpu_write(16'h4212, 8'h00);
+        repeat (40) begin cpu_write(16'h4217, 8'h00); ciclos(199); end      // aviso del parche, uno por fotograma
+        expect_read(16'h4212, 8'hFF, 8'h00, "FDS: boton: 40 fotogramas, aun la cara 0");
+        repeat (10) begin cpu_write(16'h4217, 8'h00); ciclos(199); end
+        expect_read(16'h4212, 8'hFF, 8'h01, "FDS: boton: 50 fotogramas, cara 1");
+        expect_read(16'h4230, 8'hFF, 8'h47, "FDS: boton: y el disco fuera");
+        repeat (30) begin cpu_write(16'h4217, 8'h00); ciclos(199); end
+        expect_read(16'h4212, 8'hFF, 8'h01, "FDS: boton mantenido: una sola vuelta");
+        ciclos(15 * 200);
+        expect_read(16'h4217, 8'hFF, 8'h00, "FDS: boton soltado: la cuenta vuelve a cero");
+        repeat (5) begin cpu_write(16'h4217, 8'h00); ciclos(199); end
+        ciclos(3 * 200);                            // un hueco corto (juego que no lee el mando) no la borra
+        repeat (5) begin cpu_write(16'h4217, 8'h00); ciclos(199); end
+        check(dut.m254.boton >= 6'd9, "FDS: boton: un hueco de 3 fotogramas no pone la cuenta a cero");
+        ciclos(15 * 200);
+        // espiando el mando: strobe y A, B, Select, ... en D0
+        repeat (50) begin mando(8'b0110_0000); ciclos(190); end
+        expect_read(16'h4212, 8'hFF, 8'h00, "FDS: espiando $4016 (B + Select): cara 0, dando la vuelta");
+        ciclos(15 * 200);
+        repeat (50) begin mando(8'b0100_0000); ciclos(190); end
+        expect_read(16'h4212, 8'hFF, 8'h00, "FDS: espiando $4016 (solo B): no cambia");
+        repeat (50) begin mando(8'b1010_0000); ciclos(190); end
+        expect_read(16'h4212, 8'hFF, 8'h00, "FDS: espiando $4016 (A + Select): no cambia");
         expect_chr(14'h1FFF, 19'h01FFF, "FDS: CHR-RAM de 8 KB");
         ppu_access(14'h0123, 1);
         check(!chr_we_n && !chr_ce_n, "FDS: la CHR-RAM se escribe");

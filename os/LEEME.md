@@ -457,17 +457,33 @@ Con una BIOS buena, A sobre un `.fds` lo lanza con el **`254.RBF`** (`MAPROUT.BI
 
 1. Antes de nada se guarda lo pendiente: la partida del juego anterior y su disco FDS (si no se puede, «Sin guardar
    la anterior: nn» y no se lanza nada).
-2. Se carga el `254.RBF` en el FPGA, como cualquier RBF.
-3. **SRAM PRG** (por la ventana `$4800`, reg 128): el bloque del parche (`src/fds_parche.s`, incluido en el OS) en
-   `0x7D000` y el número de caras en `0x7DFFF`; la BIOS de `EDFC/DISKSYS.ROM` en `0x7E000` con los enganches de la
-   tabla del parche; la cara *k* del disco en *k* × 64 KiB (sin la cabecera fwNES).
-4. **Lecturas de `$4030`/`$4032`/`$4033`:** en los archivos de programa de cada cara (también los ocultos), cada
+2. La BIOS de `EDFC/DISKSYS.ROM` se copia a la SRAM PRG (`0x7E000`) y se reconoce a la vez por su CRC32 (con una
+   tabla de 256 entradas que se hace en el banco 8: antes se sumaba de 4 en 4 bits y se leía dos veces, ~1 s).
+3. Se carga el `254.RBF` en el FPGA, como cualquier RBF.
+4. **SRAM PRG** (por la ventana `$4800`, reg 128): el bloque del parche (`src/fds_parche.s`, incluido en el OS) en
+   `0x7D000` y el número de caras en `0x7DFFF`; los enganches de la tabla del parche en la BIOS; la cara *k* del disco
+   en *k* × 64 KiB (sin la cabecera fwNES). Las caras se leen **por tramos de clústeres seguidos** (una lectura
+   múltiple por tramo) y cada byte va del SPI a la ventana, sin búfer; los bucles de copia y de búsqueda van en
+   trozos de hasta 255 bytes con Y de 256 − n a 0 (sin `CPY`). En el simulador, Nicol (2 caras) pasa de 3,45 a 1,88
+   millones de instrucciones.
+5. **Lecturas de `$4030`/`$4032`/`$4033`:** en los archivos de programa de cada cara (también los ocultos), cada
    lectura absoluta pasa a `$422E`/`$4230`/`$4231` (byte bajo − 2, byte alto + 2: la suma no cambia), igual que
    `tools/fds/fds.py` (`cambiar_cara`). En el N8 de NES las lecturas de `$4000-$41FF` no llegan a la CPU; las de
    `$42xx` sí. Cada cambio se apunta (cara y posición; hasta 255) para deshacerlo al guardar.
-5. **Marca N8FD** en el banco 8 de la PRG-RAM (`$6180`): sector e índice de la entrada del `.fds`, primer clúster,
+6. **Marca N8FD** en el banco 8 de la PRG-RAM (`$6180`): sector e índice de la entrada del `.fds`, primer clúster,
    tamaño, caras, cabecera, cambios y suma. Registros: 132 = `$1F`, 133 = `$FF` (CHR-RAM), 134 = 0, 136 = 0; salto
    al vector de reset de la BIOS.
+
+**Cambio de cara a mano:** mantener **B + Select** unos 0,75 s (45 fotogramas) pasa a la cara siguiente (dando la
+vuelta) y saca el disco 77 fotogramas, como al darle la vuelta en la consola. Hace falta en los 14 discos de la
+colección con el mismo ID en varias caras (casi todos de Hacker International, con el ID a cero): el cambio
+automático no sabe cuál quiere el juego y se queda con la que está puesta (`buscar_cara` empieza a buscar por ella).
+La cuenta la lleva la FPGA (`hdl/rtl/mapper_fds.v`), que ve la combinación de dos maneras: espiando las lecturas del
+mando 1 en `$4016` (los juegos que leen el mando ellos mismos: 166 de 396) y por el aviso del parche desde el final de
+ReadPads de la BIOS (`$EA09`; los que usan las rutinas de mandos de la BIOS: 181). Las dos suman en el mismo
+contador, así que una pulsación da una sola vuelta. No choca con el reset del kit Lava (Select ~2,5 s y luego
+Select + A): con B + Select nunca entra la A. Falta comprobar en la NES que la FPGA ve el dato de `$4016` (en la
+Famicom, sin transceptores, sí); si no, quedan los juegos que usan la BIOS.
 
 **Al volver con RESET**, si la marca vale, el OS comprueba que la entrada sigue siendo ese archivo (clúster y
 tamaño) y que la SRAM sigue teniendo el disco (cada cara empieza por `*NINTENDO-HVC*`); deshace el cambio donde

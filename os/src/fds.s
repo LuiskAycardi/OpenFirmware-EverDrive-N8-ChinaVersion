@@ -4,8 +4,7 @@
 ;                   disco FDS. Si lo es (acarreo = 0): fds_caras, fds_cod (3 letras), fds_rev y A = 0 si se puede
 ;                   usar, L_FDSMAL si la imagen está mal (tamaño o bloque 1) o L_FDSNO si es uno de los discos con
 ;                   rutina de disco propia (tabla fds_malos, por el CRC32 de sus primeros FDS_INI bytes)
-;   fds_bios        busca EDFC/DISKSYS.ROM y la reconoce por su CRC32 (tabla fds_bios): acarreo = 0 y A = índice si
-;                   el OS la sabe parchear; si no, acarreo = 1 y A = L_SINBIOS, L_BIOSEMU, L_BIOSRARA o L_SD
+;   (la BIOS del usuario, EDFC/DISKSYS.ROM, la busca y la reconoce fds_ovl.s: fds_bios, al copiarla a la SRAM)
 ;
 ; Formato: una cara mide 65 500 bytes; delante puede ir la cabecera fwNES (16 bytes: «FDS», $1A, caras). La cara
 ; empieza por el bloque 1: $01 y «*NINTENDO-HVC*», fabricante, código del juego (3 letras), tipo y revisión.
@@ -14,7 +13,7 @@
         .setcpu "6502"
         .include "os.inc"
 
-        .export fds_reconocer, fds_bios, fds_caras, fds_cod, fds_rev, fds_desp
+        .export fds_reconocer, fds_caras, fds_cod, fds_rev, fds_desp
         .import sector, arch_tam, arch_abrir, arch_leer, arch_avanzar, dir_buscar, abrir_edfc, fat_error
         .importzp nombre
 
@@ -141,65 +140,6 @@ fds_reconocer:
         clc
         rts
 
-fds_bios:
-        jsr     abrir_edfc
-        bcs     @falta
-        lda     #<n_bios
-        sta     nombre
-        lda     #>n_bios
-        sta     nombre+1
-        jsr     dir_buscar
-        bcc     @hay
-@falta: lda     fat_error
-        bne     @sd
-        lda     #L_SINBIOS
-        sec
-        rts
-@hay:   jsr     arch_abrir
-        lda     arch_tam                ; 8192 bytes justos
-        ora     arch_tam+2
-        ora     arch_tam+3
-        bne     @rara
-        lda     arch_tam+1
-        cmp     #$20
-        bne     @rara
-        jsr     crc_ini
-        lda     #16
-        sta     cuenta
-@s:     jsr     arch_leer
-        bcs     @sd
-        lda     #<sector
-        sta     fp
-        lda     #>sector
-        sta     fp+1
-        lda     #<512
-        ldx     #>512
-        jsr     crc_datos
-        dec     cuenta
-        beq     @suma
-        jsr     arch_avanzar
-        bcc     @s
-@sd:    lda     #L_SD
-        sec
-        rts
-@suma:  jsr     crc_fin
-        lda     #<fds_bios_crc
-        ldx     #>fds_bios_crc
-        ldy     #FDS_BIOS_N
-        jsr     crc_buscar
-        bcs     @rara
-        cpx     #FDS_BIOS_SI
-        bcs     @emu
-        txa
-        clc
-        rts
-@emu:   lda     #L_BIOSEMU
-        sec
-        rts
-@rara:  lda     #L_BIOSRARA
-        sec
-        rts
-
 ; ------------------------------------------------------------------------------------------------ CRC32
 ; CRC-32 de zlib (polinomio $EDB88320, reflejado), de 4 en 4 bits con una tabla de 16 entradas.
 crc_ini:
@@ -300,6 +240,5 @@ crc_buscar:
         .segment "RODATA"
 firma_fwnes: .byte "FDS", $1A
 firma_hvc:   .byte "*NINTENDO-HVC*"
-n_bios:      .byte "DISKSYS ROM"
 
         .include "fds_tablas.inc"
