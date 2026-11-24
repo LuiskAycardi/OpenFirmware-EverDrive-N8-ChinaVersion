@@ -548,3 +548,9 @@ en la SD los RBF y el MAPROUT nuevos (los dos a la vez).
 | 255 | menú (solo el modo OS) | 131 | 3 % | 13,2 ns |
 
 La holgura de *hold* es positiva en todos (+0,215 ns, la misma en el 255, sin sonido).
+
+**Probado en la NES (2026-11-24, modo banco, OS y RBF de esta rama):** los cinco mappers movidos con juego en la
+colección van con el 104: Super Mario Bros. 2 Whirlwind (40) y N-32 (50), Ai Senshi Nicol de Kaiser (42), Salamander
+(73) y Final Command de Whirlwind (142): título y partida, con las barras de estado fijas (IRQ por ciclos). Del 106
+no hay ROM. Regresión del 102: Battle Fleet (19), Senjou no Ookami (94) y Time Diver Avenger (250) bien; el FDS
+(Zelda, 254.RBF con la etapa de volumen) carga con su partida.

@@ -534,3 +534,10 @@ Banco: `probar_os.py`, bloque «opciones» (12 comprobaciones): la pantalla con 
 nada, ▶ hasta +4 con tope, ◀ mantenido hasta −4, B vuelve a la lista igual que estaba y guarda el paso con firma y
 suma, la SD solo se lee, el reg 137 al lanzar, al encender con la RAM con pila (la pantalla lo enseña, Start también
 vuelve, el juego sale con él), con la suma mal y con la RAM a cero (calibrado).
+
+### Resultados en la NES (2026-11-24, capturadora y Nano)
+
+Select+Start abre «Opciones» desde la lista; ▶ tres veces da +3, ◀ mantenido baja hasta −4 y se queda, ▶ dos veces
+da −2; B vuelve a la lista igual que estaba. El −2 sigue ahí tras un RESET (y Super Mario Bros. se lanza con él) y
+**tras apagar y encender** la consola (PRG-RAM con pila). Se dejó en 0. Que el volumen cambie de verdad solo se puede
+oír en la Famicom (pendiente, con la calibración).
