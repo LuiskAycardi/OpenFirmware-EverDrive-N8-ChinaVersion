@@ -6,13 +6,15 @@ cartucho lee de la tarjeta sale de nuestro repositorio, **sin ningún archivo de
 
 - nuestro **OS** (`EDFC/OS.BIN`): el menú, escrito desde cero;
 - nuestro **255.RBF** (`EDFC/MAPS/255.RBF`): lo que el FPGA carga al encender para que funcione el menú;
-- nuestros **mappers** (`EDFC/MAPS/100.RBF` … `106.RBF`, 194 mappers) y su tabla (`EDFC/MAPROUT.BIN`).
+- nuestros **mappers** (`EDFC/MAPS/100.RBF` … `106.RBF`, 194 mappers), el del **Famicom Disk System**
+  (`EDFC/MAPS/254.RBF`) y su tabla (`EDFC/MAPROUT.BIN`).
 
 Del cartucho solo se usa su **BIOS** (en la memoria flash del propio cartucho), que no se toca. **Es una
 beta**: funciona en una NES real, pero todavía le faltan cosas (ver «Qué falta»). **Novedad de la v0.5.0: guarda
 las partidas con pila** (ver «Partidas»). **Novedad de la v0.5.1: menú ordenado** (alfabético, con la entrada
 elegida en rojo, la información del juego, saltos por letra y vuelta al último juego al encender) y **modo banco**
-para pruebas automáticas (ver «Uso»).
+para pruebas automáticas (ver «Uso»). **Novedad de la v0.6.0: Famicom Disk System** (discos `.fds`, con tu propia
+BIOS FDS; ver «Famicom Disk System»), carga rápida y cambio de cara automático.
 
 **EN** — Free (GPL-3.0-or-later) firmware for the microSD card of the **EverDrive N8 China Version** (Chinese
 clone with an EP2C5 FPGA, NON-PRO version), **Famicom and NES** cartridges. It is a **complete own build**:
@@ -21,13 +23,15 @@ the factory**:
 
 - our **OS** (`EDFC/OS.BIN`): the menu, written from scratch;
 - our **255.RBF** (`EDFC/MAPS/255.RBF`): what the FPGA loads at power-on so that the menu works;
-- our **mappers** (`EDFC/MAPS/100.RBF` … `106.RBF`, 194 mappers) and their table (`EDFC/MAPROUT.BIN`).
+- our **mappers** (`EDFC/MAPS/100.RBF` … `106.RBF`, 194 mappers), the **Famicom Disk System** one
+  (`EDFC/MAPS/254.RBF`) and their table (`EDFC/MAPROUT.BIN`).
 
 Only the cartridge's **BIOS** (in the cartridge's own flash memory) is used, and it is left untouched. **This
 is a beta**: it works on a real NES, but things are still missing (see "What is missing"). **New in v0.5.0: it
 saves battery-backed games** (see "Saved games"). **New in v0.5.1: a sorted menu** (alphabetical, with the selected
 entry in red, game information, letter jumps and back to the last game at power-on) and a **test-bench mode** for
-automated tests (see "Usage").
+automated tests (see "Usage"). **New in v0.6.0: Famicom Disk System** (`.fds` disks, with your own FDS BIOS; see
+"Famicom Disk System"), fast loading and automatic side switching.
 
 ## Qué contiene / Contents
 
@@ -37,6 +41,7 @@ automated tests (see "Usage").
 | `SD/EDFC/OS.BIN` | **ES** Nuestro OS (el menú). **EN** Our OS (the menu). |
 | `SD/EDFC/MAPS/255.RBF` | **ES** Nuestro RBF del modo OS: la BIOS lo carga al encender. **EN** Our OS-mode RBF: the BIOS loads it at power-on. |
 | `SD/EDFC/MAPS/100.RBF` … `106.RBF` | **ES** Los mappers (cada archivo lleva un grupo). **EN** The mappers (each file holds a group). |
+| `SD/EDFC/MAPS/254.RBF` | **ES** El Famicom Disk System (con tu BIOS FDS en `EDFC/DISKSYS.ROM`). **EN** The Famicom Disk System (with your FDS BIOS in `EDFC/DISKSYS.ROM`). |
 | `SD/EDFC/MAPROUT.BIN` | **ES** Qué RBF usa cada mapper. **EN** Which RBF each mapper uses. |
 | `SD/EDFC/SAVE/` | **ES** Carpeta (vacía) para las partidas; el OS la crea si falta. **EN** (Empty) folder for saved games; the OS creates it if missing. |
 | `MAPPERS.txt` | **ES** Lista de mappers por RBF. **EN** List of mappers per RBF. |
@@ -163,15 +168,19 @@ NES, and FAT32 with 32 KB and 512 bytes and FAT16 in our emulator of the cartrid
 5. Eject the card safely, put it in the cartridge and switch the console on. The **"OS propio N8"** menu should
    appear with the card's list.
 
-### Actualizar desde la v0.4.0-beta o la v0.5.0-beta / Updating from v0.4.0-beta or v0.5.0-beta
+### Actualizar desde la v0.4.0, v0.5.0 o v0.5.1 / Updating from v0.4.0, v0.5.0 or v0.5.1
 
-**ES** — Basta con copiar el `SD/EDFC/OS.BIN` nuevo encima del de la tarjeta (los RBF y `MAPROUT.BIN` no cambian).
-En una tarjeta con clúster de 32 KB el archivo ocupa un solo clúster, así que sigue contiguo. La carpeta
-`EDFC/SAVE` no hace falta: el OS la crea la primera vez que lanzas un juego con pila.
+**ES** — Copia encima de los de la tarjeta `SD/EDFC/OS.BIN`, `SD/EDFC/MAPROUT.BIN` y `SD/EDFC/MAPS/254.RBF` (este
+es nuevo). Los demás RBF también se recompilaron, pero no cambian en nada: puedes dejarlos. En una tarjeta con
+clúster de 32 KB el `OS.BIN` ocupa un solo clúster, así que sigue contiguo; si el menú dice «RBF fragmentado en la
+SD» al lanzar un `.fds`, formatea y copia `EDFC` la primera. La carpeta `EDFC/SAVE` no hace falta: el OS la crea la
+primera vez que lanzas un juego con pila.
 
-**EN** — Just copy the new `SD/EDFC/OS.BIN` over the one on the card (the RBF files and `MAPROUT.BIN` do not
-change). On a card with 32 KB clusters the file takes a single cluster, so it stays contiguous. The `EDFC/SAVE`
-folder is not needed: the OS creates it the first time you launch a battery-backed game.
+**EN** — Copy `SD/EDFC/OS.BIN`, `SD/EDFC/MAPROUT.BIN` and `SD/EDFC/MAPS/254.RBF` (this one is new) over the ones
+on the card. The other RBF files were rebuilt too, but nothing changes in them: you can keep yours. On a card with
+32 KB clusters `OS.BIN` takes a single cluster, so it stays contiguous; if the menu says "RBF fragmentado en la SD"
+when launching an `.fds`, format and copy `EDFC` first. The `EDFC/SAVE` folder is not needed: the OS creates it the
+first time you launch a battery-backed game.
 
 ### Si no arranca / If it does not boot
 
@@ -256,19 +265,60 @@ with your factory SD card it works exactly as before.
   cartridge by changing the extension. The factory OS's saves are not read.
 - File dates are fixed (1-1-2026): the cartridge has no clock.
 
+## Famicom Disk System
+
+**ES**
+- **La BIOS FDS la pones tú** (es de Nintendo y no se distribuye): copia tu volcado como `EDFC/DISKSYS.ROM` (8 KB).
+  Valen la **Rev 1**, la **Rev 0** y la de la **Twin Famicom** (se reconocen por su suma); las de emuladores
+  (GameCube, 3DS, Game & Watch) no, porque llevan trucos que cuelgan una consola real. Si falta o no vale, el menú lo
+  dice al lanzar un disco.
+- Copia los discos (`.fds`, con o sin cabecera fwNES) donde quieras y lánzalos como un `.nes`. Antes de saltar a la
+  BIOS, el OS los copia al cartucho (unos 4 s con dos caras).
+- **Cambio de cara automático:** cuando el juego pide la otra cara, el OS la «mete» sola.
+- **Cambio de cara a mano:** en los pocos discos con el mismo ID en las dos caras (casi todos de Hacker International)
+  el cambio automático no sabe cuál quiere el juego: mantén **B + Select** ~1 s para darle la vuelta al disco. En la
+  NES funciona en los juegos que leen el mando con la BIOS (todos esos discos menos dos); en la Famicom, en todos.
+- **Lo que el juego escribe en el disco** (partidas de Zelda, Metroid…) **se guarda en el `.fds` de la SD al volver al
+  menú con RESET** («Disco FDS guardado»). **Si apagas sin RESET, se pierde**: la memoria del disco no tiene pila.
+- **17 discos no cargan** (casi todos herramientas de copia, que leen el disco sin la BIOS): el menú dice «Disco FDS
+  con carga propia».
+- El sonido del FDS solo se oye en la Famicom.
+
+**EN**
+- **You provide the FDS BIOS** (it belongs to Nintendo and is not distributed): copy your dump as `EDFC/DISKSYS.ROM`
+  (8 KB). **Rev 1**, **Rev 0** and the **Twin Famicom** one work (they are recognised by their checksum); emulator
+  ones (GameCube, 3DS, Game & Watch) do not, because they carry tricks that hang a real console. If it is missing or
+  not valid, the menu says so when you launch a disk.
+- Copy the disks (`.fds`, with or without an fwNES header) wherever you like and launch them like an `.nes`. Before
+  jumping to the BIOS, the OS copies them to the cartridge (about 4 s with two sides).
+- **Automatic side switching:** when the game asks for the other side, the OS "inserts" it by itself.
+- **Manual side switching:** on the few disks with the same ID on both sides (almost all from Hacker International)
+  the automatic switch cannot tell which one the game wants: hold **B + Select** for ~1 s to flip the disk. On the
+  NES it works in games that read the controller through the BIOS (all those disks but two); on the Famicom, in all.
+- **What the game writes to the disk** (Zelda, Metroid saves…) **is saved to the `.fds` on the SD card when you go
+  back to the menu with RESET** ("Disco FDS guardado"). **If you switch off without RESET, it is lost**: the disk
+  memory has no battery.
+- **17 disks do not load** (almost all copy tools, which read the disk without the BIOS): the menu says "Disco FDS
+  con carga propia".
+- The FDS sound is only heard on the Famicom.
+
 ## Qué falta / What is missing
 
 **ES**
 - Partidas de los mappers con EEPROM (Bandai 16/159, Datach) y de la RAM interna del Namco 163.
-- Save states, Famicom Disk System (FDS) y Game Genie.
-- **Sonido de expansión** (VRC6, VRC7, Sunsoft 5B, Namco 163, MMC5): solo se oye en la **Famicom**; la NES no
-  mezcla el audio del cartucho.
+- Save states y Game Genie.
+- **Sonido de expansión** (VRC6, VRC7, Sunsoft 5B, Namco 163, MMC5, FDS): solo se oye en la **Famicom**; la NES no
+  mezcla el audio del cartucho. Aún no hay control de volumen (será la próxima versión).
+- FDS: probado en una NES real; en la Famicom todavía no. Una vez, nada más cambiar la SD, la vuelta con RESET tras
+  un disco arrancó el menú «en frío» y sin guardar el disco; no se ha vuelto a ver en las pruebas siguientes.
 
 **EN**
 - Saves for mappers with an EEPROM (Bandai 16/159, Datach) and for the Namco 163's internal RAM.
-- Save states, Famicom Disk System (FDS) and Game Genie.
-- **Expansion audio** (VRC6, VRC7, Sunsoft 5B, Namco 163, MMC5): only heard on the **Famicom**; the NES does not
-  mix the cartridge audio.
+- Save states and Game Genie.
+- **Expansion audio** (VRC6, VRC7, Sunsoft 5B, Namco 163, MMC5, FDS): only heard on the **Famicom**; the NES does not
+  mix the cartridge audio. There is no volume control yet (it will come in the next version).
+- FDS: tested on a real NES; not on the Famicom yet. Once, right after changing the SD card, going back with RESET
+  after a disk started the menu "cold" and without saving the disk; it has not happened again in later tests.
 
 ## Cosas que conviene saber / Good to know
 

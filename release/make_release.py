@@ -5,7 +5,8 @@ BIOS del cartucho lee de la tarjeta sale de este repositorio (nada de Krikzz).
   SD/EDFC/OS.BIN              el OS propio (os/build/OS.BIN)
   SD/EDFC/MAPS/255.RBF        el RBF del modo OS (hdl/out/255.RBF), el que la BIOS carga al encender
   SD/EDFC/MAPS/100-106.RBF    los mappers (hdl/out)
-  SD/EDFC/MAPROUT.BIN         mapper -> RBF, generado desde n8_top.v (sin FDS: no hay 254.RBF propio)
+  SD/EDFC/MAPS/254.RBF        el Famicom Disk System (hdl/out; la BIOS FDS la pone el usuario: EDFC/DISKSYS.ROM)
+  SD/EDFC/MAPROUT.BIN         mapper -> RBF, generado desde n8_top.v (con el 254 -> 254.RBF)
   SD/EDFC/SAVE/               carpeta vacía para las partidas (el OS la crea si falta)
   LEEME.md, MAPPERS.txt, LICENSE, SHA256SUMS.txt
 
@@ -23,7 +24,7 @@ import sys
 import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-RBFS = [100, 101, 102, 103, 104, 105, 106, 255]
+RBFS = [100, 101, 102, 103, 104, 105, 106, 254, 255]
 
 
 def git(*a):
@@ -63,11 +64,12 @@ def main():
     (stage / "SD/EDFC/OS.BIN").write_bytes(os_bin.read_bytes())
 
     lista = subprocess.run([sys.executable, "-I", str(ROOT / "hdl/tools/gen_maprout.py"),
-                            str(stage / "SD/EDFC/MAPROUT.BIN"), "--lista"],
+                            str(stage / "SD/EDFC/MAPROUT.BIN"), "--fds", "--lista"],
                            capture_output=True, text=True, check=True).stdout
     (stage / "MAPPERS.txt").write_text(
         f"OpenFirmware-EverDrive-N8-ChinaVersion {ver} (commit {commit})\n"
-        "Mapper -> RBF. Sin FDS (254): no hay 254.RBF propio / No FDS (254): there is no own 254.RBF.\n\n"
+        "Mapper -> RBF. FDS (254) -> 254.RBF, con la BIOS FDS del usuario en EDFC/DISKSYS.ROM / "
+        "FDS (254) -> 254.RBF, with the user's FDS BIOS in EDFC/DISKSYS.ROM.\n\n"
         + "\n".join(l.strip() for l in lista.splitlines()[1:]) + "\n")
     leeme = (ROOT / "release/LEEME.md").read_text().replace("{VERSION}", ver).replace("{COMMIT}", commit)
     (stage / "LEEME.md").write_text(leeme)

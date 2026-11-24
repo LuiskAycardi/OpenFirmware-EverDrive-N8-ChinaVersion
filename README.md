@@ -1,15 +1,29 @@
 # OpenFirmware-EverDrive-N8-ChinaVersion
 
-**ES** — Mappers propios (Verilog) y un **OS propio** para el **EverDrive N8 China Version** (el clon chino
-del EverDrive N8, con FPGA **Altera Cyclone II EP2C5**), en sus dos versiones: **Famicom y NES**. Implementación clean room,
-validada contra el emulador Mesen2 con fuzz de ROMs sintéticas, bancos de simulación y juegos reales.
+**ES** — **Firmware libre completo** para el **EverDrive N8 China Version** (el clon chino del EverDrive N8, con
+FPGA **Altera Cyclone II EP2C5**), en sus dos versiones: **Famicom y NES**. Todo lo que el cartucho lee de la microSD
+sale de aquí: un **OS propio** (menú, partidas con pila, Famicom Disk System), el RBF del menú y **195 mappers** en
+Verilog. Implementación clean room, validada contra el emulador Mesen2 con fuzz de ROMs sintéticas, bancos de
+simulación y juegos reales en la consola.
 
-**EN** — Our own Verilog mappers and **our own OS** for the **EverDrive N8 China Version** (the Chinese
-clone of the EverDrive N8, built around an **Altera Cyclone II EP2C5** FPGA), for both cartridge versions:
-**Famicom and NES**.
-Clean-room implementation, validated against the Mesen2 emulator with synthetic-ROM fuzzing, simulation
-testbenches and real games.
+**EN** — **Complete free firmware** for the **EverDrive N8 China Version** (the Chinese clone of the EverDrive N8,
+built around an **Altera Cyclone II EP2C5** FPGA), for both cartridge versions: **Famicom and NES**. Everything the
+cartridge reads from the microSD card comes from here: **our own OS** (menu, battery saves, Famicom Disk System), the
+menu RBF and **195 mappers** in Verilog. Clean-room implementation, validated against the Mesen2 emulator with
+synthetic-ROM fuzzing, simulation testbenches and real games on the console.
 
+> 💿 **ES — Novedad (noviembre de 2026): v0.6.0-beta, Famicom Disk System.** El OS lanza imágenes `.fds` con tu
+> propia BIOS FDS (`EDFC/DISKSYS.ROM`, no se distribuye): cambia de cara solo, guarda lo que el juego escribe en el
+> disco al volver con RESET y, cuando las dos caras tienen el mismo ID, se cambia a mano con B + Select. Con el
+> sonido del FDS (en la Famicom). Probado en una NES real con 7 juegos (Zelda, Metroid, Doki Doki Panic…). Descárgala
+> en [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases).
+>
+> 💿 **EN — News (November 2026): v0.6.0-beta, Famicom Disk System.** The OS launches `.fds` images with your own
+> FDS BIOS (`EDFC/DISKSYS.ROM`, not distributed): it switches sides by itself, saves what the game writes to the
+> disk when you go back with RESET and, when both sides have the same ID, you switch by hand with B + Select. With
+> the FDS sound (on the Famicom). Tested on a real NES with 7 games (Zelda, Metroid, Doki Doki Panic…). Download it
+> from [Releases](https://github.com/LuiskAycardi/OpenFirmware-EverDrive-N8-ChinaVersion/releases).
+>
 > 🗂️ **ES — Novedad (noviembre de 2026): v0.5.1-beta, menú ordenado y modo banco.** Lista en orden alfabético
 > (carpetas primero) con la entrada elegida en rojo, información del juego bajo el cursor, ◀▶ para cambiar de página
 > y Select+◀▶ para saltar de letra, y al encender vuelve al último juego. Además, un modo banco para las pruebas
@@ -65,8 +79,8 @@ testbenches and real games.
 ## Estado / Status
 
 **ES**
-- **194 mappers**: los 177 del firmware oficial 1.26 (todos salvo el FDS) y 17 más (46, 59, 83, 114,
-  116, 121, 153, 155, 157, 159, 192, 194, 195, 209, 210, 215, 253).
+- **195 mappers**: los 178 del firmware oficial 1.26 (desde la v0.6.0 también el **Famicom Disk System**, 254) y 17
+  más (46, 59, 83, 114, 116, 121, 153, 155, 157, 159, 192, 194, 195, 209, 210, 215, 253).
 - Siete RBF (`100.RBF`–`106.RBF`) que el OS carga según `MAPROUT.BIN`; cada uno cabe con holgura en
   el EP2C5 y cumple tiempos a 50 MHz.
 - Sonido de expansión: VRC6, Sunsoft 5B, Namco 163, MMC5 y **VRC7 (FM)**, un sintetizador propio que
@@ -91,8 +105,8 @@ testbenches and real games.
   [OS propio](#os-propio--own-os).
 
 **EN**
-- **194 mappers**: the 177 of the official 1.26 firmware (all but the FDS) plus 17 more (46, 59, 83,
-  114, 116, 121, 153, 155, 157, 159, 192, 194, 195, 209, 210, 215, 253).
+- **195 mappers**: the 178 of the official 1.26 firmware (since v0.6.0 also the **Famicom Disk System**, 254) plus
+  17 more (46, 59, 83, 114, 116, 121, 153, 155, 157, 159, 192, 194, 195, 209, 210, 215, 253).
 - Seven RBF files (`100.RBF`–`106.RBF`) that the OS loads according to `MAPROUT.BIN`; each one fits in
   the EP2C5 with room to spare and meets timing at 50 MHz.
 - Expansion audio: VRC6, Sunsoft 5B, Namco 163, MMC5 and **VRC7 (FM)**, our own synthesizer that
