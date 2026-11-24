@@ -482,8 +482,15 @@ La cuenta la lleva la FPGA (`hdl/rtl/mapper_fds.v`), que ve la combinación de d
 mando 1 en `$4016` (los juegos que leen el mando ellos mismos: 166 de 396) y por el aviso del parche desde el final de
 ReadPads de la BIOS (`$EA09`; los que usan las rutinas de mandos de la BIOS: 181). Las dos suman en el mismo
 contador, así que una pulsación da una sola vuelta. No choca con el reset del kit Lava (Select ~2,5 s y luego
-Select + A): con B + Select nunca entra la A. Falta comprobar en la NES que la FPGA ve el dato de `$4016` (en la
-Famicom, sin transceptores, sí); si no, quedan los juegos que usan la BIOS.
+Select + A): con B + Select nunca entra la A.
+
+**Medido en la NES (2026-11-24, disco de prueba `tools/fds/prueba_boton`):** con ReadPads de la BIOS, B + Select
+cuenta de 1 en 1 hasta `2D` y la cara pasa de 0 a 1; otra pulsación, de 1 a 0; al soltar, la cuenta vuelve a 0. Leyendo
+`$4016` el propio programa, la cuenta no se mueve: **en el N8 de NES la FPGA no ve el dato del mando** (el
+transceptor no lo deja pasar en `$40xx`), así que en la NES el botón solo vale para los juegos que leen el mando con
+la BIOS (los 14 discos con el ID repetido lo hacen, salvo Air Fortress y Card Checker, que lo leen también ellos).
+El espía queda para el N8 de Famicom (sin transceptores, sin medir). Carga: Nicol (2 caras) enseña la pantalla de
+Nintendo a los 4,1 s de pulsar Start (antes, ~7 s).
 
 **Al volver con RESET**, si la marca vale, el OS comprueba que la entrada sigue siendo ese archivo (clúster y
 tamaño) y que la SRAM sigue teniendo el disco (cada cara empieza por `*NINTENDO-HVC*`); deshace el cambio donde

@@ -22,3 +22,7 @@ Resultado en Mesen2 con nuestro HDL (2026-11-24): en modo 1, B + Select del foto
 de 1 en 1 y en el fotograma 945 `C` pasa de 0 a 1; al soltar, `N` vuelve a 0. En modo 0 no cambia nada en Mesen2:
 su puente no le pasa al modelo las lecturas de `$4016` (las atiende Mesen); el espía solo se puede probar en la
 consola.
+
+**En la NES (2026-11-24):** modo 1, igual que en Mesen2: `N` sube hasta `2D`, `C` pasa de 0 a 1 y, con otra
+pulsación, de 1 a 0. Modo 0: `P` = `60` (el programa ve B + Select) pero `N` se queda en `00`: el N8 de NES no deja que
+la FPGA vea el dato de `$4016`. RESET vuelve al OS bien («vuelta de juego»). Falta el N8 de Famicom.

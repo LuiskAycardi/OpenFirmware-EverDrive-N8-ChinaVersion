@@ -166,5 +166,6 @@ Nintendo. Evita pedir la BIOS al usuario, pero es mucho más trabajo (los juegos
   de clústeres del SPI a la ventana; en el simulador, de 3,45 a 1,88 millones de instrucciones con 2 caras) y
   **cambio de cara a mano** con B + Select mantenidos ~0,75 s (contador en la FPGA con dos fuentes: espía de `$4016`
   y aviso del parche desde ReadPads, `$EA09`; `$4217`-`$4219`; `buscar_cara` empieza por la cara puesta). Detalles en
-  [os/LEEME.md](../os/LEEME.md). Falta medirlo en la consola.
+  [os/LEEME.md](../os/LEEME.md). En la NES: Nicol carga en 4,1 s (antes ~7) y el botón funciona con ReadPads de la
+  BIOS; el espía de `$4016` no (la FPGA no ve el dato del mando en `$40xx`); queda para la Famicom.
 - **F6, sonido FDS**.
