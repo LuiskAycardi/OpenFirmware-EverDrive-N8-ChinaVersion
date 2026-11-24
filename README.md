@@ -12,6 +12,14 @@ cartridge reads from the microSD card comes from here: **our own OS** (menu, bat
 menu RBF and **195 mappers** in Verilog. Clean-room implementation, validated against the Mesen2 emulator with
 synthetic-ROM fuzzing, simulation testbenches and real games on the console.
 
+> 🔊 **ES — Novedad (24-11-2026): v0.6.1-beta, volumen del sonido de expansión.** Select+Start en el menú abre
+> «Opciones»: el volumen del sonido del cartucho (FDS, VRC6, VRC7, 5B, N163, MMC5) de −4 a +4, guardado con pila. Los
+> mappers se repartieron para que ningún RBF pase del 85 % del FPGA. Probado en una NES real.
+>
+> 🔊 **EN — News (24 Nov 2026): v0.6.1-beta, expansion audio volume.** Select+Start in the menu opens «Opciones»:
+> the cartridge sound volume (FDS, VRC6, VRC7, 5B, N163, MMC5) from −4 to +4, kept in battery-backed memory. Mappers
+> were redistributed so that no RBF uses more than 85 % of the FPGA. Tested on a real NES.
+>
 > 💿 **ES — Novedad (noviembre de 2026): v0.6.0-beta, Famicom Disk System.** El OS lanza imágenes `.fds` con tu
 > propia BIOS FDS (`EDFC/DISKSYS.ROM`, no se distribuye): cambia de cara solo, guarda lo que el juego escribe en el
 > disco al volver con RESET y, cuando las dos caras tienen el mismo ID, se cambia a mano con B + Select. Con el

@@ -14,7 +14,9 @@ beta**: funciona en una NES real, pero todavía le faltan cosas (ver «Qué falt
 las partidas con pila** (ver «Partidas»). **Novedad de la v0.5.1: menú ordenado** (alfabético, con la entrada
 elegida en rojo, la información del juego, saltos por letra y vuelta al último juego al encender) y **modo banco**
 para pruebas automáticas (ver «Uso»). **Novedad de la v0.6.0: Famicom Disk System** (discos `.fds`, con tu propia
-BIOS FDS; ver «Famicom Disk System»), carga rápida y cambio de cara automático.
+BIOS FDS; ver «Famicom Disk System»), carga rápida y cambio de cara automático. **Novedad de la v0.6.1: volumen del
+sonido de expansión** (FDS, VRC6, VRC7, 5B, N163, MMC5; se oye en la Famicom) en la pantalla de opciones,
+**Select + Start**.
 
 **EN** — Free (GPL-3.0-or-later) firmware for the microSD card of the **EverDrive N8 China Version** (Chinese
 clone with an EP2C5 FPGA, NON-PRO version), **Famicom and NES** cartridges. It is a **complete own build**:
@@ -31,7 +33,8 @@ is a beta**: it works on a real NES, but things are still missing (see "What is 
 saves battery-backed games** (see "Saved games"). **New in v0.5.1: a sorted menu** (alphabetical, with the selected
 entry in red, game information, letter jumps and back to the last game at power-on) and a **test-bench mode** for
 automated tests (see "Usage"). **New in v0.6.0: Famicom Disk System** (`.fds` disks, with your own FDS BIOS; see
-"Famicom Disk System"), fast loading and automatic side switching.
+"Famicom Disk System"), fast loading and automatic side switching. **New in v0.6.1: expansion audio volume**
+(FDS, VRC6, VRC7, 5B, N163, MMC5; heard on the Famicom) in the options screen, **Select + Start**.
 
 ## Qué contiene / Contents
 
@@ -214,6 +217,9 @@ with your factory SD card it works exactly as before.
 - **Arriba/Abajo**: mover el cursor dentro de la página (la entrada seleccionada va en rojo).
 - **Izquierda/Derecha**: cambiar de página (16 entradas por página).
 - **Select + Izquierda/Derecha**: saltar a la letra anterior o siguiente (la lista va en orden alfabético).
+- **Select + Start**: pantalla de opciones. «Volumen del cartucho»: ◀▶ de −4 a +4 (0 = el volumen calibrado de cada
+  chip; unos 3 dB por paso); B o Start vuelven. Se guarda en la memoria con pila del cartucho y vale para todos los
+  juegos con sonido de expansión (solo se oye en la Famicom; en la NES el pin no está conectado).
 - Con el cursor quieto, abajo sale el mapper, los tamaños y si el juego tiene pila.
 - Al encender, el menú vuelve a la carpeta del último juego que lanzaste, con el cursor sobre él.
 - **Modo banco** (para pruebas automáticas con un PC, `tools/consola` del repositorio): si la tarjeta tiene
@@ -242,6 +248,9 @@ with your factory SD card it works exactly as before.
 - **Up/Down**: move the cursor within the page (the selected entry is shown in red).
 - **Left/Right**: change page (16 entries per page).
 - **Select + Left/Right**: jump to the previous or next letter (the list is in alphabetical order).
+- **Select + Start**: options screen. «Volumen del cartucho» (cartridge volume): ◀▶ from −4 to +4 (0 = each chip's
+  calibrated volume; about 3 dB per step); B or Start go back. It is kept in the cartridge's battery-backed memory
+  and applies to every game with expansion audio (only heard on the Famicom; on the NES the pin is not connected).
 - With the cursor still, the bottom line shows the mapper, the sizes and whether the game has a battery.
 - At power-on, the menu goes back to the folder of the last game you launched, with the cursor on it.
 - **Test-bench mode** (for automated tests with a PC, the repository's `tools/consola`): if the card has
