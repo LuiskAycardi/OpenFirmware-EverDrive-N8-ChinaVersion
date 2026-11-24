@@ -144,5 +144,22 @@ Nintendo. Evita pedir la BIOS al usuario, pero es mucho más trabajo (los juegos
   sigue (`deshacer_cara`) y escribe solo los sectores que cambiaron. Al encender, la marca se borra (la SRAM PRG no
   tiene pila). El código no cabe en la ROM del OS: va en el OS.BIN en el sitio de la zona de trabajo y al encender
   se copia al banco 8 (`$7000`), desde donde corre. Detalles y prueba en [os/LEEME.md](../os/LEEME.md).
-- **F5, consola**: tanda de juegos FDS en la Famicom (y en la NES, sin sonido de expansión).
+- **F5, consola** (NES hecha el 2026-11-23; falta la Famicom): con la capturadora y el mando del Nano, BIOS Rev 1
+  del usuario en `EDFC/DISKSYS.ROM`, el `254.RBF` y el OS de F4. Los 7 discos de la tanda arrancan:
+  - Ai Senshi Nicol: introducción, título y, sin tocar el disco, «HELP ME NICOL / WAIT» (10-20 s), «PLEASE SET DISK
+    B» un instante (el «disco fuera» de `$4230`) y STAGE 01 en la cara B.
+  - Yume Koujou Doki Doki Panic: título, «WAIT» y la pantalla de capítulos (cara B).
+  - Zelda no Densetsu (Rev 1): título, cambio a la cara B, registro de un nombre (lo graba en el disco), RESET →
+    «Disco FDS guardado»; al relanzarlo la partida sigue ahí. En el PC, el `.fds` difiere del original en 5 bytes de
+    2 sectores, todos en el archivo de la partida (cara B, `$B400`, 1308 B), y las lecturas de `$403x` están como
+    eran (el cambio se deshizo bien). Los otros 6 `.fds`, idénticos al original.
+  - Akumajou Dracula (Rev 1), Metroid (Rev 3), Quick Hunter y Super Mario Bros. 2: hasta el título.
+  - Carga: ~1 s con una cara, ~7 s con dos (copia de BIOS y caras a la SRAM y cambio de lecturas; sin optimizar).
+  - Vuelta con RESET (D2): «vuelta de juego» y el disco guardado, desde el menú y desde el modo banco.
+  - **Sin resolver:** en la primera tanda, nada más poner la SD nueva, el RESET tras Nicol y tras Dracula (lanzados
+    desde el modo banco) dio un arranque «frío (BIOS)» (sin guardar el disco), y después un RESET tras un juego de
+    NES dejó la pantalla negra y la fuente del menú con letras estropeadas, hasta apagar. No se repitió en 9 pruebas
+    más (mismos juegos y caminos, con encendidos limpios). Lo visto apunta a la imagen del OS en la PRG-RAM pisada
+    (firma del estado, fuente, código), pero no se sabe por quién; quizá el estado que dejó el OS anterior en la
+    PRG-RAM con pila.
 - **F6, sonido FDS**.
