@@ -75,3 +75,6 @@ __pycache__/
 # OS propio: salida de compilación
 /os/build/
 tools/fds/salida_mesen/
+
+# disco de prueba del cambio de cara (tools/fds/prueba_boton): binarios que salen de boton.s
+/tools/fds/prueba_boton/*.bin
