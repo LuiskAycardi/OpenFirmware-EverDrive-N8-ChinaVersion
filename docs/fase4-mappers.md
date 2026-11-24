@@ -93,7 +93,7 @@ Objetivo: los 177 mappers de la lista oficial v1.26 (`docs/mappers-n8-oficial.md
   Zhuan (178), Oeka Kids ×2 (96), Karaoke Studio y sus casetes Vol. 1 y 2 (188), Magic Kid Googoo (190) y Racermate
   Challenge II ×2 (168). Salamander (73, lote 4) también idéntico.
 
-## Lote 4: IRQ por ciclos de CPU (`mapper_irqcpu.v`, RBF 102)
+## Lote 4: IRQ por ciclos de CPU (`mapper_irqcpu.v`, RBF 104; en el 102 hasta el 2026-11-24)
 40, 42, 50, 73, 106, 142. Un módulo con registros de banco compartidos y un contador de 16 bits.
 - Convención de todos los contadores por ciclos: en la bajada de M2 se aplica primero la escritura y luego se cuenta.
   Así la IRQ cae en la misma instrucción que en Mesen2 (comprobado con la ROM sintética, que ahora registra la IRQ).
@@ -527,3 +527,24 @@ hardware y hay que acotarlo en la consola.
   guarda las 16 primeras escrituras del 219 y las devuelve en `$5000-$503F`; Quartus exporta el netlist con
   `quartus_eda --simulation --tool=modelsim --format=verilog` y se puede simular con iverilog quitando el PLL de
   `cycloneii_atoms.v`.
+
+## Reparto de los RBF: ninguno por encima del 85 % (2026-11-24)
+
+Con la etapa de volumen del sonido de expansión, el 102.RBF llegaba a 4341 LE (94 %): N163 703, `mapper_latch` 1143,
+`mapper_mmc3b` 626, `mapper_irqcpu` 669 y ~1025 de selector y pegamento. **`mapper_irqcpu` (40, 42, 50, 73, 106 y
+142) pasa al 104.RBF**; MAPROUT.BIN sale de `n8_top.v` (`gen_maprout.py`), así que el OS no cambia: basta con poner
+en la SD los RBF y el MAPROUT nuevos (los dos a la vez).
+
+| RBF | Contenido | LE | Uso | Holgura de *setup* |
+|---|---|---|---|---|
+| 100 | fases 1-3b (MMC1, MMC3, VRC2/4, FME-7 con 5B…) | 3570 | 77 % | 10,1 ns |
+| 101 | fase 3c (VRC6, RAMBO-1, Sachen, TXC…) | 2903 | 63 % | 5,4 ns |
+| 102 | Namco 163, `mapper_latch`, `mapper_mmc3b` | 3579 | **78 %** (antes 94 %) | 6,4 ns |
+| 103 | MMC5 | 1116 | 24 % | 6,1 ns |
+| 104 | **`mapper_irqcpu`**, Kaiser 56, 91/117/222, NWC 105, misc4 | 2104 | **46 %** (antes 32 %) | 12,5 ns |
+| 105 | JY, MMC3c, 35, FK23C, piratas, 116 | 3083 | 67 % | 10,2 ns |
+| 106 | VRC7 | 3185 | 69 % | 2,1 ns |
+| 254 | FDS | 2788 | 61 % | 13,5 ns |
+| 255 | menú (solo el modo OS) | 131 | 3 % | 13,2 ns |
+
+La holgura de *hold* es positiva en todos (+0,215 ns, la misma en el 255, sin sonido).

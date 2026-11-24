@@ -221,7 +221,9 @@ module n8_top (
     // Quartus de cada RBF; sin ninguna (simulación y banco de pruebas) se incluyen los dos.
     //   N8_RBF_100: fases 1-3b y las variantes de esas mismas instancias (fase 3c)
     //   N8_RBF_101: chips nuevos de la fase 3c y lecturas sencillas de la 3d
-    //   N8_RBF_102: Namco 163 (con sonido) y, desde la fase 4, mapper_latch, mapper_mmc3b y mapper_irqcpu
+    //   N8_RBF_102: Namco 163 (con sonido) y, desde la fase 4, mapper_latch y mapper_mmc3b
+    //   N8_RBF_104: mapper_irqcpu (40, 42, 50, 73, 106, 142; en el 102 hasta el 2026-11-24), Kaiser 56, 91/117/222,
+    //               NWC 105 y misc4. Reparto: ningún RBF por encima del 85 % del EP2C5.
     // MAPROUT.BIN dirige cada número de mapper a su RBF.
     `N8_MAPPER(mapper_nrom,  m000, bus_000)
 `ifdef N8_RBF_100
@@ -284,8 +286,6 @@ module n8_top (
     `N8_MAPPER_XD(mapper_latch, m400, bus_400, do_400, doe_400)
     // fase 4, lote 2: variantes del MMC3 (segunda instancia, GRUPO 1)
     `N8_MAPPER_XD(mapper_mmc3b, m404, bus_404, do_404, doe_404)
-    // fase 4, lote 4: IRQ por ciclos de CPU (mapper_irqcpu.v)
-    `N8_MAPPER(mapper_irqcpu, m408, bus_408)
 `endif
 `ifdef N8_RBF_103
     // MMC5 (RBF propio). PPU-data (fill/ExRAM) y split/audio: iteraciones posteriores.
@@ -294,6 +294,8 @@ module n8_top (
 
     // Un número de mapper no implementado (o de otro RBF) se comporta como NROM.
 `ifdef N8_RBF_104
+    // fase 4, lote 4: IRQ por ciclos de CPU (mapper_irqcpu.v). En el 102 hasta el 2026-11-24 (lo llenaba al 94 %).
+    `N8_MAPPER(mapper_irqcpu, m408, bus_408)
     `N8_MAPPER(mapper_kaiser56, m456, bus_456)
     `N8_MAPPER(mapper_scan4, m491, bus_491)
     `N8_MAPPER(mapper_nwc105, m405, bus_405)
@@ -384,13 +386,13 @@ module n8_top (
             8'd12, 8'd44, 8'd45, 8'd49, 8'd52, 8'd74, 8'd134, 8'd182,
             8'd187, 8'd191, 8'd196, 8'd197, 8'd198, 8'd199, 8'd205,
             8'd238, 8'd245, 8'd249, 8'd250:   g = bus_404;
-            8'd40, 8'd42, 8'd50, 8'd73, 8'd106,
-            8'd142:                           g = bus_408;
 `endif
 `ifdef N8_RBF_103
             8'd5:                             g = bus_005;
 `endif
 `ifdef N8_RBF_104
+            8'd40, 8'd42, 8'd50, 8'd73, 8'd106,
+            8'd142:                           g = bus_408;
             8'd56:                            g = bus_456;
             8'd91,8'd117,8'd222:               g = bus_491;
             8'd105:                           g = bus_405;
