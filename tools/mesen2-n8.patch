@@ -135,7 +135,7 @@ index ddfd44f..144f32e 100644
  		}
  	}
 diff --git a/Core/NES/Mappers/FDS/FdsAudio.cpp b/Core/NES/Mappers/FDS/FdsAudio.cpp
-index 8a348db..f236fef 100644
+index 8a348db..08e88a4 100644
 --- a/Core/NES/Mappers/FDS/FdsAudio.cpp
 +++ b/Core/NES/Mappers/FDS/FdsAudio.cpp
 @@ -8,6 +8,10 @@
@@ -159,6 +159,16 @@ index 8a348db..f236fef 100644
  
  	if(_lastOutput != outputLevel) {
  		_console->GetApu()->AddExpansionAudioDelta(AudioChannel::FDS, outputLevel - _lastOutput);
+@@ -87,6 +94,9 @@ uint8_t FdsAudio::ReadRegister(uint16_t addr)
+ 
+ void FdsAudio::WriteRegister(uint16_t addr, uint8_t value)
+ {
++#ifdef N8_FPGA_SIM
++	N8FdsRegLog(_console->GetCpu()->GetCycleCount(), addr, value);
++#endif
+ 	if(addr <= 0x407F) {
+ 		if(_waveWriteEnabled) {
+ 			_waveTable[addr & 0x3F] = value & 0x3F;
 diff --git a/Core/NES/NesCpu.h b/Core/NES/NesCpu.h
 index 6c0da75..4c7389b 100644
 --- a/Core/NES/NesCpu.h

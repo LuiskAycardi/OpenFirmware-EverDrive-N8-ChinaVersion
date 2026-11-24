@@ -168,4 +168,15 @@ Nintendo. Evita pedir la BIOS al usuario, pero es mucho más trabajo (los juegos
   y aviso del parche desde ReadPads, `$EA09`; `$4217`-`$4219`; `buscar_cara` empieza por la cara puesta). Detalles en
   [os/LEEME.md](../os/LEEME.md). En la NES: Nicol carga en 4,1 s (antes ~7) y el botón funciona con ReadPads de la
   BIOS; el espía de `$4016` no (la FPGA no ve el dato del mando en `$40xx`); queda para la Famicom.
-- **F6, sonido FDS**.
+- **F6, sonido FDS** (hecho en el simulador el 2026-11-24; falta oírlo en la Famicom): `hdl/rtl/snd_fds.v` (propio,
+  según la descripción pública de NESdev; comportamiento contrastado con Mesen2): onda de 64 pasos de 6 bits con su
+  envolvente, modulador de frecuencia (tabla de 64 pasos de 3 bits, contador con signo, su envolvente y el redondeo raro
+  del chip) y volumen general. Registros `$4040-$408A` con `$4023` D1 = 1; las lecturas (`$4040-$407F`, `$4090`,
+  `$4092`) solo llegan en el N8 de Famicom. Salida = nivel (0-63) × 16 a `audio_dac` (el volumen frente a la consola,
+  a ajustar al oírlo). `tb_fds`: rampa, volumen general, parada, `$4023` y envolvente (cazó un periodo truncado a 8
+  bits: iba 12 veces más rápida). **Comparación con Mesen2:** comparar las dos partidas no sirve en cuanto el juego lee
+  el disco con música (nuestra carga es más rápida y cada máquina llega a otro sitio: Doki Doki Panic da la misma
+  secuencia de niveles, desplazada), así que Mesen2 apunta cada escritura de sonido (`N8FdsRegLog`) y
+  `tools/fds/sonido_replay` (Verilator) se las mete a `snd_fds.v` en los mismos ciclos: Metroid, Doki Doki Panic y
+  Zelda, 4000 fotogramas, **idénticos ciclo a ciclo** (274 106, 1 223 819 y 24 879 cambios de nivel; 0 %). 254.RBF:
+  2681 LE (58 %; las tablas en registros), márgenes positivos. En la NES no se oye (no saca el audio de expansión).

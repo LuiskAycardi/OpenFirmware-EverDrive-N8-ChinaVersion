@@ -57,7 +57,11 @@ module snd_fds (
 
     // ---------------------------------------------------------------- funciones
     function [16:0] periodo(input [5:0] vel, input [7:0] gen);   // 8 x (vel + 1) x gen
-        periodo = {({1'b0, vel} + 7'd1) * gen, 3'b000};
+        reg [13:0] p;
+        begin
+            p = ({7'd0, vel} + 14'd1) * {6'd0, gen};             // 14 bits (en una concatenación se truncaría)
+            periodo = {p, 3'b000};
+        end
     endfunction
 
     // Desvío de la frecuencia de la onda: f(contador, ganancia del modulador, frecuencia), con signo.

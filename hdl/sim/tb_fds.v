@@ -36,6 +36,8 @@ module tb_fds;
         end
     endtask
 
+    integer k;
+
     task ciclos(input integer n);
         integer i;
         begin for (i = 0; i < n; i = i + 1) cpu_read(16'h0000); end
@@ -201,6 +203,42 @@ module tb_fds;
         ppu_access(14'h0123, 1);
         check(!chr_we_n && !chr_ce_n, "FDS: la CHR-RAM se escribe");
         ppu_access(14'h0000, 0);
+
+        // ================================================= sonido ($4040-$408A, snd_fds.v)
+        cpu_write(16'h4023, 8'h03);                 // registros del disco y del sonido
+        cpu_write(16'h4089, 8'h80);                 // escribir la onda: rampa 0-63
+        for (k = 0; k < 64; k = k + 1) cpu_write(16'h4040 + k, k[7:0]);
+        expect_read(16'h4045, 8'h3F, 8'h05, "FDS sonido: la onda se lee (escritura activa)");
+        cpu_write(16'h4089, 8'h00);                 // volumen 2/2
+        cpu_write(16'h4080, 8'hA0);                 // envolvente apagada, ganancia 32
+        expect_read(16'h4090, 8'h3F, 8'h20, "FDS sonido: $4090 = ganancia 32");
+        cpu_write(16'h4087, 8'h80);                 // modulador parado
+        cpu_write(16'h4082, 8'h00);
+        cpu_write(16'h4083, 8'h04);                 // frecuencia $400: un paso de la onda cada 64 ciclos
+        ciclos(64 * 10);
+        check(dut.m254.sonido.o_pos >= 6'd9 && dut.m254.sonido.o_pos <= 6'd11,
+              "FDS sonido: la onda avanza un paso cada 64 ciclos");
+        check(dut.m254.snd_nivel + 6'd1 >= dut.m254.sonido.o_pos && dut.m254.snd_nivel <= dut.m254.sonido.o_pos,
+              "FDS sonido: con ganancia 32 y volumen 2/2 el nivel es el valor de la onda");
+        check(dut.snd_level == {dut.m254.snd_nivel, 4'b0000} && dut.snd_on, "FDS sonido: sale por audio_dac (x 16)");
+        cpu_write(16'h4089, 8'h03);                 // volumen 2/5: 32 x 14 / 1152 de la onda
+        ciclos(64 * 20);
+        check(dut.m254.snd_nivel == (dut.m254.sonido.onda[dut.m254.sonido.o_pos] * 448) / 1152 ||
+              dut.m254.snd_nivel == (dut.m254.sonido.onda[dut.m254.sonido.o_pos - 6'd1] * 448) / 1152,
+              "FDS sonido: volumen 2/5");
+        cpu_write(16'h4083, 8'h84);                 // onda parada: vuelve al paso 0
+        ciclos(10);
+        check(dut.m254.sonido.o_pos == 6'd0 && dut.m254.snd_nivel == 6'd0, "FDS sonido: $4083 D7 para la onda");
+        cpu_write(16'h4023, 8'h01);                 // sonido desactivado: no se escribe
+        cpu_write(16'h4080, 8'h85);
+        cpu_write(16'h4023, 8'h03);
+        expect_read(16'h4090, 8'h3F, 8'h20, "FDS sonido: con $4023 D1 = 0 no se escriben sus registros");
+        cpu_write(16'h4083, 8'h04);                 // la onda otra vez en marcha (parada, las envolventes no avanzan)
+        cpu_write(16'h4080, 8'h05);                 // envolvente que baja, velocidad 5
+        ciclos(8 * 6 * 232 - 20);                   // $408A = $E8: un paso cada 8 x 6 x 232 ciclos
+        expect_read(16'h4090, 8'h3F, 8'h20, "FDS sonido: la envolvente aún no ha bajado");
+        ciclos(40);
+        expect_read(16'h4090, 8'h3F, 8'h1F, "FDS sonido: la envolvente baja un paso");
 
         // ================================================= vuelta al menú
         back_to_menu;

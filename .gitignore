@@ -78,3 +78,5 @@ tools/fds/salida_mesen/
 
 # disco de prueba del cambio de cara (tools/fds/prueba_boton): binarios que salen de boton.s
 /tools/fds/prueba_boton/*.bin
+/tools/fds/sonido_replay/obj/
+/tools/fds/sonido_replay/replay
