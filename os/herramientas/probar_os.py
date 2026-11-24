@@ -179,8 +179,10 @@ comprobar(all(e[1] in (2, 9) for e in cpld) and all(e[3] == 1 for e in cpld if e
 otros = [e for e in m.log[m.n_log:] if e[0] in ('4402', 'ESCRITURA_EN_FLASH', 'USB_TX') or (e[0] == 'FPGA' and e[1] not in (129, 130))]
 comprobar(not otros, f'no toca la flash, $4402 ni otros registros del FPGA que el 129 (marca de partida) y el 130 ({otros[:3]})')
 tocados = {b for b, n in m.escrituras_prgram.items() if n != m.prg_antes.get(b, 0)}
-comprobar(tocados <= set(range(8)) | {9, 10, 11} and bytes(m.prgram[0x10000:0x12000]) == m.partidas[0x10000:0x12000],
-          f'en la PRG-RAM solo escribe el orden (claves en los bancos 0-7, posiciones en 9-11) y no toca el banco 8 ({sorted(tocados)})')
+ovl = pathlib.Path(a.os).read_bytes()[0x5400:0x6400]       # el código del FDS: al encender va al banco 8, en $7000
+comprobar(tocados <= set(range(12)) and bytes(m.prgram[0x10000:0x11000]) == m.partidas[0x10000:0x11000]
+          and bytes(m.prgram[0x11000:0x12000]) == ovl,
+          f'en la PRG-RAM solo escribe el orden (claves en los bancos 0-7, posiciones en 9-11) y, del banco 8, solo el código del FDS en $7000 ({sorted(tocados)})')
 comprobar(solo_lectura(m) and bytes(m.sd.img) == pathlib.Path(img32).read_bytes(), 'la imagen de la SD queda idéntica')
 
 # ------------------------------------------------------------------ otras tarjetas
@@ -244,7 +246,7 @@ def rom(prg16, chr8, mapper, byte6=0, trainer=False, semilla=1, cola=None):
     return cab + (bytes(range(256)) * 2 if trainer else b'') + bytes(prg) + chr_, bytes(prg), chr_
 
 maprout = bytearray([0xFF]) * 512
-for mp, r in ((0, 100), (4, 100), (1, 101), (219, 105)):
+for mp, r in ((0, 100), (4, 100), (1, 101), (219, 105), (254, 254)):
     maprout[mp] = r
 (t / 'edfc/MAPROUT.BIN').write_bytes(maprout)
 rbf100 = bytes((i * 7 + 1) & 0xFF for i in range(51200))
@@ -956,8 +958,8 @@ for nombre, info in (('Disco (Japan)', 'Disco FDS  2 caras  ABC r2'), ('Con cabe
     ir_a_nombre(m, nombre)
     m.correr(300_000, nmi_cada=9000)
     comprobar(fila25(m.pantalla()) == info, f'información de {nombre}: «{fila25(m.pantalla())}»')
-for bios_fds, mensaje in ((forzar_crc(RELLENO_BIOS, 100, bios_si[0]), 'BIOS FDS bien; falta 254.RBF'),
-                          (forzar_crc(RELLENO_BIOS, 100, bios_si[2]), 'BIOS FDS bien; falta 254.RBF'),
+for bios_fds, mensaje in ((forzar_crc(RELLENO_BIOS, 100, bios_si[0]), 'No encuentro el RBF 254'),
+                          (forzar_crc(RELLENO_BIOS, 100, bios_si[2]), 'No encuentro el RBF 254'),
                           (forzar_crc(RELLENO_BIOS, 100, bios_no[0]), 'BIOS FDS de emulador'),
                           (RELLENO_BIOS, 'BIOS FDS desconocida'), (RELLENO_BIOS[:4096], 'BIOS FDS desconocida'),
                           (None, 'Falta EDFC/DISKSYS.ROM')):
@@ -975,6 +977,112 @@ for nombre, mensaje in (('Roto', 'Imagen FDS no válida'), ('Carga propia', 'Dis
     ok = lanzar(m)
     m.correr(200_000, nmi_cada=9000)
     comprobar(not ok and mensaje in m.pantalla(), f'lanzar {nombre}: «{mensaje}»')
+
+# ------------------------------------------------------------------ F4: lanzar un disco FDS y guardarlo al volver
+rbf254 = bytes((i * 11 + 5) & 0xFF for i in range(40000))
+parche_bin = (RAIZ / 'os/build/fds_parche.bin').read_bytes()
+BIOS_F4 = forzar_crc(RELLENO_BIOS, 100, bios_si[0])
+
+def poner(d, pos, b):
+    d[pos:pos + len(b)] = b
+
+def cara_f4(codigo, cara, semilla):
+    """Cara sintética con un PRG grande (lecturas de $403x por todas partes, una a caballo entre dos bancos de 2 KiB
+    de la ventana), un CHR con los mismos bytes (no se tocan) y un PRG oculto."""
+    b1 = bytes([1]) + fdsmod.FIRMA + bytes([0x01]) + codigo + b' ' + bytes([1, cara, 0, 0, 0, 0x0F]) + bytes([0xFF] * 5)
+    b1 = b1 + bytes(56 - len(b1))
+    prg = bytearray((i * 13 + semilla) & 0xFF for i in range(6000))
+    ini = 56 + 2 + 16 + 1                                   # donde empiezan los datos del PRG en la cara
+    for off, b in ((10, b'\xAD\x32\x40'), (300, b'\x2C\x30\x40'), (301 + 2048, b'\xBD\x33\x40'),
+                   (2046 - ini, b'\xAD\x32\x40'), (4095 - ini, b'\xAE\x30\x40'), (900, b'\x8D\x32\x40'),
+                   (1000, b'\xAD\x31\x40'), (1100, b'\xAD\x32\x41'), (5997, b'\xCD\x32\x40')):
+        poner(prg, off, b)
+    chr_ = bytearray(512)
+    poner(chr_, 40, b'\xAD\x32\x40')
+    oculto = bytearray(64)
+    poner(oculto, 5, b'\xAD\x30\x40')
+    c = b1 + bytes([2, 2])
+    for n, (nom, dire, datos, tipo) in enumerate(((b'PROGRAMA', 0x6000, prg, 0), (b'GRAFICOS', 0x0000, chr_, 1),
+                                                  (b'OCULTO  ', 0x7000, oculto, 0))):
+        c += bytes([3, n, n]) + nom + bytes([dire & 0xFF, dire >> 8, len(datos) & 0xFF, len(datos) >> 8, tipo])
+        c += bytes([4]) + bytes(datos)
+    return c + bytes((i * 7 + semilla) & 0xFF for i in range(fdsmod.CARA - len(c)))
+
+CARAS_F4 = [cara_f4(b'NFD', 0, 3), cara_f4(b'NFD', 1, 9)]
+FDS_F4 = b'FDS\x1a' + bytes([2]) + bytes(11) + b''.join(CARAS_F4)        # con cabecera fwNES: 16 bytes delante
+
+def imagen_f4(nombre):
+    img = imagen3(nombre)
+    dest = f'{img}@@{8192 * 512}'
+    for n, datos in (('EDFC/MAPS/254.RBF', rbf254), ('EDFC/DISKSYS.ROM', BIOS_F4), ('Disco F4.fds', FDS_F4)):
+        f = t / 'tmp.bin'
+        f.write_bytes(datos)
+        subprocess.run(['mcopy', '-i', dest, str(f), f'::{n}'], check=True)
+    return img
+
+esperado = fdsmod.montar_sram(BIOS_F4, parche_bin, CARAS_F4)
+cambios = [fdsmod.cambiar_cara(c)[1] for c in CARAS_F4]
+img_f4 = imagen_f4('f4.img')
+m = menu3(img_f4, 'Disco F4.fds')
+comprobar(cursor_en(m.pantalla(), 'Disco F4'), 'F4: el cursor llega al disco')
+def lanzar_f4(m):
+    m.pad = 0x80
+    r = m.correr(60_000_000, lambda m: m.mapper != 0xFF, nmi_cada=9000)
+    m.pad = 0
+    return r == 'parada'
+
+ok = lanzar_f4(m)
+comprobar(ok and m.mapper == 254 and m.cpu.pc < 0x0800, 'F4: reg 131 = 254, escrito desde la RAM')
+cfg = m.fpga_cfgs[m.n_cfg:]
+comprobar(len(cfg) == 1 and bytes(cfg[0][:len(rbf254)]) == rbf254, 'F4: el FPGA recibe el 254.RBF')
+comprobar((m.fpga.get(132), m.fpga.get(133), m.fpga.get(134), m.fpga.get(136)) == (31, 0xFF, 0, 0),
+          f'F4: regs 132/133/134/136 = 1F/FF/00/00 ({[m.fpga.get(r) for r in (132, 133, 134, 136)]})')
+for k in range(2):
+    a = k * 0x10000
+    comprobar(m.prgrom[a:a + fdsmod.CARA] == esperado[a:a + fdsmod.CARA],
+              f'F4: cara {k} en la SRAM como fds.cambiar_cara ({len(cambios[k])} lecturas cambiadas)')
+comprobar(m.prgrom[0x7D000:0x7D000 + len(parche_bin)] == parche_bin and m.prgrom[0x7DFFF] == 2,
+          'F4: el bloque del parche en 0x7D000 y 2 caras en 0x7DFFF')
+comprobar(m.prgrom[0x7E000:0x80000] == esperado[0x7E000:0x80000], 'F4: la BIOS en 0x7E000 con los enganches del parche')
+mk = m.prgram[0x10180:0x10180 + 22]
+comprobar(mk[:5] == b'N8FD\x01' and mk[18:21] == bytes([2, 16, sum(map(len, cambios))])
+          and int.from_bytes(mk[14:18], 'little') == len(FDS_F4),
+          f'F4: marca N8FD en el banco 8 (2 caras, cabecera 16, {sum(map(len, cambios))} cambios, tamaño {len(FDS_F4)})')
+comprobar(solo_lectura(m) and estado(m, 'en_juego') == 1, 'F4: la SD solo se lee; marca en_juego puesta')
+
+# el juego escribe en el disco: un byte del PRG, una lectura cambiada reescrita entera y el final de la cara 2
+sram = m.prgrom
+sram[75 + 500] ^= 0xFF
+p0 = cambios[0][0]
+sram[p0:p0 + 2] = b'\x11\x22'
+sram[0x10000 + 65499] ^= 0x5A
+caras_juego = [bytes(sram[k * 0x10000:k * 0x10000 + fdsmod.CARA]) for k in range(2)]
+fds_esperado = FDS_F4[:16] + b''.join(fdsmod.deshacer_cara(c, cambios[k]) for k, c in enumerate(caras_juego))
+dif = {i // 512 for i in range(len(FDS_F4)) if FDS_F4[i] != fds_esperado[i]}
+n24 = len(escrituras(m))
+m.reset_consola()
+m.correr(60_000_000, lambda m: m.prgram[0x10180] != 0x4E, nmi_cada=9000)     # hasta que se borra la marca
+m.correr(PASOS, nmi_cada=9000)
+pan = m.pantalla()
+comprobar('Disco FDS guardado' in pan and 'Arranque: vuelta de juego' in pan, f'F4: al volver, «Disco FDS guardado» ({fila25(pan)})')
+comprobar(leer_archivo(m, 'Disco F4.fds') == fds_esperado,
+          'F4: el .fds de la SD = el disco con lo que escribió el juego y las lecturas otra vez como estaban')
+comprobar(len(escrituras(m)) - n24 == len(dif) and fsck(m) == [],
+          f'F4: solo se escriben los {len(dif)} sectores que cambiaron ({len(escrituras(m)) - n24}); fsck.fat sin errores')
+comprobar(m.prgram[0x10180:0x10184] != b'N8FD', 'F4: la marca N8FD se borra')
+
+# lanzar otra vez y apagar sin RESET: al encender no se escribe nada (la SRAM PRG no tiene pila)
+m2 = Maquina(bios, SD(bytes(m.sd.img), sdhc=True), prgram=m.prgram)
+m2.arrancar_bios()
+m2.correr(PASOS, nmi_cada=9000)
+m2.n_cfg = len(m2.fpga_cfgs)
+ir_a_nombre(m2, 'Disco F4')
+ok = lanzar_f4(m2)
+comprobar(ok and m2.prgram[0x10180:0x10184] == b'N8FD', 'F4: el disco guardado se vuelve a lanzar (marca N8FD)')
+img_ahora = bytes(m2.sd.img)
+m3, _ = encender(img_ahora, prgram=m2.prgram)
+comprobar(not escrituras(m3) and m3.prgram[0x10180:0x10184] != b'N8FD' and 'Disco F4' in lista(m3.pantalla()),
+          'F4: encender con la marca N8FD: se borra sin escribir en la SD')
 
 
 print('pantalla del caso FAT32:')

@@ -14,7 +14,7 @@
         .setcpu "6502"
         .include "os.inc"
 
-        .export fds_reconocer, fds_bios, fds_caras, fds_cod, fds_rev
+        .export fds_reconocer, fds_bios, fds_caras, fds_cod, fds_rev, fds_desp
         .import sector, arch_tam, arch_abrir, arch_leer, arch_avanzar, dir_buscar, abrir_edfc, fat_error
         .importzp nombre
 
@@ -31,6 +31,7 @@ fds_caras:  .res 1
 fds_cod:    .res 3
 fds_rev:    .res 1
 desp:       .res 1              ; 0 o 16 (cabecera fwNES)
+fds_desp = desp
 resto:      .res 3              ; tamaño que falta por repartir en caras
 cuenta:     .res 1
 

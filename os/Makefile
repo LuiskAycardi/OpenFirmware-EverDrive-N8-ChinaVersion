@@ -1,6 +1,6 @@
 # Makefile del OS propio (etapa 1). Salida: build/OS.BIN (32 KiB). Necesita cc65 (ca65, ld65) y Python 3.
 B := build
-OBJS := $(B)/arranque.o $(B)/principal.o $(B)/sd.o $(B)/fat.o $(B)/lanzar.o $(B)/partida.o $(B)/orden.o $(B)/banco.o $(B)/fds.o
+OBJS := $(B)/arranque.o $(B)/principal.o $(B)/sd.o $(B)/fat.o $(B)/lanzar.o $(B)/partida.o $(B)/orden.o $(B)/banco.o $(B)/fds.o $(B)/fds_ovl.o
 
 all: $(B)/OS.BIN $(B)/fds_parche.bin
 
@@ -14,6 +14,8 @@ $(B)/%.o: src/%.s src/os.inc src/fds_tablas.inc $(B)/fuente.chr | $(B)
 $(B)/fds_parche.bin: src/fds_parche.s fds_parche.cfg | $(B)
 	ca65 -o $(B)/fds_parche.o src/fds_parche.s
 	ld65 -C fds_parche.cfg -o $@ -Ln $(B)/fds_parche.lbl $(B)/fds_parche.o
+
+$(B)/fds_ovl.o: $(B)/fds_parche.bin
 
 $(B)/OS.BIN: $(OBJS) n8os.cfg
 	ld65 -C n8os.cfg -o $@ -m $(B)/os.map -Ln $(B)/os.lbl $(OBJS)

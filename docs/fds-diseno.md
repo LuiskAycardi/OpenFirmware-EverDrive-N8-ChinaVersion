@@ -137,7 +137,12 @@ Nintendo. Evita pedir la BIOS al usuario, pero es mucho más trabajo (los juegos
     instrucciones cuente por fotograma, también con el parche anterior: activan la NMI escribiendo en `$2000`
     durante la carga, y el banco no cuenta ciclos. En Mesen2, que sí los cuenta, los dos juegan. Falta
     comprobarlo en la consola (F5).
-- **F4, OS**: `.fds` en el menú, carga de BIOS y caras (con `cambiar_cara`), lanzamiento, marca N8FD, guardado al
-  volver (con `deshacer_cara`).
+- **F4, OS** (hecha en el simulador el 2026-11-23; falta la consola): `os/src/fds_ovl.s`. Al lanzar un `.fds`: lo
+  pendiente se guarda antes; 254.RBF; parche en `0x7D000` (y caras en `0x7DFFF`), BIOS en `0x7E000` con los
+  enganches, caras con `cambiar_cara` (cada cambio apuntado, hasta 255; en la colección, 36 como mucho) y marca N8FD
+  en el banco 8 (`$6180`). Al volver con RESET: comprueba la entrada y el disco de la SRAM, deshace el cambio donde
+  sigue (`deshacer_cara`) y escribe solo los sectores que cambiaron. Al encender, la marca se borra (la SRAM PRG no
+  tiene pila). El código no cabe en la ROM del OS: va en el OS.BIN en el sitio de la zona de trabajo y al encender
+  se copia al banco 8 (`$7000`), desde donde corre. Detalles y prueba en [os/LEEME.md](../os/LEEME.md).
 - **F5, consola**: tanda de juegos FDS en la Famicom (y en la NES, sin sonido de expansión).
 - **F6, sonido FDS**.

@@ -18,11 +18,12 @@
         .setcpu "6502"
         .include "os.inc"
 
-        .export l_sin_partida
+        .export l_sin_partida, r_ini, l_ent, fds_pend, fds_copiar
         .export lanzar, l_error, l_rbf, nombre_rbf, leer_cabecera, l_prg16, l_chr8, l_cfg, abrir_edfc
         .exportzp l_mapper
         .import dir_abrir_raiz, dir_abrir, dir_buscar
-        .import fds_reconocer, fds_bios
+        .import fds_reconocer, fds_bios, banco_marca, dir_lba, dir_idx
+        .import __FDSOVL_LOAD__, __FDSOVL_RUN__, __FDSOVL_SIZE__
         .import arch_abrir, arch_leer, arch_contiguo
         .import arch_lba, arch_tam, arch_ini, fat_error, sector
         .import tramo_ini, tramo_sig, tr_lba, tr_n, tr_fin, fat_desp
@@ -60,6 +61,8 @@ l_prg16:    .res 1
 l_chr8:     .res 1
 l_cfg:      .res 1
 l_trainer:  .res 1
+l_fds:      .res 1              ; 1 = se lanza un disco FDS (fds_ovl.s)
+l_ent:      .res 5              ; sector e índice de la entrada de la ROM en su carpeta
 r_ini:      .res 4              ; primer clúster de la ROM
 prg_rest:   .res 3              ; bytes de PRG que faltan
 chr_rest:   .res 3
@@ -93,10 +96,14 @@ falla_sd:
         bne     falla
 
 lanzar:
+        copia4  l_ent, dir_lba          ; la entrada de la ROM (arch_abrir cambia dir_lba)
+        lda     dir_idx
+        sta     l_ent+4
         jsr     partida_nombre          ; con dir_ent y el nombre largo de la ROM, antes de leer nada más
         lda     #0
         sta     l_error
         sta     fat_error
+        sta     l_fds
         ; ---- 1. cabecera
         jsr     arch_abrir
         copia4  r_ini, arch_ini
@@ -114,16 +121,28 @@ lanzar:
         bne     @falla                  ; imagen mal o disco con carga propia
         jsr     fds_bios
         bcs     @falla
-        lda     #L_FDSRBF               ; (etapa F1: aún no hay 254.RBF)
-        jmp     falla
+        lda     #254                    ; 254.RBF; la SRAM PRG entera (BIOS y caras) y CHR-RAM; sin partida
+        sta     l_mapper
+        lda     #32
+        sta     l_prg16
+        lda     #0
+        sta     l_chr8
+        sta     l_cfg
+        inc     l_fds
+        bne     @pend
 @mapper:
         ; ---- 1b. partidas
         jsr     tam_partida             ; con la cabecera aún en `sector`
-        jsr     partida_pendiente       ; la del juego anterior, si quedó sin guardar
+@pend:  jsr     partida_pendiente       ; la del juego anterior, si quedó sin guardar
+        bcs     @no_pend
+        jsr     fds_pend                ; y el disco FDS anterior (el juego nuevo pisa la SRAM PRG)
         bcc     :+
+@no_pend:
         lda     #L_PENDIENTE
         jmp     falla
-:       lda     l_sin_partida
+:       lda     l_fds
+        bne     @sin_pila
+        lda     l_sin_partida
         bne     @sin_pila
         lda     l_cfg
         and     #$02
@@ -250,7 +269,13 @@ lanzar:
         jmp     falla
 
         ; ---- 5. PRG y CHR, con lecturas múltiples por tramos de clústeres seguidos y copia directa
-@rom:   copia4  arch_ini, r_ini
+@rom:   lda     l_fds
+        beq     @ines
+        jsr     fds_carga               ; disco FDS: BIOS, parche y caras (fds_ovl.s)
+        bcc     :+
+        jmp     falla                   ; A = L_*
+:       jmp     @copiado
+@ines:  copia4  arch_ini, r_ini
         lda     #0
         sta     prg_rest
         sta     prg_rest+1
@@ -377,6 +402,37 @@ lanzar:
 :       lda     #1
         sta     en_juego
         jmp     ram_lanzar
+
+; El código del FDS (fds_ovl.s) corre en el banco 8 de la PRG-RAM, en $7000: estas tres lo ponen en la ventana.
+fds_carga:
+        jsr     banco_marca
+        jmp     __FDSOVL_RUN__
+fds_pend:
+        jsr     banco_marca
+        jmp     __FDSOVL_RUN__ + 3
+
+; Al encender (antes de usar la zona de trabajo, donde viene en el OS.BIN): copia el código del FDS al banco 8.
+fds_copiar:
+        jsr     banco_marca
+        lda     #<__FDSOVL_LOAD__
+        sta     dsta
+        lda     #>__FDSOVL_LOAD__
+        sta     dsta+1
+        lda     #<__FDSOVL_RUN__
+        sta     dst
+        lda     #>__FDSOVL_RUN__
+        sta     dst+1
+        ldx     #>(__FDSOVL_SIZE__ + 255)
+        ldy     #0
+@c:     lda     (dsta),y
+        sta     (dst),y
+        iny
+        bne     @c
+        inc     dsta+1
+        inc     dst+1
+        dex
+        bne     @c
+        rts
 
 ; Tamaño de una partida nueva, en sectores (pt_sect_nueva), según la cabecera que hay en `sector`: la PRG-NVRAM de
 ; NES 2.0 (64 << n bytes, entre 8 y 64 KiB); si no la declara, 32 KiB con el MMC5 (5) y 8 KiB con los demás.

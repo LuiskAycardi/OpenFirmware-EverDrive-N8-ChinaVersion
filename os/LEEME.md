@@ -432,8 +432,7 @@ Pendiente: CRC del juego.
 
 ## Etapa F: discos del Famicom Disk System (`src/fds.s`), primera parte: reconocerlos
 
-Todavía no se lanzan (falta el `254.RBF`, ver [docs/fds-diseno.md](../docs/fds-diseno.md)), pero el OS ya los
-reconoce:
+Reconocimiento (diseño en [docs/fds-diseno.md](../docs/fds-diseno.md)):
 
 - En el menú, los `.fds` salen sin la extensión, como los `.nes`. Con el cursor quieto, la fila 25 dice
   `Disco FDS  2 caras  ABC r0` (caras, código del juego y revisión del bloque 1; sin código si no son letras o cifras,
@@ -445,9 +444,49 @@ reconoce:
 - Al lanzar un disco que vale, el OS busca la BIOS del usuario en **`EDFC/DISKSYS.ROM`** (8 KiB, no se distribuye) y
   la reconoce por su CRC32: Rev 1, Rev 0 y Twin Famicom valen; las de emulador (GameCube, 3DS, Game & Watch) llevan
   trampas que cuelgan una consola real. Mensajes: `Falta EDFC/DISKSYS.ROM`, `BIOS FDS de emulador`,
-  `BIOS FDS desconocida` y, con una buena, `BIOS FDS bien; falta 254.RBF`. La suma de la BIOS tarda ~1 s (CRC32 de
+  `BIOS FDS desconocida`. La suma de la BIOS tarda ~1 s (CRC32 de
   4 en 4 bits: en la ROM del OS no cabe la tabla de 1 KiB).
 - Para hacer sitio, la ROM del OS crece a `$8000-$D3FF`; TRABAJO pasa a `$D400-$E3FF` y GRANDE a `$E400-$FAFF`.
 
 Banco: `probar_os.py` prueba los nombres, la información y los mensajes con discos y BIOS sintéticos (datos propios
 con 4 bytes ajustados para dar el CRC32 que hace falta: ningún byte de Nintendo).
+
+## Etapa F4: lanzar un disco FDS y guardarlo al volver (`src/fds_ovl.s`)
+
+Con una BIOS buena, A sobre un `.fds` lo lanza con el **`254.RBF`** (`MAPROUT.BIN[254] = 254`):
+
+1. Antes de nada se guarda lo pendiente: la partida del juego anterior y su disco FDS (si no se puede, «Sin guardar
+   la anterior: nn» y no se lanza nada).
+2. Se carga el `254.RBF` en el FPGA, como cualquier RBF.
+3. **SRAM PRG** (por la ventana `$4800`, reg 128): el bloque del parche (`src/fds_parche.s`, incluido en el OS) en
+   `0x7D000` y el número de caras en `0x7DFFF`; la BIOS de `EDFC/DISKSYS.ROM` en `0x7E000` con los enganches de la
+   tabla del parche; la cara *k* del disco en *k* × 64 KiB (sin la cabecera fwNES).
+4. **Lecturas de `$4030`/`$4032`/`$4033`:** en los archivos de programa de cada cara (también los ocultos), cada
+   lectura absoluta pasa a `$422E`/`$4230`/`$4231` (byte bajo − 2, byte alto + 2: la suma no cambia), igual que
+   `tools/fds/fds.py` (`cambiar_cara`). En el N8 de NES las lecturas de `$4000-$41FF` no llegan a la CPU; las de
+   `$42xx` sí. Cada cambio se apunta (cara y posición; hasta 255) para deshacerlo al guardar.
+5. **Marca N8FD** en el banco 8 de la PRG-RAM (`$6180`): sector e índice de la entrada del `.fds`, primer clúster,
+   tamaño, caras, cabecera, cambios y suma. Registros: 132 = `$1F`, 133 = `$FF` (CHR-RAM), 134 = 0, 136 = 0; salto
+   al vector de reset de la BIOS.
+
+**Al volver con RESET**, si la marca vale, el OS comprueba que la entrada sigue siendo ese archivo (clúster y
+tamaño) y que la SRAM sigue teniendo el disco (cada cara empieza por `*NINTENDO-HVC*`); deshace el cambio donde
+sigue (si el juego reescribió ese archivo, lo suyo se queda: `fds.py`, `deshacer_cara`), compara cada sector del
+`.fds` con la SRAM y **escribe solo los que cambiaron**: «Disco FDS guardado». Si la entrada o el disco ya no son
+los de la marca, la borra sin escribir («Partida no encontrada»); si falla la tarjeta, la marca se queda («Partida
+no guardada: nn») y se reintenta en el siguiente arranque o lanzamiento.
+
+**Apagar sin RESET pierde lo que el juego escribió en el disco:** la SRAM PRG no tiene pila. Al encender, la marca
+se borra sin tocar la SD.
+
+**Dónde vive el código:** no cabe en la ROM del OS (le quedaban ~400 bytes). Va en el OS.BIN en el sitio de la zona
+de trabajo (`$D400`) y, al encender, antes de usar esa zona, se copia al banco 8 de la PRG-RAM, en `$7000-$7FFF`
+(con pila: sobrevive a los resets); corre desde ahí con el banco 8 en la ventana `$6000`. Banco 8: `$6000` N8SV,
+`$6040` último juego, `$6180` N8FD, `$6200` N8BK, `$6300` lista de cambios, `$6600` búfer de un sector, `$6800`
+variables y `$7000` el código.
+
+Banco: `probar_os.py` lanza un disco sintético de 2 caras con cabecera fwNES (lecturas de `$403x` en un PRG, a
+caballo entre bancos de la ventana, en un CHR, que no se toca, y en un PRG oculto) y comprueba la SRAM entera frente
+a `fds.montar_sram`, los registros, la marca, que la SD solo se lee; luego cambia bytes como lo haría el juego, vuelve
+con RESET y compara el `.fds` guardado con `fds.deshacer_cara` (solo se escriben los sectores que cambian) y, al
+final, que encender con la marca la borra sin escribir.

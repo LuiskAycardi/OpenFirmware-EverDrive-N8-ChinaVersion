@@ -31,7 +31,7 @@
         .import fat_montar, dir_abrir_raiz, dir_abrir_c, dir_siguiente, dir_guardar, dir_restaurar, ent_clus
         .import fat_error, fat_tipo, fat_spc, lfn_buf, lfn_val
         .import lanzar, l_error, nombre_rbf, ultimo_juego
-        .import partida_pendiente, pt_err, banco_marca
+        .import partida_pendiente, pt_err, banco_marca, fds_pend, fds_copiar
         .import orden_ini, orden_clave, orden_fin, orden_k, orden_letra, ord_ok, orden_pos_ptr, orden_pos_traer
         .import orden_puesto
         .importzp ord_src, ord_k, ord_n
@@ -120,7 +120,10 @@ RUTA_TAM = 1 + 4 * PROF + PROF + PROF + NOM * PROF      ; ruta_n ... ruta_nom, s
 .endmacro
 
 principal:
-        lda     #REG_CHR
+        lda     tipo_arranque           ; al encender: el código del FDS al banco 8, antes de usar la zona de trabajo
+        bne     :+
+        jsr     fds_copiar
+:       lda     #REG_CHR
         sta     REG_SEL
         lda     #0
         sta     REG_DAT
@@ -151,6 +154,11 @@ principal:
 :       jsr     datos_tarjeta
         jsr     partida_pendiente       ; la partida del último juego (vuelta de juego o encendido con pila)
         sta     msj_ini
+        jsr     fds_pend                ; y su disco FDS (solo al volver: la SRAM PRG no tiene pila)
+        cmp     #0
+        beq     :+
+        sta     msj_ini
+:
         jsr     banco                   ; con EDFC/BANCO.TXT: la pantalla del modo banco (no vuelve)
         lda     #0
         sta     pagina
@@ -2048,7 +2056,7 @@ m20:    .byte "Disco FDS con carga propia", 0
 m21:    .byte "Falta EDFC/DISKSYS.ROM", 0
 m22:    .byte "BIOS FDS de emulador", 0
 m23:    .byte "BIOS FDS desconocida", 0
-m24:    .byte "BIOS FDS bien; falta 254.RBF", 0
+m24:    .byte "Disco FDS guardado", 0
 mensajes_lo: .byte <m1, <m2, <m3, <m4, <m5, <m6, <m7, <m8, <m9, <m10, <m11, <m12, <m13, <m14, <m15, <m16, <m17, <m18, <m19, <m20, <m21, <m22, <m23, <m24
 mensajes_hi: .byte >m1, >m2, >m3, >m4, >m5, >m6, >m7, >m8, >m9, >m10, >m11, >m12, >m13, >m14, >m15, >m16, >m17, >m18, >m19, >m20, >m21, >m22, >m23, >m24
 

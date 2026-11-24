@@ -71,5 +71,5 @@ L_FDSNO     = 20                ; disco con rutina de disco propia: no carga con
 L_SINBIOS   = 21                ; no está EDFC/DISKSYS.ROM
 L_BIOSEMU   = 22                ; BIOS FDS de un emulador (no corre en una consola)
 L_BIOSRARA  = 23                ; BIOS FDS desconocida o de otro tamaño
-L_FDSRBF    = 24                ; BIOS bien, pero aún no hay 254.RBF (etapa F1)
+M_DISCO     = 24                ; al arrancar: disco FDS guardado en la SD (fds_ovl.s)
 
