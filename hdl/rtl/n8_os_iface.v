@@ -8,6 +8,8 @@
 //   se vuelve al modo OS (reset de la consola => menú).
 // - En modo OS también genera el mapa de memoria que usa el menú para cargar la ROM.
 // Game Genie (reg 135) no implementado: las escrituras se ignoran.
+// Reg 137 (propio): paso del volumen del sonido de expansión, 0-8 (4 = calibrado); ver audio_dac.v. Vale 4 al
+// configurar la FPGA, así que un OS que no lo escriba (el v13 de fábrica) deja el volumen calibrado.
 
 module n8_os_iface (
     input  wire        clk,         // reloj del sistema (pin 17)
@@ -26,6 +28,7 @@ module n8_os_iface (
     output reg  [7:0]  cfg,         // bit 0 = mirroring vertical, bit 7 = CHR-RAM
     output reg  [4:0]  prg_size,    // máscara para PRG A18..A14
     output reg  [5:0]  chr_size,    // máscara para CHR A18..A13
+    output reg  [3:0]  vol_paso,    // volumen del sonido de expansión: 0-8, 4 = calibrado (reg 137)
 
     // estado de M2 / reset
     output wire        m2_ok,       // M2 alto y estable
@@ -52,6 +55,7 @@ module n8_os_iface (
     localparam R_CHR_SIZE = 8'd133;
     localparam R_CFG      = 8'd134;
     localparam R_CART_CFG = 8'd136;
+    localparam R_VOLUMEN  = 8'd137;
 
     localparam SHORT_IDLE = 26'd128;          // ciclos de clk sin M2
     localparam LONG_IDLE  = 26'h2000000;      // 2^25
@@ -76,6 +80,7 @@ module n8_os_iface (
         cfg        = 8'd0;
         prg_size   = 5'd0;
         chr_size   = 6'd0;
+        vol_paso   = 4'd4;
         reg_sel    = 8'd0;
         prg_bank   = 8'd0;
         ram_bank   = 6'd0;
@@ -110,6 +115,7 @@ module n8_os_iface (
                 R_CHR_SIZE: begin chr_size <= cpu_d[5:0]; cfg[7] <= cpu_d[7]; end
                 R_CFG:      cfg[6:0]  <= cpu_d[6:0];
                 R_CART_CFG: long_reset <= cpu_d[0];
+                R_VOLUMEN:  vol_paso  <= (cpu_d > 8'd8) ? 4'd4 : cpu_d[3:0];   // fuera de rango = calibrado
                 default: ;
             endcase
         end

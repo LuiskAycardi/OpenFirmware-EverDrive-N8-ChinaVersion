@@ -91,6 +91,7 @@ PRG de SUROM) desplazan la CHR-RAM. Este fue el fallo gráfico de Dragon Warrior
 | 134 | MAP_CFG | 6:0 | opciones del mapper; bit 0 = **mirroring** (1 = vertical); bit 3 = **4 pantallas** (protocolo nuestro, ver abajo) |
 | 135 | GG | — | carga de hasta 5 códigos Game Genie (escrituras byte a byte) |
 | 136 | CART_CFG | 0 | modo de reset (corto/largo) |
+| 137 | VOLUMEN | 3:0 | **propio** (2026-11-24): paso del volumen del sonido de expansión, 0-8 (4 = calibrado, el valor al configurar la FPGA; >8 = 4). Ver docs/sonido-volumen.md |
 
 **MAP_CFG y la cabecera iNES (OS v13, `$BDFB`):** el OS guarda `cabecera[6] & $1B`
 (bits 0 mirroring, 1 batería, 3 cuatro pantallas, 4) en su estructura de la ROM. Una rutina con
@@ -128,6 +129,8 @@ el banco de pruebas, sin macro, entran todos.
 sigma-delta a 50 MHz: proporción de ciclos bajos = nivel / 1024; en silencio la salida está alta (misma
 polaridad que el PWM del MMC5 del kit de Krikzz). En la Famicom la placa la filtra y la mezcla con el audio de
 la consola; en el NES va al pin EXP, sin conectar. Con un mapper sin sonido el pin queda en Z.
+Desde el 2026-11-24 el nivel pasa antes por una etapa de ganancia (base de cada chip × paso del reg 137) y el
+modulador trabaja a 14 bits: ver [sonido-volumen.md](sonido-volumen.md).
 
 **Conducir el bus de datos de la CPU: implementado en la fase 3d** (`n8_top.v`). Cada mapper con registros
 legibles da `cpu_dout` y `cpu_doe` (bits que conduce el chip real; el resto, bus abierto: la FPGA deja esos
@@ -160,7 +163,7 @@ testbenches vigilan esas reglas en todos los ciclos (tb_bus.vh) y hay mutaciones
 
 **Registros que usa el OS v13 en `$4400`:** 9, 10, 128–130, 132–134, 136, 138–140, más el 131
 (escrito de forma indirecta). 138 se **lee** en `$4401`, y la FPGA nunca conduce el bus, así que
-138–140 (y 9–10) son del CPLD. Libres conocidos: 135 (GG), 137, 141 en adelante.
+138–140 (y 9–10) son del CPLD. Libres conocidos: 135 (GG), 141 en adelante (el 137 es el volumen, propio).
 
 **/RD de la PPU no sirve como reloj (hecho de hardware, 2026-11-05):** el primer MMC2/MMC4 cambiaba
 sus latches con el flanco de subida de /RD tomando `ppu_a` en ese instante. En el banco era idéntico a

@@ -89,6 +89,7 @@ module n8_top (
     wire [7:0]  mapper_os, cfg;
     wire [4:0]  prg_size;
     wire [5:0]  chr_size;
+    wire [3:0]  vol_paso;
     wire        os_mode, m2_ok, mem_off, map_reset;
 
     wire [18:10] os_prg_a, os_chr_a;
@@ -99,7 +100,7 @@ module n8_top (
         .clk(clk), .m2(m2), .cpu_a(cpu_a), .cpu_d(cpu_d), .romsel_n(cpu_romsel_n),
         .cpu_rw(cpu_rw), .bios_off(cpld_bios_off), .ppu_a(ppu_a), .ppu_wr_n(ppu_wr_n),
         .mapper_id(mapper_os), .os_mode(os_mode), .cfg(cfg),
-        .prg_size(prg_size), .chr_size(chr_size),
+        .prg_size(prg_size), .chr_size(chr_size), .vol_paso(vol_paso),
         .m2_ok(m2_ok), .mem_off(mem_off), .map_reset(map_reset),
         .prg_a(os_prg_a), .prg_rom_en(os_prg_rom_en), .prg_ram_en(os_prg_ram_en),
         .prg_wr(os_prg_wr), .chr_a(os_chr_a), .chr_en(os_chr_en), .chr_wr(os_chr_wr),
@@ -565,37 +566,121 @@ module n8_top (
     // 2026-11-08 era el 250, que es oficial (Time Diver Avenger, MMC3 de Nitra) y ahora va al RBF 102.
     reg  [9:0] snd_level;
     reg        snd_on;
+    reg  [2:0] snd_chip;     // fila de la tabla de ganancias: 0 tono, 1 FDS, 2 VRC6, 3 5B, 4 N163, 5 VRC7, 6 MMC5
 `ifdef N8_RBF_100
     wire [9:0] tono_level;
     audio_tono tono (.clk(clk), .en(!os_mode && mapper_id == 8'd247), .level(tono_level));
 `endif
     always @(*) begin
-        snd_on = 1'b0; snd_level = 10'd0;
+        snd_on = 1'b0; snd_level = 10'd0; snd_chip = 3'd0;
         if (!os_mode) case (mapper_id)
 `ifdef N8_RBF_100
-            8'd69:        begin snd_on = 1'b1; snd_level = snd_069;    end
-            8'd247:       begin snd_on = 1'b1; snd_level = tono_level; end
+            8'd69:        begin snd_on = 1'b1; snd_level = snd_069; snd_chip = 3'd3;    end
+            8'd247:       begin snd_on = 1'b1; snd_level = tono_level; snd_chip = 3'd0; end
 `endif
 `ifdef N8_RBF_101
-            8'd24, 8'd26: begin snd_on = 1'b1; snd_level = snd_024;    end
+            8'd24, 8'd26: begin snd_on = 1'b1; snd_level = snd_024; snd_chip = 3'd2;    end
 `endif
 `ifdef N8_RBF_102
-            8'd19:        begin snd_on = 1'b1; snd_level = snd_019;    end
+            8'd19:        begin snd_on = 1'b1; snd_level = snd_019; snd_chip = 3'd4;    end
 `endif
 `ifdef N8_RBF_103
-            8'd5:         begin snd_on = 1'b1; snd_level = snd_005;    end
+            8'd5:         begin snd_on = 1'b1; snd_level = snd_005; snd_chip = 3'd6;    end
 `endif
 `ifdef N8_RBF_106
-            8'd85:        begin snd_on = 1'b1; snd_level = snd_085;    end
+            8'd85:        begin snd_on = 1'b1; snd_level = snd_085; snd_chip = 3'd5;    end
 `endif
 `ifdef N8_RBF_254
-            8'd254:       begin snd_on = 1'b1; snd_level = snd_254;    end
+            8'd254:       begin snd_on = 1'b1; snd_level = snd_254; snd_chip = 3'd1;    end
 `endif
             default: ;
         endcase
     end
+
+    // Volumen (reg 137, docs/sonido-volumen.md): ganancia = base del chip x 2^((paso-4)/2), en 1/256. Tabla
+    // generada por hdl/tools/gen_ganancia.py (las bases salen de la mezcla de Mesen2, provisionales hasta la
+    // calibración con la Famicom). Constante por juego: el paso solo cambia en el modo OS.
+    function [12:0] ganancia(input [2:0] chip, input [3:0] paso);
+        case ({chip, paso})
+            // tono  base  256
+            {3'd0, 4'd0}: ganancia = 13'd64;
+            {3'd0, 4'd1}: ganancia = 13'd91;
+            {3'd0, 4'd2}: ganancia = 13'd128;
+            {3'd0, 4'd3}: ganancia = 13'd181;
+            {3'd0, 4'd4}: ganancia = 13'd256;
+            {3'd0, 4'd5}: ganancia = 13'd362;
+            {3'd0, 4'd6}: ganancia = 13'd512;
+            {3'd0, 4'd7}: ganancia = 13'd724;
+            {3'd0, 4'd8}: ganancia = 13'd1024;
+            // fds   base   34
+            {3'd1, 4'd0}: ganancia = 13'd9;
+            {3'd1, 4'd1}: ganancia = 13'd12;
+            {3'd1, 4'd2}: ganancia = 13'd17;
+            {3'd1, 4'd3}: ganancia = 13'd24;
+            {3'd1, 4'd4}: ganancia = 13'd34;
+            {3'd1, 4'd5}: ganancia = 13'd48;
+            {3'd1, 4'd6}: ganancia = 13'd68;
+            {3'd1, 4'd7}: ganancia = 13'd96;
+            {3'd1, 4'd8}: ganancia = 13'd136;
+            // vrc6  base  256
+            {3'd2, 4'd0}: ganancia = 13'd64;
+            {3'd2, 4'd1}: ganancia = 13'd91;
+            {3'd2, 4'd2}: ganancia = 13'd128;
+            {3'd2, 4'd3}: ganancia = 13'd181;
+            {3'd2, 4'd4}: ganancia = 13'd256;
+            {3'd2, 4'd5}: ganancia = 13'd362;
+            {3'd2, 4'd6}: ganancia = 13'd512;
+            {3'd2, 4'd7}: ganancia = 13'd724;
+            {3'd2, 4'd8}: ganancia = 13'd1024;
+            // 5b    base  410
+            {3'd3, 4'd0}: ganancia = 13'd103;
+            {3'd3, 4'd1}: ganancia = 13'd146;
+            {3'd3, 4'd2}: ganancia = 13'd205;
+            {3'd3, 4'd3}: ganancia = 13'd290;
+            {3'd3, 4'd4}: ganancia = 13'd410;
+            {3'd3, 4'd5}: ganancia = 13'd580;
+            {3'd3, 4'd6}: ganancia = 13'd820;
+            {3'd3, 4'd7}: ganancia = 13'd1160;
+            {3'd3, 4'd8}: ganancia = 13'd1640;
+            // n163  base  273
+            {3'd4, 4'd0}: ganancia = 13'd68;
+            {3'd4, 4'd1}: ganancia = 13'd97;
+            {3'd4, 4'd2}: ganancia = 13'd137;
+            {3'd4, 4'd3}: ganancia = 13'd193;
+            {3'd4, 4'd4}: ganancia = 13'd273;
+            {3'd4, 4'd5}: ganancia = 13'd386;
+            {3'd4, 4'd6}: ganancia = 13'd546;
+            {3'd4, 4'd7}: ganancia = 13'd772;
+            {3'd4, 4'd8}: ganancia = 13'd1092;
+            // vrc7  base  437
+            {3'd5, 4'd0}: ganancia = 13'd109;
+            {3'd5, 4'd1}: ganancia = 13'd155;
+            {3'd5, 4'd2}: ganancia = 13'd219;
+            {3'd5, 4'd3}: ganancia = 13'd309;
+            {3'd5, 4'd4}: ganancia = 13'd437;
+            {3'd5, 4'd5}: ganancia = 13'd618;
+            {3'd5, 4'd6}: ganancia = 13'd874;
+            {3'd5, 4'd7}: ganancia = 13'd1236;
+            {3'd5, 4'd8}: ganancia = 13'd1748;
+            // mmc5  base 1174
+            {3'd6, 4'd0}: ganancia = 13'd294;
+            {3'd6, 4'd1}: ganancia = 13'd417;
+            {3'd6, 4'd2}: ganancia = 13'd587;
+            {3'd6, 4'd3}: ganancia = 13'd830;
+            {3'd6, 4'd4}: ganancia = 13'd1174;
+            {3'd6, 4'd5}: ganancia = 13'd1660;
+            {3'd6, 4'd6}: ganancia = 13'd2348;
+            {3'd6, 4'd7}: ganancia = 13'd3320;
+            {3'd6, 4'd8}: ganancia = 13'd4696;
+            default: ganancia = 13'd256;
+        endcase
+    endfunction
+    wire [12:0] snd_gain = ganancia(snd_chip, vol_paso);
+    // N163 (reposo 240) y VRC7 (reposo 512) son bipolares: la ganancia se aplica alrededor del reposo.
+    wire [9:0]  snd_cin  = (snd_chip == 3'd4) ? 10'd240 : (snd_chip == 3'd5) ? 10'd512 : 10'd0;
+    wire [9:0]  snd_cout = (snd_chip == 3'd4 || snd_chip == 3'd5) ? 10'd512 : 10'd0;
     wire snd_pwm;
-    audio_dac dac (.clk(clk), .level(snd_level), .pwm(snd_pwm));
+    audio_dac dac (.clk(clk), .level(snd_level), .gain(snd_gain), .c_in(snd_cin), .c_out(snd_cout), .pwm(snd_pwm));
     assign cpu_exp   = snd_on ? snd_pwm : 1'bz;
     genvar gi;
     generate

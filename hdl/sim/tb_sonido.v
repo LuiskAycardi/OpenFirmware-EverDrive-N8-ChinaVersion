@@ -1,6 +1,7 @@
 // tb_sonido.v — Testbench autoverificable del sonido de expansión: VRC6 (24/26), Sunsoft 5B (69) y el
 // convertidor de 1 bit del pin 97 (audio_dac.v). Se observa el nivel que entra al convertidor
 // (dut.snd_level, 0-1023) en cada ciclo de CPU, y la densidad de pulsos en el pin.
+// Volumen (reg 137): la densidad de pulsos sigue nivel x ganancia / 256 / 1024, con la tabla de n8_top.v.
 // Ejecutar: make -C hdl sim
 `timescale 1ns/1ps
 
@@ -8,7 +9,12 @@ module tb_sonido;
 
 `include "tb_bus.vh"
 
-    integer n, hi, mx, mn, cambios, prev, v;
+    integer n, hi, mx, mn, cambios, prev, v, p, esperado;
+    integer gpaso [0:8];
+    initial begin
+        gpaso[0] = 64;  gpaso[1] = 91;  gpaso[2] = 128; gpaso[3] = 181; gpaso[4] = 256;
+        gpaso[5] = 362; gpaso[6] = 512; gpaso[7] = 724; gpaso[8] = 1024;
+    end
 
     // muestras del nivel durante 'ciclos' ciclos de CPU: cuántas valen 'valor', máximo, mínimo y cambios
     task medir(input integer ciclos, input integer valor);
@@ -138,9 +144,9 @@ module tb_sonido;
         r5b(4'h8, 8'h0F);
         medir(64, 177);
         check(hi == 64, "5B: tono y ruido apagados = nivel fijo");
-        // DAC con nivel fijo 177
+        // DAC con nivel fijo 177 y la ganancia base del 5B (410/256): 283,4 / 1024
         densidad(400);
-        check(bajos * 1024 >= total * 176 && bajos * 1024 <= total * 178, "DAC: nivel 177 / 1024");
+        check(bajos * 1024 >= total * 282 && bajos * 1024 <= total * 285, "DAC: nivel 177 x 410/256 / 1024");
         // registro con bits altos: $E000 no escribe
         cpu_write(16'hC000, 8'h18);
         cpu_write(16'hE000, 8'h00);
@@ -170,6 +176,61 @@ module tb_sonido;
         check(hi > 300 && hi < 1700 && cambios > 20, "5B: ruido en el canal A");
         $display("      5B ruido: %0d/2000 arriba, %0d cambios", hi, cambios);
         back_to_menu;
+
+        // ##################################################################### volumen (reg 137)
+        check(dut.vol_paso == 4'd4, "volumen: el paso vale 4 (calibrado) al configurar la FPGA");
+        // VRC6 con un pulso fijo de nivel 120: la densidad sigue la ganancia del paso
+        for (p = 0; p <= 8; p = p + 1) begin
+            os_reg(8'd137, p[7:0]);
+            start_game(8'd24, 5'b01111, 8'b011111, 8'd0);
+            cpu_write(16'h9000, 8'h8F);
+            cpu_write(16'h9002, 8'h80);
+            repeat (4) cpu_read(16'h0000);
+            esperado = 120 * gpaso[p] / 256;        // en 1/1024
+            densidad(400);
+            check(bajos * 1024 >= total * (esperado - 1) && bajos * 1024 <= total * (esperado + 1),
+                  "volumen: densidad del VRC6 = 120 x ganancia del paso");
+            $display("      volumen paso %0d: ganancia %0d, %0d bajos de %0d (esperado %0d/1024)",
+                     p, dut.snd_gain, bajos, total, esperado);
+            back_to_menu;
+        end
+        check(dut.vol_paso == 4'd8, "volumen: el paso se conserva al volver al menu");
+        // saturación: los tres canales del VRC6 al máximo (488) con x4 = 1952 -> fondo de escala
+        start_game(8'd24, 5'b01111, 8'b011111, 8'd0);
+        cpu_write(16'h9000, 8'h8F); cpu_write(16'h9002, 8'h80);
+        cpu_write(16'hA000, 8'h8F); cpu_write(16'hA002, 8'h80);
+        cpu_write(16'hB000, 8'h2A); cpu_write(16'hB001, 8'h00); cpu_write(16'hB002, 8'h80);
+        repeat (60) cpu_read(16'h0000);
+        mx = 0;
+        for (n = 0; n < 200; n = n + 1) begin cpu_read(16'h0000); if (dut.dac.l3 > mx) mx = dut.dac.l3; end
+        check(mx == 16383, "volumen: x4 satura en el fondo de escala, sin dar la vuelta");
+        back_to_menu;
+        // valor fuera de rango: calibrado
+        os_reg(8'd137, 8'd9);
+        check(dut.vol_paso == 4'd4, "volumen: un valor mayor que 8 deja el paso calibrado");
+        os_reg(8'd137, 8'hFC);
+        check(dut.vol_paso == 4'd4, "volumen: $FC (-4 en complemento a 2) tambien es fuera de rango");
+        // ganancias base de cada chip (paso 4) y centro de los bipolares
+        start_game(8'd254, 5'b00001, CHR_RAM, 8'd0);
+        check(dut.snd_gain == 13'd34, "volumen: FDS, ganancia base 34/256");
+        back_to_menu;
+        start_game(8'd69, 5'b01111, 8'b011111, 8'd0);
+        check(dut.snd_gain == 13'd410, "volumen: 5B, ganancia base 410/256");
+        back_to_menu;
+        start_game(8'd5, 5'b01111, 8'b011111, 8'd0);
+        check(dut.snd_gain == 13'd1174, "volumen: MMC5, ganancia base 1174/256");
+        back_to_menu;
+        os_reg(8'd137, 8'd8);
+        start_game(8'd19, 5'b01111, 8'b011111, 8'd0);
+        repeat (20) cpu_read(16'h0000);
+        check(dut.snd_gain == 13'd1092 && dut.snd_level == 10'd240 && dut.dac.l3 == 14'd8192,
+              "volumen: N163 x4, el reposo (240) queda en el centro de la salida");
+        back_to_menu;
+        start_game(8'd85, 5'b01111, 8'b011111, 8'd0);
+        repeat (20) cpu_read(16'h0000);
+        check(dut.snd_gain == 13'd1748 && dut.dac.l3 == 14'd8192, "volumen: VRC7 x4, el reposo (512) en el centro");
+        back_to_menu;
+        os_reg(8'd137, 8'd4);
 
         // ##################################################################### sin sonido
         start_game(8'd4, 5'b00111, 8'b000111, 8'd0);
