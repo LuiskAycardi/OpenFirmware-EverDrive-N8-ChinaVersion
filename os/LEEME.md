@@ -505,11 +505,32 @@ se borra sin tocar la SD.
 **Dónde vive el código:** no cabe en la ROM del OS (le quedaban ~400 bytes). Va en el OS.BIN en el sitio de la zona
 de trabajo (`$D400`) y, al encender, antes de usar esa zona, se copia al banco 8 de la PRG-RAM, en `$7000-$7FFF`
 (con pila: sobrevive a los resets); corre desde ahí con el banco 8 en la ventana `$6000`. Banco 8: `$6000` N8SV,
-`$6040` último juego, `$6180` N8FD, `$6200` N8BK, `$6300` lista de cambios, `$6600` búfer de un sector, `$6800`
-variables y `$7000` el código.
+`$6040` último juego, `$6120` N8OP (opciones), `$6180` N8FD, `$6200` N8BK, `$6300` lista de cambios, `$6600`
+búfer de un sector, `$6800` variables y `$7000` el código (detrás, la pantalla de opciones).
 
 Banco: `probar_os.py` lanza un disco sintético de 2 caras con cabecera fwNES (lecturas de `$403x` en un PRG, a
 caballo entre bancos de la ventana, en un CHR, que no se toca, y en un PRG oculto) y comprueba la SRAM entera frente
 a `fds.montar_sram`, los registros, la marca, que la SD solo se lee; luego cambia bytes como lo haría el juego, vuelve
 con RESET y compara el `.fds` guardado con `fds.deshacer_cara` (solo se escriben los sectores que cambian) y, al
 final, que encender con la marca la borra sin escribir.
+
+## Opciones: volumen del sonido de expansión (`src/opciones.s`)
+
+En la lista, **Select+Start** abre la pantalla «Opciones» (filas 7-25; al salir, la lista vuelve igual que estaba,
+con el cursor en su sitio). Por ahora tiene una opción, **«Volumen del cartucho»**: **◀ ▶** lo cambian de **−4 a
++4** (mantenidos, se repiten; topes en −4 y +4), con una barra de 9; **0** es el volumen calibrado de cada chip.
+**B** o **Start** vuelven a la lista. No choca con el reset del kit Lava (Select y luego Select+A).
+
+- El paso se guarda al salir en el banco 8 (`$6120`: `N8OP`, paso 0-8, suma `$5A` + paso). `opc_cargar`
+  (`principal.s`) lo lee en cada arranque, antes del modo banco; sin firma o con la suma mal, el calibrado (4).
+- El lanzador lo escribe en el **reg 137** del FPGA, tras los 132-136, en todos los juegos (también los FDS y los del
+  modo banco). Solo cambia algo en los RBF con sonido (FDS, VRC6, VRC7, 5B, N163, MMC5) y solo se oye en la Famicom.
+  El HDL y las ganancias de cada chip: [docs/sonido-volumen.md](../docs/sonido-volumen.md).
+- **Dónde vive el código:** la pantalla no cabe en la ROM (quedaban 410 bytes): va en el segmento FDSOVL, detrás
+  del código del FDS, en el banco 8 (`$7AB1`); en la ROM solo quedan `opc_cargar`, el salto y la escritura del
+  reg 137 (la ROM conserva 340 bytes libres; el banco 8 usa 3129 de 4096).
+
+Banco: `probar_os.py`, bloque «opciones» (12 comprobaciones): la pantalla con el volumen calibrado y sin lanzar
+nada, ▶ hasta +4 con tope, ◀ mantenido hasta −4, B vuelve a la lista igual que estaba y guarda el paso con firma y
+suma, la SD solo se lee, el reg 137 al lanzar, al encender con la RAM con pila (la pantalla lo enseña, Start también
+vuelve, el juego sale con él), con la suma mal y con la RAM a cero (calibrado).

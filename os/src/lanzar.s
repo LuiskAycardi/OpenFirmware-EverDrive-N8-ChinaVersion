@@ -11,7 +11,7 @@
 ;   3. EDFC/MAPS/NNN.RBF: tiene que estar contiguo, porque se pasa al FPGA con una sola lectura múltiple;
 ;   4. configurar el FPGA desde la RAM (ram_config): mientras se configura no hay nada en $8000-$FFFF;
 ;   5. copiar la PRG por la ventana $4800 (reg 128) y la CHR por la PPU (reg 130);
-;   6. regs 132 (PRG), 133 (CHR), 134 (byte 6 de la cabecera), 136 (reset corto), marca de partida pendiente (con
+;   6. regs 132 (PRG), 133 (CHR), 134 (byte 6 de la cabecera), 136 (reset corto), 137 (volumen), marca de partida pendiente (con
 ;      pila), marca en_juego y, desde la RAM, reg 131 = mapper y salto al vector de reset del juego.
 ; Solo vuelve si algo falla: acarreo = 1 y l_error.
 
@@ -29,7 +29,7 @@
         .import tramo_ini, tramo_sig, tr_lba, tr_n, tr_fin, fat_desp
         .importzp E_FIN, E_DATOS
         .import sd_multi_ini, sd_parar, sd_base
-        .import en_juego
+        .import en_juego, vol_reg
         .import partida_nombre, partida_preparar, partida_marcar, partida_pendiente, pt_sect_nueva
         .importzp sd_lba, nombre
         .import __RAMCOD_LOAD__, __RAMCOD_RUN__, __RAMCOD_SIZE__
@@ -40,6 +40,7 @@ REG_PRG_TAM  = 132
 REG_CHR_TAM  = 133
 REG_MAP_CFG  = 134
 REG_CART_CFG = 136
+REG_VOLUMEN  = 137              ; volumen del sonido de expansión: 0-8, 4 = calibrado (principal.s: opciones)
 VENTANA      = $4800
 
         .segment "ZEROPAGE"
@@ -392,6 +393,9 @@ lanzar:
         jsr     fpga_reg
         ldx     #REG_CART_CFG
         lda     #0                      ; reset corto: el reset vuelve al OS
+        jsr     fpga_reg
+        ldx     #REG_VOLUMEN
+        lda     vol_reg
         jsr     fpga_reg
         lda     l_sin_partida
         bne     :+

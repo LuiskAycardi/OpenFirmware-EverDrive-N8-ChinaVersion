@@ -5,7 +5,7 @@ de clústeres, reset a mitad de lectura, tarjeta muda) y lanzamiento de juegos (
 salto, vuelta al menú y errores), carpetas (entrar, volver, páginas, vuelta de un juego dentro de una carpeta) y
 nombres largos (acentos, cortados, ocultos, borrados) y partidas con pila (crear, cargar, guardar al volver y al
 encender, nombres largos, carpeta ampliada, FAT16, SDSC, tarjeta que no deja escribir), menú ordenado (carpetas primero, acentos, ñ), información del juego, repetición,
-saltos por letra y último juego al encender. Comprueba que solo escribe
+saltos por letra, último juego al encender y la pantalla de opciones (volumen del sonido de expansión). Comprueba que solo escribe
 en la tarjeta las partidas (y lo que la FAT necesita para crearlas, validado con fsck.fat) y nunca en la flash."""
 import argparse, os, pathlib, shutil, subprocess, sys
 
@@ -373,23 +373,6 @@ m = menu3(img3, 'JUEGO.NES')
 comprobar(not lanzar(m, 0x80 | 0x20), 'Select+A (reset del kit Lava) no lanza el juego')
 m = menu3(img3, 'JUEGO.NES')
 comprobar(lanzar(m, 0x10) and m.mapper == 0, 'Start también lanza')
-m = menu3(imagen3('e3frag.img', fragmentar=True), 'JUEGO.NES')
-ok = lanzar(m)
-m.correr(200_000, nmi_cada=9000)
-comprobar(not ok and 'RBF fragmentado en la SD' in m.pantalla() and not m.fpga_cfgs[m.n_cfg:],
-          'RBF fragmentado: aviso y el FPGA no se toca')
-
-# ROMs fragmentadas en la tarjeta: la copia va por tramos de clústeres seguidos (varias lecturas múltiples)
-img3f = imagen3('e3romfrag.img', fragmentar_roms=('JUEGO.NES', 'MMC3.NES', 'TRAINER.NES'))
-for nombre in ('JUEGO.NES', 'MMC3.NES', 'TRAINER.NES'):
-    _, prg, chr_ = dict(ROMS)[nombre]
-    m = menu3(img3f, nombre)
-    n18 = sum(1 for e in m.log[m.n_log:] if e[0] == 'SD_CMD18')
-    c0 = m.cpu.ciclos
-    ok = lanzar(m)
-    n18 = sum(1 for e in m.log[m.n_log:] if e[0] == 'SD_CMD18') - n18
-    comprobar(ok and bytes(m.prgrom[:len(prg)]) == prg and bytes(m.chr[:len(chr_)]) == chr_ and n18 >= 4,
-              f'{nombre} fragmentada: PRG y CHR iguales, {n18} lecturas múltiples (RBF + 3 tramos de la ROM)')
 
 # ------------------------------------------------------------------ etapa 4: carpetas y nombres largos
 def imagen4(nombre):
@@ -1084,6 +1067,82 @@ m3, _ = encender(img_ahora, prgram=m2.prgram)
 comprobar(not escrituras(m3) and m3.prgram[0x10180:0x10184] != b'N8FD' and 'Disco F4' in lista(m3.pantalla()),
           'F4: encender con la marca N8FD: se borra sin escribir en la SD')
 
+
+# ------------------------------------------------------------------ opciones: volumen del sonido de expansión
+def fila_vol(pan):
+    return next((l[3:].strip() for l in pan.split('\n') if l[:2] == '12'), '')
+def vol_txt(paso):
+    v = paso - 4
+    return '◀ ' + (' 0' if v == 0 else f'{v:+d}') + ' ▶  ' + '█' * (paso + 1) + '-' * (8 - paso)
+def sel_start(m):
+    """Select y luego Select+Start, como lo pulsa una persona."""
+    m.pad = 0x20; m.correr(20_000, nmi_cada=9000)
+    m.pad = 0x30; m.correr(30_000, nmi_cada=9000)
+    m.pad = 0; m.correr(300_000, nmi_cada=9000)
+def opc_guardado(m):
+    r = m.prgram[0x10120:0x10126]
+    return bytes(r[:4]) == b'N8OP' and r[5] == (0x5A + r[4]) & 0xFF and r[4]
+m = menu3(img3, 'JUEGO.NES')
+pan0 = m.pantalla()
+sel_start(m)
+pan = m.pantalla()
+comprobar(m.mapper == 0xFF and 'Opciones' in pan and 'Volumen del cartucho' in pan and fila_vol(pan) == vol_txt(4)
+          and m.ppu_mask & 0x08 and not any(l[4:5] == '▶' for l in pan.split('\n') if 9 <= int(l[:2]) <= 24),
+          f'Select+Start: la pantalla de opciones, con el volumen calibrado («{fila_vol(pan)}») y sin lanzar nada')
+for _ in range(3):
+    toca(m, 0x01)
+comprobar(fila_vol(m.pantalla()) == vol_txt(7), f'▶ tres veces: +3 («{fila_vol(m.pantalla())}»)')
+for _ in range(3):
+    toca(m, 0x01)
+comprobar(fila_vol(m.pantalla()) == vol_txt(8), 'más ▶: se queda en +4')
+m.pad = 0x02
+m.correr(1_500_000, nmi_cada=9000)            # ◀ mantenido: se repite hasta -4
+m.pad = 0
+m.correr(30_000, nmi_cada=9000)
+comprobar(fila_vol(m.pantalla()) == vol_txt(0), f'◀ mantenido: se repite y se queda en -4 («{fila_vol(m.pantalla())}»)')
+toca(m, 0x01)
+pulsa(m, 0x40, 300_000)
+pan = m.pantalla()
+def lista_y_cabecera(pan):
+    return [l for l in pan.split('\n') if 7 <= int(l[:2]) <= 24]
+comprobar(lista_y_cabecera(pan) == lista_y_cabecera(pan0) and cursor_en(pan, 'JUEGO') and opc_guardado(m) == 1,
+          'B: vuelve a la lista igual que estaba (cursor incluido) y guarda el paso 1 (-3) en el banco 8 con firma y suma')
+comprobar(solo_lectura(m) and m.mapper == 0xFF, 'opciones: la SD solo se lee y no se lanza nada')
+ok = lanzar(m)
+comprobar(ok and m.mapper == 0 and m.fpga.get(137) == 1, f'al lanzar: reg 137 = 1 (-3) ({m.fpga.get(137)})')
+ram = bytearray(m.prgram)
+m2, ok2 = encender(bytes(m.sd.img), prgram=ram)
+sel_start(m2)
+comprobar(fila_vol(m2.pantalla()) == vol_txt(1), 'al encender (RAM con pila): las opciones muestran el paso guardado (-3)')
+pulsa(m2, 0x10, 300_000)
+comprobar(cursor_en(m2.pantalla(), 'JUEGO') and 'Opciones' not in m2.pantalla(), 'Start también vuelve a la lista')
+ok = lanzar(m2)
+comprobar(ok and m2.fpga.get(137) == 1, 'y el juego se lanza con el reg 137 = 1')
+ram[0x10125] ^= 0xFF
+m3, ok3 = encender(bytes(m.sd.img), prgram=ram)
+ok = lanzar(m3)
+comprobar(ok and m3.fpga.get(137) == 4, 'suma del banco 8 mal: volumen calibrado (reg 137 = 4)')
+m4, ok4 = encender(bytes(m.sd.img))
+ir_a_nombre(m4, 'JUEGO')
+ok = lanzar(m4)
+comprobar(ok and m4.fpga.get(137) == 4, 'RAM a cero: volumen calibrado (reg 137 = 4)')
+m = menu3(imagen3('e3frag.img', fragmentar=True), 'JUEGO.NES')
+ok = lanzar(m)
+m.correr(200_000, nmi_cada=9000)
+comprobar(not ok and 'RBF fragmentado en la SD' in m.pantalla() and not m.fpga_cfgs[m.n_cfg:],
+          'RBF fragmentado: aviso y el FPGA no se toca')
+
+# ROMs fragmentadas en la tarjeta: la copia va por tramos de clústeres seguidos (varias lecturas múltiples)
+img3f = imagen3('e3romfrag.img', fragmentar_roms=('JUEGO.NES', 'MMC3.NES', 'TRAINER.NES'))
+for nombre in ('JUEGO.NES', 'MMC3.NES', 'TRAINER.NES'):
+    _, prg, chr_ = dict(ROMS)[nombre]
+    m = menu3(img3f, nombre)
+    n18 = sum(1 for e in m.log[m.n_log:] if e[0] == 'SD_CMD18')
+    c0 = m.cpu.ciclos
+    ok = lanzar(m)
+    n18 = sum(1 for e in m.log[m.n_log:] if e[0] == 'SD_CMD18') - n18
+    comprobar(ok and bytes(m.prgrom[:len(prg)]) == prg and bytes(m.chr[:len(chr_)]) == chr_ and n18 >= 4,
+              f'{nombre} fragmentada: PRG y CHR iguales, {n18} lecturas múltiples (RBF + 3 tramos de la ROM)')
 
 print('pantalla del caso FAT32:')
 m, ok = arrancar(img32)

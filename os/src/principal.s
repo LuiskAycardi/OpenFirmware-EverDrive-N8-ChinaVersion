@@ -9,7 +9,8 @@
 ; repite. Con Select pulsado solo valen derecha e izquierda (saltan a la letra siguiente o anterior): Select y luego
 ; Select+A es el reset del kit Lava. La lista va en orden alfabético (orden.s), con las carpetas primero; con el
 ; cursor quieto, la fila 25 muestra el mapper, los tamaños y si el juego tiene pila. La carpeta y el juego del último
-; lanzamiento se guardan en la PRG-RAM con pila (banco 8): al encender, el menú vuelve a ellos.
+; lanzamiento se guardan en la PRG-RAM con pila (banco 8): al encender, el menú vuelve a ellos. Select+Start abre la
+; pantalla de opciones: el volumen del sonido de expansión (reg 137 del FPGA al lanzar), también en el banco 8.
 ;
 ; Los nombres: el largo (LFN) si lo hay, si no el 8.3 (con las minúsculas que marca Windows en el byte 12); sin la
 ; extensión «.nes»; las carpetas acaban en «/»; si no cabe, «…». No se listan «.», «..», lo oculto ni lo que
@@ -23,7 +24,10 @@
         .include "os.inc"
 
         .export principal, nmi, ppu_dir, cadena, info_de_ent, dec16, fila_blanca, copia_src
-        .export mensajes_lo, mensajes_hi
+        .export mensajes_lo, mensajes_hi, vol_reg, textos_fijos, espacio, sin_scroll, repetir, subir_filas
+        .export reencender, firma_opc
+        .exportzp antes, nuevos, fila_sub, filas_pend, sel_ant
+        .import opc_pantalla
         .exportzp ptr, dst, src, botones, nmis, mando_on, w16
         .import banco
         .import tipo_arranque, arranques, resets, vueltas
@@ -89,6 +93,9 @@ ini_p:      .res 2              ; letra_ant: puesto de partida
 pend_ini:   .res 1              ; filas pendientes al empezar el fotograma
 repintar:   .res 1              ; 1 = se ha leído una página: volver a poner en rojo la fila del cursor
 
+        .segment "BSS"
+vol_reg:    .res 1              ; volumen del sonido de expansión: 0-8 (4 = calibrado), el valor del reg 137
+
         .segment "GRANDE"
 pag_pos:    .res 12 * MAX_PAG   ; posición del recorrido al principio de cada página (fat.s: dir_guardar)
 filas_txt:  .res (FILAS + 2) * ANCHO    ; fila 0: cabecera (carpeta y página); 1-16: la lista; 17: información
@@ -123,7 +130,8 @@ principal:
         lda     tipo_arranque           ; al encender: el código del FDS al banco 8, antes de usar la zona de trabajo
         bne     :+
         jsr     fds_copiar
-:       lda     #REG_CHR
+:       jsr     opc_cargar              ; el volumen guardado (también para el modo banco)
+        lda     #REG_CHR
         sta     REG_SEL
         lda     #0
         sta     REG_DAT
@@ -384,8 +392,8 @@ subir_filas:
         bne     @b
 @fin:   rts
 
-; Mando: con Select pulsado, nada. Abajo/arriba: cursor (cambia de página en el borde); derecha/izquierda: página;
-; A o Start solos: abrir; B solo: volver.
+; Mando: con Select pulsado, solo Select+Start (opciones) y Select+derecha/izquierda (letra). Abajo/arriba: cursor
+; (cambia de página en el borde); derecha/izquierda: página; A o Start solos: abrir; B solo: volver.
 entrada:
         lda     antes
         eor     #$FF
@@ -399,7 +407,11 @@ entrada:
         lda     botones
         and     #%00100000
         beq     @sin_sel
-        lda     nuevos                  ; Select + derecha / izquierda: letra siguiente / anterior
+        lda     nuevos                  ; Select + Start: opciones
+        and     #%00010000
+        beq     :+
+        jmp     opciones
+:       lda     nuevos                  ; Select + derecha / izquierda: letra siguiente / anterior
         and     #%00000001
         beq     :+
         jmp     letra_sig
@@ -1729,6 +1741,34 @@ cargar_ultimo:
         sta     cur_k_ok
 @no:    rts
 
+; ------------------------------------------------------------------------------------------------ opciones
+; Select+Start: la pantalla de opciones (opciones.s) corre en el banco 8, junto al código del FDS.
+OPC = $6120                     ; banco 8: "N8OP", paso del volumen (0-8), suma
+opciones:
+        jsr     banco_marca
+        jmp     opc_pantalla
+
+; Al arrancar: el paso guardado en el banco 8 si la firma y la suma valen; si no, el calibrado.
+opc_cargar:
+        lda     #4
+        sta     vol_reg
+        jsr     banco_marca
+        ldx     #3
+@f:     lda     OPC,x
+        cmp     firma_opc,x
+        bne     @no
+        dex
+        bpl     @f
+        lda     OPC+4
+        cmp     #9
+        bcs     @no
+        tax
+        adc     #$5A                    ; (acarreo = 0)
+        cmp     OPC+5
+        bne     @no
+        stx     vol_reg
+@no:    rts
+
 ; NMI: lee el mando una vez por fotograma, como el v13 (puerto 1 y el de expansión de la Famicom: bits 0 y 1 de
 ; $4016 y $4017). El kit Lava ve las mismas lecturas para su reset (Select ~2 s y luego Select+A).
 ; No toca $4400/$4401: puede caer en mitad de una lectura de la SD.
@@ -1992,6 +2032,7 @@ t_fds:      .byte "Disco FDS  ", 0
 t_caras:    .byte " caras", 0
 t_cara:     .byte " cara", 0
 firma_ult:  .byte "N8UL"
+firma_opc:  .byte "N8OP"
 
 ; fila de la lista -> dirección de la PPU de su cursor (columna 1)
 cur_lo:

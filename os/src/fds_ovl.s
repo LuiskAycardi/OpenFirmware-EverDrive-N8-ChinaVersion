@@ -19,8 +19,9 @@
 ;                        disco de la SRAM ya no son los de la marca: se borra sin escribir) con acarreo = 0; con
 ;                        acarreo = 1, A = M_NOGUARDADA (pt_err): la marca se queda para otro intento
 ;
-; Banco 8 ($6000): $6000 N8SV y $6040 último juego (principal.s), $6180 marca N8FD, $6200 N8BK (banco.s), $6300
-; lista de cambios (3 bytes: cara y posición del byte bajo), $6600 búfer de un sector, $6800 variables, $7000 código.
+; Banco 8 ($6000): $6000 N8SV y $6040 último juego (principal.s), $6120 N8OP (opciones.s), $6180 marca N8FD, $6200
+; N8BK (banco.s), $6300 lista de cambios (3 bytes: cara y posición del byte bajo), $6600 búfer de un sector, $6800
+; variables, $7000 código (detrás, la pantalla de opciones: opciones.s).
 ; La SRAM PRG no tiene pila: al encender (TIPO_FRIO) la marca se borra sin escribir nada.
 
         .setcpu "6502"

@@ -85,6 +85,7 @@ synthetic-ROM fuzzing, simulation testbenches and real games on the console.
   el EP2C5 y cumple tiempos a 50 MHz.
 - Sonido de expansión: VRC6, Sunsoft 5B, Namco 163, MMC5 y **VRC7 (FM)**, un sintetizador propio que
   da exactamente las mismas muestras que emu2413.
+  Su volumen se cambia en el menú (Select+Start, «Opciones», de −4 a +4; ver `docs/sonido-volumen.md`).
 - Validación: todos contra Mesen2 con el fuzz de ROMs sintéticas, bancos directos con pruebas de
   mutación y cientos de juegos reales (fotogramas comparados uno a uno). Las diferencias conocidas
   están en `docs/fase4-mappers.md`.
@@ -111,6 +112,7 @@ synthetic-ROM fuzzing, simulation testbenches and real games on the console.
   the EP2C5 with room to spare and meets timing at 50 MHz.
 - Expansion audio: VRC6, Sunsoft 5B, Namco 163, MMC5 and **VRC7 (FM)**, our own synthesizer that
   produces exactly the same samples as emu2413.
+  Its volume is set in the menu (Select+Start, «Opciones», −4 to +4; see `docs/sonido-volumen.md`).
 - Validation: every mapper against Mesen2 with synthetic-ROM fuzzing, direct testbenches with mutation
   testing and hundreds of real games (frames compared one by one). Known differences are listed in
   `docs/fase4-mappers.md`.
