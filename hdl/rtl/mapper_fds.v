@@ -57,7 +57,8 @@
 // Temporizador: con la IRQ activa, en cada ciclo de CPU: si el contador vale 0, pide IRQ y recarga (y sin
 // «repetir» se para); si no, resta 1. Mismo comportamiento que Mesen2 (leído para los detalles, nada copiado).
 // PPU: CHR-RAM de 8 KB en $0000-$1FFF; CIRAM según $4025 D3.
-// El sonido del FDS ($4040-$4097) es otra etapa (F6).
+// Sonido ($4040-$408A, con $4023 D1 = 1): snd_fds.v. Salida = nivel (0-63) x 16 para audio_dac.v. Sus lecturas
+// ($4040-$407F, $4090, $4092) solo llegan a la CPU en el N8 de Famicom (en el de NES, $40xx es bus abierto).
 
 `ifndef FDS_FOTOGRAMA
 `define FDS_FOTOGRAMA 29781                    // ciclos de CPU por fotograma (NTSC); el testbench lo acorta
@@ -89,7 +90,8 @@ module mapper_fds (
     output wire        ciram_a10,
     output wire        irq,
     output wire [7:0]  cpu_dout,
-    output wire [7:0]  cpu_doe
+    output wire [7:0]  cpu_doe,
+    output wire [9:0]  snd
 );
 
     // ---------------------------------------------------------------- registros
@@ -238,6 +240,12 @@ module mapper_fds (
     assign prg_ram_en = (ram_6 || ram_hi) && m2;
     assign prg_wr     = !cpu_rw && m2 && (ram_6 || ram_hi || ventana);   // con prg_rom_en (ventana): SRAM PRG
 
+    // ---------------------------------------------------------------- sonido
+    wire [5:0] snd_nivel, snd_lee;
+    snd_fds sonido (.m2(m2), .rst(rst), .wr(!cpu_rw && io && sonido_en && cpu_a[7:6] != 2'b00), .a(cpu_a[7:0]),
+                    .d(cpu_d), .out(snd_nivel), .lee(snd_lee));
+    assign snd = {snd_nivel, 4'b0000};
+
     // ---------------------------------------------------------------- lecturas que conduce la FPGA
     wire [7:0] estado = {2'b00, 1'b0, 1'b0, mir_h, 1'b0, 1'b0, t_irq};
     wire r30  = io && cpu_a[7:0] == 8'h30 && disco_en;
@@ -251,15 +259,18 @@ module mapper_fds (
     wire p30  = priv && cpu_a[7:0] == 8'h2E;          // $422E = $4030
     wire p32  = priv && cpu_a[7:0] == 8'h30;          // $4230 = $4032 con el disco fuera
     wire p33  = priv && cpu_a[7:0] == 8'h31;          // $4231 = $4033
+    wire rsnd = io && sonido_en && (cpu_a[7:6] == 2'b01 || cpu_a[7:0] == 8'h90 || cpu_a[7:0] == 8'h92);
     assign cpu_doe  = !cpu_rw ? 8'h00 :
                       (r30 || p30) ? 8'hDB :          // D2 y D5: bus abierto
                       r32 ? 8'h07 :
                       (r33 || p33) ? 8'h80 :
+                      rsnd ? 8'h3F :                  // D7-D6: bus abierto
                       (p12 || p13 || p14 || p16 || p17 || p32) ? 8'hFF : 8'h00;
     assign cpu_dout = (r30 || p30) ? estado :
                       r32 ? 8'h00 :
                       (r33 || p33) ? 8'h80 :
                       p32 ? {5'b01000, fuera, fuera, fuera} :    // $40 como el bus abierto de $4032
+                      rsnd ? {2'b00, snd_lee} :
                       p12 ? {5'b00000, cara} :
                       p13 ? cabeza[7:0] :
                       p14 ? cabeza[15:8] :

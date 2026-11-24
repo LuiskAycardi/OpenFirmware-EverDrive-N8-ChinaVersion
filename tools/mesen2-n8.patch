@@ -134,6 +134,31 @@ index ddfd44f..144f32e 100644
  			_clockTimer = ((double)_console->GetMasterClockRate()) / Vrc7Audio::OpllSampleRate;
  		}
  	}
+diff --git a/Core/NES/Mappers/FDS/FdsAudio.cpp b/Core/NES/Mappers/FDS/FdsAudio.cpp
+index 8a348db..f236fef 100644
+--- a/Core/NES/Mappers/FDS/FdsAudio.cpp
++++ b/Core/NES/Mappers/FDS/FdsAudio.cpp
+@@ -8,6 +8,10 @@
+ #include "NES/APU/NesApu.h"
+ #include "NES/APU/BaseExpansionAudio.h"
+ #include "Utilities/Serializer.h"
++#ifdef N8_FPGA_SIM
++#include "NES/NesCpu.h"
++#include "N8AudioLog.h"   // banco N8: registro del nivel para comparar
++#endif
+ 
+ void FdsAudio::Serialize(Serializer& s)
+ {
+@@ -52,6 +56,9 @@ void FdsAudio::UpdateOutput()
+ 
+ 	uint32_t level = std::min((int)_volume.GetGain(), 32) * WaveVolumeTable[_masterVolume];
+ 	uint8_t outputLevel = (_waveTable[_wavePosition] * level) / 1152;
++#ifdef N8_FPGA_SIM
++	N8AudioLog(_console->GetCpu()->GetCycleCount(), outputLevel * 16);   // escala de hdl/rtl/snd_fds.v
++#endif
+ 
+ 	if(_lastOutput != outputLevel) {
+ 		_console->GetApu()->AddExpansionAudioDelta(AudioChannel::FDS, outputLevel - _lastOutput);
 diff --git a/Core/NES/NesCpu.h b/Core/NES/NesCpu.h
 index 6c0da75..4c7389b 100644
 --- a/Core/NES/NesCpu.h

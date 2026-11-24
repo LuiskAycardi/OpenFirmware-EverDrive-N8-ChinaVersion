@@ -311,7 +311,7 @@ module n8_top (
 `endif
 `ifdef N8_RBF_254
     // 254.RBF: Famicom Disk System (BIOS del usuario parcheada por el OS; docs/fds-diseno.md)
-    `N8_MAPPER_D(mapper_fds, m254, bus_254, do_254, doe_254)
+    `N8_MAPPER_DS(mapper_fds, m254, bus_254, do_254, doe_254, snd_254)   // con el sonido del FDS (snd_fds.v)
 `endif
     reg [26:0] g;
     always @(*) begin
@@ -587,6 +587,9 @@ module n8_top (
 `endif
 `ifdef N8_RBF_106
             8'd85:        begin snd_on = 1'b1; snd_level = snd_085;    end
+`endif
+`ifdef N8_RBF_254
+            8'd254:       begin snd_on = 1'b1; snd_level = snd_254;    end
 `endif
             default: ;
         endcase
