@@ -106,8 +106,12 @@ def main():
     pico = np.abs(x).max()
     tr = tramos(x, fs)
     apu, chip = [], []
+    cortados = 0
     for i0, i1 in tr:
         dur = (i1 - i0) / fs
+        if i0 < fs * 0.02 or i1 > len(x) - fs * 0.02:    # cortado por el principio o el final de la grabación: su
+            cortados += 1                                 # duración no dice qué es (un trozo de 2 s puede durar 1)
+            continue
         m = int((i1 - i0) * 0.2)
         seg = x[i0 + m:i1 - m]
         if 0.7 < dur < 1.3:
@@ -115,7 +119,7 @@ def main():
         elif 1.6 < dur < 2.4:
             chip.append(amplitud(seg, fs))
     print(f'{a.wav}: {len(x) / fs:.1f} s a {fs} Hz, pico {pico:.3f} de la escala; tramos: {len(apu)} del APU, '
-          f'{len(chip)} del chip ({len(tr)} en total)')
+          f'{len(chip)} del chip ({len(tr)} en total, {cortados} cortados por los bordes)')
     if pico > 0.98:
         print('AVISO: la grabación satura; baja el volumen de entrada o el paso del OS')
     if not apu or not chip:

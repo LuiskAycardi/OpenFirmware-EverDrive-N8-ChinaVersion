@@ -66,6 +66,13 @@ chips más fuertes (5B, N163, VRC7): es el precio de subir el volumen.
 - **Comprobación con los RBF calibrados** (misma tarde, mismas ROMs): chip / APU medido frente a Mesen2: VRC6 1,532
   (1,506), 5B 3,610 (3,555), N163 5,940 (6,025), MMC5 0,875 (0,864), VRC7 4,260 (4,257), FDS 1,687 (1,687). Todos a
   menos de un 1,7 % de Mesen2 (±0,15 dB).
+- **Repetición** (otra sesión, tras apagar y encender): VRC6 1,607, 5B 3,740, N163 6,118, MMC5 0,898, VRC7 4,357,
+  FDS 1,721 (entre +1,5 % y +6,7 %). La amplitud de cada chip fue la misma que en la comprobación anterior, con un 0,1 %
+  de diferencia; lo que cambió fue el pulso del APU (un ~3 % más bajo). La salida del cartucho es estable y la
+  proporción oscila un ±3 % (±0,3 dB) entre sesiones por la propia consola, así que no se recalibra. Con el N163 y el
+  VRC7 (reposo a media escala) el APU sale un ~3,5 % más bajo en las dos tandas.
+- `medir.py` descarta los tramos cortados por el principio o el final de la grabación. Antes, el final de una nota
+  del chip cortado a 0,72 s se contaba como un tramo del APU (el «tramo irregular» del FDS en la comprobación).
 - Lección: el reset del kit Lava solo funciona si el programa lee el mando. Las primeras ROMs no lo leían; ahora
   `cal.s` lo lee en cada fotograma.
 
