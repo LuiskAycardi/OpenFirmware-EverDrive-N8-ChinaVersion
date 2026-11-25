@@ -17,7 +17,8 @@ para pruebas automáticas (ver «Uso»). **Novedad de la v0.6.0: Famicom Disk Sy
 BIOS FDS; ver «Famicom Disk System»), carga rápida y cambio de cara automático. **Novedad de la v0.6.1: volumen del
 sonido de expansión** (FDS, VRC6, VRC7, 5B, N163, MMC5; se oye en la Famicom) en la pantalla de opciones,
 **Select + Start**. **Novedad de la v0.6.2: volumen calibrado en una Famicom** (cada chip suena frente al de la
-consola como en el emulador Mesen2) y arreglado el reset del kit Lava al salir de un disco FDS.
+consola como en el emulador Mesen2) y arreglado el reset del kit Lava al salir de un disco FDS. **Novedad de la
+v0.6.3: partidas de los juegos con EEPROM** de Bandai (Dragon Ball Z, SD Gundam Gaiden, Datach…; ver «Partidas»).
 
 **EN** — Free (GPL-3.0-or-later) firmware for the microSD card of the **EverDrive N8 China Version** (Chinese
 clone with an EP2C5 FPGA, NON-PRO version), **Famicom and NES** cartridges. It is a **complete own build**:
@@ -37,7 +38,8 @@ automated tests (see "Usage"). **New in v0.6.0: Famicom Disk System** (`.fds` di
 "Famicom Disk System"), fast loading and automatic side switching. **New in v0.6.1: expansion audio volume**
 (FDS, VRC6, VRC7, 5B, N163, MMC5; heard on the Famicom) in the options screen, **Select + Start**. **New in v0.6.2:
 volume calibrated on a Famicom** (each chip sounds against the console's own sound as in the Mesen2 emulator) and a fix
-for the Lava kit reset when leaving an FDS disk.
+for the Lava kit reset when leaving an FDS disk. **New in v0.6.3: saves for games with an EEPROM** from Bandai (Dragon
+Ball Z, SD Gundam Gaiden, Datach…; see "Saved games").
 
 ## Qué contiene / Contents
 
@@ -246,6 +248,12 @@ with your factory SD card it works exactly as before.
 - Es el mismo formato que el `.sav` de los emuladores (Mesen, FCEUX…): puedes copiar partidas entre el PC y el
   cartucho cambiando la extensión. Las partidas del OS de fábrica no se leen.
 - La fecha de los archivos es fija (1-1-2026): el cartucho no tiene reloj.
+- **Juegos con EEPROM** (desde la v0.6.3): algunos de Bandai guardan en una EEPROM serie (mapper 159: Dragon Ball Z:
+  Kyoushuu! Saiya Jin, SD Gundam Gaiden, Magical Taruruuto-kun; mapper 16 con pila: Dragon Ball Z II/III/Gaiden, SD
+  Gundam Gaiden 2/3, Rokudenashi Blues; mapper 157: los Datach). Su `.srm` mide 128, 256 o 384 bytes (Battle Rush:
+  256 de la base y 128 del cartucho), lo mismo que el `.eeprom128`/`.eeprom256` de Mesen2. **Esa EEPROM está dentro
+  del FPGA y no tiene pila: sal siempre con RESET antes de apagar** (el menú lo recuerda al lanzarlos). Si apagas
+  dentro del juego, se pierde lo de esa sesión y al encender sale «EEPROM perdida al apagar».
 
 **EN**
 - **Up/Down**: move the cursor within the page (the selected entry is shown in red).
@@ -276,6 +284,13 @@ with your factory SD card it works exactly as before.
 - It is the same format as emulator `.sav` files (Mesen, FCEUX…): you can copy saves between the PC and the
   cartridge by changing the extension. The factory OS's saves are not read.
 - File dates are fixed (1-1-2026): the cartridge has no clock.
+- **Games with an EEPROM** (since v0.6.3): some Bandai games save to a serial EEPROM (mapper 159: Dragon Ball Z:
+  Kyoushuu! Saiya Jin, SD Gundam Gaiden, Magical Taruruuto-kun; mapper 16 with battery: Dragon Ball Z II/III/Gaiden,
+  SD Gundam Gaiden 2/3, Rokudenashi Blues; mapper 157: the Datach games). Their `.srm` is 128, 256 or 384 bytes
+  (Battle Rush: 256 of the base unit and 128 of the cartridge), the same as Mesen2's `.eeprom128`/`.eeprom256`.
+  **That EEPROM lives inside the FPGA and has no battery: always leave with RESET before switching off** (the menu
+  reminds you when you launch them). If you switch off inside the game, that session is lost and "EEPROM perdida al
+  apagar" appears at power-on.
 
 ## Famicom Disk System
 
@@ -317,7 +332,7 @@ with your factory SD card it works exactly as before.
 ## Qué falta / What is missing
 
 **ES**
-- Partidas de los mappers con EEPROM (Bandai 16/159, Datach) y de la RAM interna del Namco 163.
+- Partidas en la RAM interna del Namco 163 (ningún juego conocido guarda ahí; la PRG-RAM del N163 sí se guarda).
 - Save states y Game Genie.
 - **Sonido de expansión** (VRC6, VRC7, Sunsoft 5B, Namco 163, MMC5, FDS): solo se oye en la **Famicom**; la NES no
   mezcla el audio del cartucho. El volumen se cambia con Select + Start (calibrado en una Famicom AV).
@@ -326,7 +341,7 @@ with your factory SD card it works exactly as before.
   arreglaba apagando); corregido en la v0.6.2.
 
 **EN**
-- Saves for mappers with an EEPROM (Bandai 16/159, Datach) and for the Namco 163's internal RAM.
+- Saves in the Namco 163's internal RAM (no known game saves there; the N163's PRG-RAM is saved).
 - Save states and Game Genie.
 - **Expansion audio** (VRC6, VRC7, Sunsoft 5B, Namco 163, MMC5, FDS): only heard on the **Famicom**; the NES does not
   mix the cartridge audio. The volume is set with Select + Start (calibrated on a Famicom AV).

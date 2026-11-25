@@ -12,6 +12,14 @@ cartridge reads from the microSD card comes from here: **our own OS** (menu, bat
 menu RBF and **195 mappers** in Verilog. Clean-room implementation, validated against the Mesen2 emulator with
 synthetic-ROM fuzzing, simulation testbenches and real games on the console.
 
+> 💾 **ES — Novedad (25-11-2026): v0.6.3-beta, partidas de los juegos con EEPROM.** Los Bandai que guardan en una
+> EEPROM serie (mappers 16, 159 y 157 Datach: Dragon Ball Z, SD Gundam Gaiden…) ya guardan su partida en la microSD,
+> en el mismo formato que Mesen2. Probado en una Famicom y en una NES reales. Sal con RESET antes de apagar.
+>
+> 💾 **EN — News (25 Nov 2026): v0.6.3-beta, saves for games with an EEPROM.** The Bandai games that save to a serial
+> EEPROM (mappers 16, 159 and 157 Datach: Dragon Ball Z, SD Gundam Gaiden…) now save to the microSD card, in the same
+> format as Mesen2. Tested on a real Famicom and a real NES. Leave with RESET before switching off.
+>
 > 🎚️ **ES — Novedad (25-11-2026): v0.6.2-beta, volumen calibrado en una Famicom.** Con ROMs de prueba propias y el
 > audio grabado de una Famicom AV, cada chip de sonido del cartucho suena frente al de la consola como en Mesen2 (a
 > menos de un 2 %). Además, el reset del kit Lava RGB al salir de un disco FDS ya no se repite sin fin.
