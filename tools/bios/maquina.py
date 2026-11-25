@@ -127,6 +127,9 @@ class SD:
 
 class Maquina:
     ROJO = False                         # pantalla(): leer los tiles rojos del OS propio como texto
+    # RBF con la ventana de las EEPROM del Bandai (hdl/rtl/mapper_bandaifcg.v): una función que recibe los bytes de la
+    # configuración y dice si ese RBF la lleva. Sin ella, ningún RBF la tiene.
+    RBF_EEPROM = None
     def __init__(self, bios, sd, prgram=None):
         if len(bios) != 0x4000:
             raise ValueError('la BIOS debe medir 16 KiB (ventana $C000-$FFFF)')
@@ -147,6 +150,7 @@ class Maquina:
         self.configurando = False      # entre el pulso de nCONFIG y el final de la carga: el FPGA no mapea nada
         self.pc_en_config = set()      # instrucciones ejecutadas en $8000-$FFFF mientras se configuraba
         self.fpga_cfgs = []            # bytes recibidos por $4403 en cada configuración (pulso 0->1 del reg 6)
+        self.eeprom = None             # memoria de las EEPROM (384 bytes: 256 + 128 del Datach) si el RBF la lleva
         self.ultimo_spi = 0xFF
         self.ppu_ctrl = self.ppu_mask = self.ppu_addr = self.ppu_latch = self.vbl = 0
         self.n_nmi = 0                # NMI dadas (correr con nmi_cada)
@@ -189,6 +193,10 @@ class Maquina:
             return v
         if 0x4800 <= a < 0x5000:
             return self.prgrom[((self.fpga[128] << 11) | (a & 0x7FF)) & 0x7FFFF]
+        if 0x5400 <= a < 0x5600:                             # ventana de las EEPROM (solo modo OS, con su RBF)
+            if self.eeprom is None or self.mapper != 0xFF or self.configurando:
+                return a >> 8                                # bus abierto
+            return self.eeprom[a - 0x5400] if a < 0x5580 else 0xA5
         if 0x6000 <= a < 0x8000:
             return self.prgram[((self.fpga[129] & 0x0F) << 13) | (a & 0x1FFF)]
         if a >= 0x8000:
@@ -235,6 +243,10 @@ class Maquina:
             return
         if 0x4800 <= a < 0x5000:
             self.prgrom[((self.fpga[128] << 11) | (a & 0x7FF)) & 0x7FFFF] = v
+            return
+        if 0x5400 <= a < 0x5580:
+            if self.eeprom is not None and self.mapper == 0xFF and not self.configurando:
+                self.eeprom[a - 0x5400] = v
             return
         if 0x6000 <= a < 0x8000:
             b = self.fpga[129] & 0x0F
@@ -347,6 +359,7 @@ class Maquina:
                 self.configurando = False
                 self.fpga = {128: 0, 129: 0, 130: 0}
                 self.mapper = 0xFF
+                self.eeprom = bytearray(0x180) if self.RBF_EEPROM and self.RBF_EEPROM(self.fpga_cfgs[-1]) else None
                 self.log.append(('FPGA_CONFIG', len(self.fpga_cfgs[-1]), self.cpu.pc))
             self.m4402 = v
         else:

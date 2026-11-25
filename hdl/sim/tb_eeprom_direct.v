@@ -44,6 +44,12 @@ module tb_eeprom_direct;
               check(cpu_dout[3] == 1'b0, "D3 reads 0");
               b = cpu_dout[4]; m2 = 0; #300; end
     endtask
+    // OS window ($5400-$55FF, only while rst = 1): read one byte, checking that all 8 bits are driven
+    task rd_os(input [15:0] a, output [7:0] d);
+        begin cpu_a = a[14:0]; romsel_n = 1; cpu_rw = 1; #100; m2 = 1; #200;
+              check(cpu_doe == 8'hFF, "OS window drives the 8 bits");
+              d = cpu_dout; m2 = 0; #300; end
+    endtask
     task i2c_start; begin bus(1, 1); bus(1, 0); bus(0, 0); end endtask
     task i2c_stop;  begin bus(0, 0); bus(1, 0); bus(1, 1); end endtask
     task sbit(input b); begin bus(0, b); bus(1, b); bus(0, b); end endtask
@@ -202,7 +208,49 @@ module tb_eeprom_direct;
         // AND: the base chip at 1 (idle after STOP) and the cartridge chip driving its ACK 0 read as 0
         i2c_start; sbyte_lsb({1'b1, 7'h12}); bus(0, 1); bus(1, 1); rdbit(b); check(b == 0, "157 D4 = AND (cartridge ACK)");
         bus(0, 1); rbyte_lsb(v); mack(0); i2c_stop; xmode = 0;
-        cfg = 8'h01;
+        // ---------------------------------------------------------------- OS window (mapper in reset)
+        // the OS reads back what the games wrote: base 24C02 at $5400, cartridge 24C01 at $5500, $A5 at $5580+
+        rst = 1; cycle;
+        rd_os(16'h5420, v); check(v == 8'h5B, "OS reads the base EEPROM ($5420)");
+        rd_os(16'h5410, v); check(v == 8'hA6, "OS reads the base EEPROM ($5410)");
+        rd_os(16'h54FF, v); check(v == 8'h3D, "OS reads the last byte ($54FF)");
+        rd_os(16'h5512, v); check(v == 8'hC5, "OS reads the cartridge 24C01 ($5512)");
+        rd_os(16'h557E, v); check(v == 8'h3A, "OS reads the cartridge 24C01 ($557E)");
+        rd_os(16'h5580, v); check(v == 8'hA5, "ID byte at $5580");
+        rd_os(16'h55FF, v); check(v == 8'hA5, "ID byte at $55FF");
+        // nothing else drives in the OS: $6000 (PRG-RAM), $53FF, $5600, $4401
+        cpu_a = 15'h6000; romsel_n = 1; cpu_rw = 1; m2 = 1; #200; check(cpu_doe == 0, "OS: $6000 not driven"); m2 = 0; #100;
+        cpu_a = 15'h53FF; m2 = 1; #200; check(cpu_doe == 0, "OS: $53FF not driven"); m2 = 0; #100;
+        cpu_a = 15'h5600; m2 = 1; #200; check(cpu_doe == 0, "OS: $5600 not driven"); m2 = 0; #100;
+        cpu_a = 15'h4401; m2 = 1; #200; check(cpu_doe == 0, "OS: $4401 not driven"); m2 = 0; #100;
+        cpu_a = 15'h5400; romsel_n = 0; m2 = 1; #200; check(cpu_doe == 0, "OS: $D400 (ROM) not driven"); m2 = 0; #100;
+        // the OS writes a whole save (as before a launch) and reads it back
+        for (i = 0; i < 256; i = i + 1) wr(16'h5400 + i, i ^ 8'h5C);
+        for (i = 0; i < 128; i = i + 1) wr(16'h5500 + i, i ^ 8'hC3);
+        wr(16'h5580, 8'h00);                                       // the ID area is read-only
+        for (i = 0; i < 256; i = i + 1) begin rd_os(16'h5400 + i, v); check(v == (i ^ 8'h5C), "OS write/read base"); end
+        for (i = 0; i < 128; i = i + 1) begin rd_os(16'h5500 + i, v); check(v == (i ^ 8'hC3), "OS write/read cartridge"); end
+        rd_os(16'h5580, v); check(v == 8'hA5, "ID kept after a write");
+        // back-to-back accesses as the 6502 does them (write then read of the next address in the next cycle)
+        wr(16'h5401, 8'hE7); rd_os(16'h5402, v); check(v == (2 ^ 8'h5C), "next-cycle read after a write");
+        rd_os(16'h5401, v); check(v == 8'hE7, "write landed at its own address");
+        // the game sees what the OS wrote (Battle Rush: both chips)
+        rst = 0; cycle;
+        xmode = 1; i2c_start; i2c_stop; xmode = 0;
+        c02_read(8'h01, v); check(v == 8'hE7, "game reads the OS data (base)");
+        c02_read(8'hF0, v); check(v == (8'hF0 ^ 8'h5C), "game reads the OS data (base $F0)");
+        xmode = 1; c01_read(7'h40, v); check(v == (8'h40 ^ 8'hC3), "game reads the OS data (cartridge)"); xmode = 0;
+        // OS writes have no effect while the game runs (window only in reset); reads there are not driven
+        wr(16'h5401, 8'h11);
+        cpu_a = 15'h5401; romsel_n = 1; cpu_rw = 1; m2 = 1; #200; check(cpu_doe == 0, "game: window not driven"); m2 = 0; #100;
+        c02_read(8'h01, v); check(v == 8'hE7, "game: window writes ignored");
+        // mapper 159: the 24C01 lives in $5400-$547F
+        map_id = 159; cfg = 8'h01; rst = 1; cycle;
+        wr(16'h5405, 8'h77); rst = 0; cycle;
+        c01_read(7'h05, v); check(v == 8'h77, "159 reads the OS data");
+        c01_write(7'h06, 8'h88); rst = 1; cycle;
+        rd_os(16'h5406, v); check(v == 8'h88, "OS reads the 159 save");
+        cfg = 8'h01; map_id = 16; rst = 0; cycle;
 
         $display("PASS tb_eeprom_direct: %0d checks", checks); $finish;
     end

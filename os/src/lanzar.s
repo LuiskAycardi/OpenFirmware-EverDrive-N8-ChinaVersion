@@ -30,7 +30,8 @@
         .importzp E_FIN, E_DATOS
         .import sd_multi_ini, sd_parar, sd_base
         .import en_juego, vol_reg
-        .import partida_nombre, partida_preparar, partida_marcar, partida_pendiente, pt_sect_nueva
+        .import partida_nombre, partida_preparar, partida_marcar, partida_pendiente, pt_sect_nueva, pt_eep_tam
+        .import eep_cargar, eep_aviso
         .importzp sd_lba, nombre
         .import __RAMCOD_LOAD__, __RAMCOD_RUN__, __RAMCOD_SIZE__
 
@@ -145,12 +146,16 @@ lanzar:
         bne     @sin_pila
         lda     l_sin_partida
         bne     @sin_pila
-        lda     l_cfg
-        and     #$02
+        jsr     con_pila
         beq     @sin_pila
         jsr     partida_preparar
-        bcc     @sin_pila
+        bcc     :+
         jmp     falla                   ; A = L_*
+:       lda     pt_eep_tam              ; EEPROM: la partida vive en la FPGA, el aviso de apagar con RESET
+        ora     pt_eep_tam+1
+        beq     @sin_pila
+        jsr     banco_marca
+        jsr     eep_aviso
 @sin_pila:
         ; ---- 2. EDFC/MAPROUT.BIN
         jsr     abrir_edfc
@@ -398,12 +403,18 @@ lanzar:
         lda     vol_reg
         jsr     fpga_reg
         lda     l_sin_partida
-        bne     :+
-        lda     l_cfg
-        and     #$02
-        beq     :+
-        jsr     partida_marcar          ; al volver (o al encender, si la RAM tiene pila) se guarda
-:       lda     #1
+        bne     @salto
+        jsr     con_pila
+        beq     @salto
+        lda     pt_eep_tam
+        ora     pt_eep_tam+1
+        beq     @marca
+        jsr     banco_marca             ; EEPROM: la partida del banco 8 a la memoria de la FPGA
+        jsr     eep_cargar
+        bcc     @marca
+        jmp     falla                   ; A = L_EEPROM
+@marca: jsr     partida_marcar          ; al volver (o al encender, si la RAM tiene pila) se guarda
+@salto: lda     #1
         sta     en_juego
         jmp     ram_lanzar
 
@@ -443,8 +454,44 @@ fds_copiar:
 
 ; Tamaño de una partida nueva, en sectores (pt_sect_nueva), según la cabecera que hay en `sector`: la PRG-NVRAM de
 ; NES 2.0 (64 << n bytes, entre 8 y 64 KiB); si no la declara, 32 KiB con el MMC5 (5) y 8 KiB con los demás.
+; Z = 0 si el juego guarda partida: pila en la cabecera o EEPROM serie (el 157 siempre: la EEPROM de la base).
+con_pila:
+        lda     l_cfg
+        and     #$02
+        ora     pt_eep_tam
+        ora     pt_eep_tam+1
+        rts
+
+; EEPROM serie del Bandai (eeprom.s): 159 = 24C01 (128 bytes), 16 con pila = 24C02 (256), 157 (Datach) = 24C02 de la
+; base (256) y, con pila, la 24C01 del cartucho detrás (384). La partida es un sector. Sin EEPROM, pt_eep_tam = 0.
 tam_partida:
-        lda     #16
+        lda     #0
+        sta     pt_eep_tam
+        sta     pt_eep_tam+1
+        lda     l_mapper
+        cmp     #159
+        bne     @n16
+        lda     #$80
+        sta     pt_eep_tam
+        bne     @eep
+@n16:   cmp     #16
+        bne     @n157
+        lda     l_cfg
+        and     #$02
+        beq     @tam
+@e256:  inc     pt_eep_tam+1
+@eep:   lda     #1
+        sta     pt_sect_nueva
+        rts
+@n157:  cmp     #157
+        bne     @tam
+        lda     l_cfg
+        and     #$02
+        beq     @e256
+        lda     #$80
+        sta     pt_eep_tam
+        bne     @e256
+@tam:   lda     #16
         sta     pt_sect_nueva
         lda     sector+7
         and     #$0C

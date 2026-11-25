@@ -72,4 +72,7 @@ L_SINBIOS   = 21                ; no está EDFC/DISKSYS.ROM
 L_BIOSEMU   = 22                ; BIOS FDS de un emulador (no corre en una consola)
 L_BIOSRARA  = 23                ; BIOS FDS desconocida o de otro tamaño
 M_DISCO     = 24                ; al arrancar: disco FDS guardado en la SD (fds_ovl.s)
+; EEPROM serie del Bandai (eeprom.s)
+L_EEPROM    = 25                ; la ventana de la EEPROM no responde (RBF sin ella o lectura que no llega)
+M_EEPPERD   = 26                ; al arrancar: la consola se apagó sin RESET y la EEPROM de esa sesión se perdió
 

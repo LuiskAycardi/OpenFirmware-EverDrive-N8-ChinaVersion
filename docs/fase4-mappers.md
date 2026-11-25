@@ -285,7 +285,8 @@ Pista sacada de la revisión del core NES de MiSTer (`docs/mister-nes-revision.m
   `$6000-$7FFF` (FCG-1/2) `B/C` escriben el contador del IRQ y `A` no recarga; en `$8000-$FFFF` (LZ93D50)
   `B/C` son un latch que `A` copia y `D` es la EEPROM.
 - Persistencia: el contenido dura la sesión de juego. Se pierde al apagar y también al lanzar otro juego,
-  porque el OS recarga el RBF.
+  porque el OS recarga el RBF. **Desde el 2026-11-24 el OS lo guarda en la SD** (ver abajo, «Partidas de las EEPROM
+  en la SD»).
 
 Validación:
 - `tb_eeprom_direct` (476 comprobaciones, en `make sim`): escrituras y lecturas aleatorias y secuenciales,
@@ -554,3 +555,22 @@ colección van con el 104: Super Mario Bros. 2 Whirlwind (40) y N-32 (50), Ai Se
 (73) y Final Command de Whirlwind (142): título y partida, con las barras de estado fijas (IRQ por ciclos). Del 106
 no hay ROM. Regresión del 102: Battle Fleet (19), Senjou no Ookami (94) y Time Diver Avenger (250) bien; el FDS
 (Zelda, 254.RBF con la etapa de volumen) carga con su partida.
+
+## Partidas de las EEPROM en la SD (2026-11-24)
+
+- `eeprom_24c0x.v` tiene un puerto para el OS (`h_a`, `h_we`, `h_d`, `h_q`) que manda en el M4K mientras `rst` = 1
+  (modo OS: el protocolo está parado). `mapper_bandaifcg.v` abre con él una **ventana en el modo OS**, solo con el
+  mapper en reset: `$5400-$54FF` la EEPROM principal (24C02, o la 24C01 del 159 en `$5400-$547F`), `$5500-$557F` la
+  24C01 del cartucho del Datach y `$5580-$55FF` = `$A5` (firma: con otro RBF, o tras encender, hay bus abierto).
+  Escrituras capturadas en la bajada de M2 y pasadas a `clk` con un conmutador sincronizado; lecturas por el camino
+  de la fase 3d (`n8_top.v` deja conducir en el modo OS solo al caso `mapper_id` = `$FF` → `do_016`). El dato de la
+  lectura depende solo de la dirección, no de M2: así no cambia en el instante en que se suelta el bus (el banco
+  lo vio como un pico al bajar M2). `$6000` ya no conduce en el modo OS (es la PRG-RAM).
+- El OS (`os/src/eeprom.s`, `os/LEEME.md` §«EEPROM serie del Bandai») escribe la partida en la ventana antes de saltar
+  al juego, la relee, y la recoge al volver con RESET (el RBF sigue cargado y el M4K intacto).
+- Banco: `tb_eeprom_direct` 1648 comprobaciones (antes 728): lectura de lo que escribieron los juegos, firma, nada
+  conduce fuera de la ventana ni en el juego, escritura y lectura de los 384 bytes, accesos seguidos, el juego ve lo
+  que escribió el OS (24C02, 24C01 del cartucho y 159). `tb_fase3d`: la ventana por el top, con la vigilancia del bus.
+
+- RBF 100: 3639 LE (79 %), holgura 7,57 ns. Los demás RBF no cambian de contenido (102: 77 %, 106: 69 % con 0,81 ns);
+  ninguno pasa del 85 %. OS: `probar_os.py` 268/268 (23 nuevas de la EEPROM).

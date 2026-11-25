@@ -11,8 +11,13 @@
 // Por rango: en $6000-$7FFF (FCG-1/2) B/C son el contador y A no recarga; en $8000-$FFFF
 // (LZ93D50) B/C son un latch que A copia al contador.
 // Lectura en $6000-$7FFF: D4 = salida de la EEPROM, D3 = 0, el resto queda en bus abierto.
-// EEPROM: eeprom_24c0x.v (24C02 de 256 bytes en el 16, 24C01 de 128 bytes en el 159). Las
-// partidas duran mientras el juego sigue cargado (ver la nota del módulo).
+// EEPROM: eeprom_24c0x.v (24C02 de 256 bytes en el 16, 24C01 de 128 bytes en el 159).
+// Ventana del OS (solo en el modo OS, con el mapper en reset; el RBF sigue cargado tras un RESET): el OS escribe
+// la partida antes de lanzar el juego y la lee al volver para guardarla en la SD (os/src/partida.s).
+//   $5400-$54FF  memoria de la EEPROM principal (24C02/24C01: el 24C01 usa $5400-$547F)
+//   $5500-$557F  memoria de la 24C01 del cartucho del Datach (157)
+//   $5580-$55FF  se lee $A5: así el OS sabe que la ventana existe (con otro RBF o recién encendido, bus abierto)
+// Lectura y escritura. Las lecturas las conduce la FPGA (n8_top.v deja conducir en el modo OS a este módulo).
 // IRQ: cada ciclo, si está activa: si el contador vale 0 dispara; después decrementa.
 // 157: registros solo en $8000-$FFFF; la 24C02 de la base va como en el 16. La 24C01 del cartucho
 // (solo Battle Rush, el único con pila en la cabecera: cfg[1]) toma SCL del bit 3 de las escrituras en
@@ -82,6 +87,12 @@ module mapper_bandaifcg (
     reg [15:0] t_cnt; reg t_pend, t_en;
     reg e_scl = 0, e_sda = 0, e_tgl = 0;   // última muestra SCL/SDA escrita en $xxxD
     reg x_scl = 0, x_sda = 0, x_tgl = 0;   // 157: muestras de la 24C01 del cartucho
+    // ventana del OS: $5400-$55FF con /ROMSEL alto (A14-A9 = 101010)
+    wire win_os = rst && romsel_n && cpu_a[14:9] == 6'b101010;
+    reg [8:0] h_wa = 0; reg [7:0] h_wd = 0; reg h_tgl = 0;   // última escritura del OS en la ventana
+    always @(negedge m2) if (win_os && !cpu_rw) begin
+        h_wa <= cpu_a[8:0]; h_wd <= cpu_d; h_tgl <= ~h_tgl;
+    end
     always @(negedge m2) begin
         if (rst) begin
             for (i = 0; i < 8; i = i + 1) chr[i] <= 0;
@@ -140,16 +151,27 @@ module mapper_bandaifcg (
     always @(posedge clk) e_s <= {e_s[1:0], e_tgl};
     wire e_ev = e_s[2] != e_s[1];
     wire e_out;
-    eeprom_24c0x eeprom (.clk(clk), .rst(rst), .c01(m159), .ev(e_ev), .scl(e_scl), .sda(e_sda), .out(e_out));
+    // escritura del OS: un pulso de clk tras sincronizar el cambio de h_tgl; mientras, la dirección es la de la CPU
+    reg [2:0] h_s = 3'd0;
+    always @(posedge clk) h_s <= {h_s[1:0], h_tgl};
+    wire h_ev = h_s[2] != h_s[1];
+    wire [7:0] h_a = h_ev ? h_wa[7:0] : cpu_a[7:0];
+    wire [7:0] e_q, x_q;
+    eeprom_24c0x eeprom (.clk(clk), .rst(rst), .c01(m159), .ev(e_ev), .scl(e_scl), .sda(e_sda), .out(e_out),
+                         .h_a(h_a), .h_we(h_ev && !h_wa[8]), .h_d(h_wd), .h_q(e_q));
     // 157: 24C01 del cartucho (solo se instancia la lógica; sin x01 nunca recibe muestras y su salida no cuenta)
     reg [2:0] x_s = 3'd0;
     always @(posedge clk) x_s <= {x_s[1:0], x_tgl};
     wire x_out;
-    eeprom_24c0x eeprom_x (.clk(clk), .rst(rst), .c01(1'b1), .ev(x_s[2] != x_s[1]), .scl(x_scl), .sda(x_sda), .out(x_out));
+    eeprom_24c0x eeprom_x (.clk(clk), .rst(rst), .c01(1'b1), .ev(x_s[2] != x_s[1]), .scl(x_scl), .sda(x_sda), .out(x_out),
+                           .h_a({1'b0, h_a[6:0]}), .h_we(h_ev && h_wa[8] && !h_wa[7]), .h_d(h_wd), .h_q(x_q));
     wire sda_out = e_out & (x01 ? x_out : 1'b1);
 
-    wire rd6 = !m153 && romsel_n && cpu_rw && m2 && cpu_a[14:13] == 2'b11;   // $6000-$7FFF (153: SRAM)
-    assign cpu_doe  = rd6 ? 8'h18 : 8'h00;                          // D4 EEPROM, D3 = 0
-    assign cpu_dout = {3'b000, sda_out, 4'b0000};
+    wire rd6 = !rst && !m153 && romsel_n && cpu_rw && m2 && cpu_a[14:13] == 2'b11;   // $6000-$7FFF (153: SRAM)
+    // ventana del OS: los 8 bits. El dato depende solo de la dirección (no de M2): al bajar M2 se suelta el bus
+    // sin que el dato cambie a la vez (la CPU lo captura en esa bajada).
+    wire sel_os = win_os && cpu_rw;
+    assign cpu_doe  = (sel_os && m2) ? 8'hFF : rd6 ? 8'h18 : 8'h00;   // D4 EEPROM, D3 = 0
+    assign cpu_dout = sel_os ? (!cpu_a[8] ? e_q : cpu_a[7] ? 8'hA5 : x_q) : {3'b000, sda_out, 4'b0000};
 
 endmodule

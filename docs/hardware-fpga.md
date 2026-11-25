@@ -184,6 +184,9 @@ flancos de A12 (MMC3, MMC6, Namco 108 con IRQ, etc.) debe filtrarla.
 - Mapa de memoria en modo OS (corregido tras revisar el detalle):
   - `$4800–$4FFF`: **ventana de 2 KB a la SRAM PRG del juego**, banco elegido con el reg 128
     (PRG A18..A11 = reg, A10 = CPU A10). Lectura y escritura: así el OS copia la ROM a la SRAM.
+  - `$5400–$55FF` (propio, 2026-11-24, solo en el 100.RBF): ventana a la memoria de las EEPROM del Bandai (16, 157,
+    159) mientras el mapper está en reset; `$5580-$55FF` se lee `$A5`. La FPGA **conduce** estas lecturas en el modo
+    OS (es la única excepción). Ver `docs/fase4-mappers.md` §«Partidas de las EEPROM en la SD».
   - `$6000–$7FFF`: PRG-RAM (128 KB) en bancos de 8 KB elegidos con el reg 129.
   - `$8000–$FFFF`: si `max2` (bios_off) = 1, 32 KB fijos de la PRG-RAM con A18..A15 = `0011`
     (offset 0x18000: el OS corre desde la RAM con pila). Si = 0, la FPGA no habilita nada

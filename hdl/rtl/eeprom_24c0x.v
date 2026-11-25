@@ -9,9 +9,11 @@
 // c01 = 0 (24C02, 256 bytes): START, chip address 1010xxxR (MSB first), word address, then
 //   sequential write or read; the master's ACK after a read byte loads the next one.
 // c01 = 1 (24C01, 128 bytes): START, 7-bit word address + R/W bit (LSB first), one data byte.
-// Contents live in one M4K (256 x 8), all zero at power-on. They are not kept across power-off,
-// and the N8 OS reloads the RBF on every game start, which clears them too: saves last for one
-// play session. The serial output starts at 0 until the first START/STOP.
+// Contents live in one M4K (256 x 8), all zero at power-on. While rst is high (N8 OS mode) the protocol
+// is idle and the M4K belongs to the OS port (h_*): every clk it reads h_a into h_q, and h_we writes h_d
+// at h_a. The OS writes the save there before starting the game and reads it back after RESET (the
+// RBF stays loaded, so the contents survive the reset; a power-off reloads the FPGA and loses them).
+// The serial output starts at 0 until the first START/STOP.
 module eeprom_24c0x (
     input  wire clk,
     input  wire rst,
@@ -19,7 +21,12 @@ module eeprom_24c0x (
     input  wire ev,       // one-clk pulse: a new SCL/SDA sample
     input  wire scl,
     input  wire sda,
-    output reg  out = 1'b0     // 0 until the first START/STOP (as the bench oracle)
+    output reg  out = 1'b0,    // 0 until the first START/STOP (as the bench oracle)
+    // OS port (used only while rst = 1)
+    input  wire [7:0] h_a,
+    input  wire       h_we,
+    input  wire [7:0] h_d,
+    output wire [7:0] h_q
 );
     localparam IDLE = 3'd0, CHIP = 3'd1, ADDR = 3'd2, READ = 3'd3, WRITE = 3'd4, SACK = 3'd5, WACK = 3'd6;
     reg [2:0] mode = IDLE, nmode = IDLE;
@@ -37,6 +44,7 @@ module eeprom_24c0x (
         if (ram_we) mem[ram_a] <= ram_d;
         ram_q <= mem[ram_a];
     end
+    assign h_q = ram_q;
     reg ld1 = 0, ld2 = 0;                 // data <= mem[addr] two clocks after a load request
 
     wire start = pscl && scl && psda && !sda;
@@ -52,6 +60,7 @@ module eeprom_24c0x (
         if (rst) begin
             mode <= IDLE; nmode <= IDLE; cnt <= 0; out <= 1'b0; pscl <= 0; psda <= 0;
             ld1 <= 0; ld2 <= 0;
+            ram_a <= h_a; ram_d <= h_d; ram_we <= h_we;
         end else if (ev) begin
             pscl <= scl; psda <= sda;
             if (start) begin

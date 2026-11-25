@@ -2107,8 +2107,10 @@ m21:    .byte "Falta EDFC/DISKSYS.ROM", 0
 m22:    .byte "BIOS FDS de emulador", 0
 m23:    .byte "BIOS FDS desconocida", 0
 m24:    .byte "Disco FDS guardado", 0
-mensajes_lo: .byte <m1, <m2, <m3, <m4, <m5, <m6, <m7, <m8, <m9, <m10, <m11, <m12, <m13, <m14, <m15, <m16, <m17, <m18, <m19, <m20, <m21, <m22, <m23, <m24
-mensajes_hi: .byte >m1, >m2, >m3, >m4, >m5, >m6, >m7, >m8, >m9, >m10, >m11, >m12, >m13, >m14, >m15, >m16, >m17, >m18, >m19, >m20, >m21, >m22, >m23, >m24
+m25:    .byte "La EEPROM no responde", 0
+m26:    .byte "EEPROM perdida al apagar", 0
+mensajes_lo: .byte <m1, <m2, <m3, <m4, <m5, <m6, <m7, <m8, <m9, <m10, <m11, <m12, <m13, <m14, <m15, <m16, <m17, <m18, <m19, <m20, <m21, <m22, <m23, <m24, <m25, <m26
+mensajes_hi: .byte >m1, >m2, >m3, >m4, >m5, >m6, >m7, >m8, >m9, >m10, >m11, >m12, >m13, >m14, >m15, >m16, >m17, >m18, >m19, >m20, >m21, >m22, >m23, >m24, >m25, >m26
 
 cifras:
         .byte   "0123456789ABCDEF"

@@ -128,6 +128,22 @@ module tb_fase3d;
         expect_read(16'h4100, 8'h00, 8'h00, "MMC3: $4100 no conduce");
         back_to_menu;
 
+        // ================================================= modo OS: ventana de las EEPROM del Bandai ($5400-$55FF)
+        cpu_write(16'h5400, 8'h3C);                     // el OS escribe la partida antes de lanzar
+        cpu_write(16'h5401, 8'hC3);
+        cpu_write(16'h5500, 8'h96);
+        expect_read(16'h5400, 8'hFF, 8'h3C, "OS: la ventana lee la EEPROM");
+        expect_read(16'h5401, 8'hFF, 8'hC3, "OS: segundo byte");
+        expect_read(16'h5500, 8'hFF, 8'h96, "OS: 24C01 del Datach en $5500");
+        expect_read(16'h5580, 8'hFF, 8'hA5, "OS: firma $A5 en $5580");
+        expect_read(16'h6000, 8'h00, 8'h00, "OS: $6000 (PRG-RAM) no conduce");
+        expect_read(16'h4401, 8'h00, 8'h00, "OS: $4401 no conduce");
+        expect_read(16'hD400, 8'h00, 8'h00, "OS: $D400 (ROM) no conduce");
+        start_game(8'd16, 5'b00111, 8'b000111, 8'd1);
+        expect_read(16'h5400, 8'h00, 8'h00, "16: en el juego la ventana no conduce");
+        back_to_menu;
+        expect_read(16'h5401, 8'hFF, 8'hC3, "OS: la EEPROM sigue tras el juego y el RESET");
+
         if (errors == 0) $display("OK: todas las pruebas pasaron (fase 3d)");
         else             $display("FALLARON %0d comprobaciones (fase 3d)", errors);
         $finish;

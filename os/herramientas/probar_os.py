@@ -246,11 +246,12 @@ def rom(prg16, chr8, mapper, byte6=0, trainer=False, semilla=1, cola=None):
     return cab + (bytes(range(256)) * 2 if trainer else b'') + bytes(prg) + chr_, bytes(prg), chr_
 
 maprout = bytearray([0xFF]) * 512
-for mp, r in ((0, 100), (4, 100), (1, 101), (219, 105), (254, 254)):
+for mp, r in ((0, 100), (4, 100), (1, 101), (219, 105), (254, 254), (16, 100), (157, 100), (159, 100)):
     maprout[mp] = r
 (t / 'edfc/MAPROUT.BIN').write_bytes(maprout)
 rbf100 = bytes((i * 7 + 1) & 0xFF for i in range(51200))
 rbf105 = bytes((i * 5 + 3) & 0xFF for i in range(76288 - 300))        # tamaño que no es múltiplo de 512
+Maquina.RBF_EEPROM = staticmethod(lambda cfg: bytes(cfg[:64]) == rbf100[:64])   # el 100.RBF lleva la ventana
 ROMS = [('JUEGO.NES', rom(2, 1, 0, byte6=1)), ('CHRRAM.NES', rom(1, 0, 0, semilla=2)),
         ('MMC3.NES', rom(8, 8, 4, byte6=2, semilla=3)), ('TRAINER.NES', rom(2, 1, 0, trainer=True, semilla=4)),
         ('M219.NES', rom(4, 2, 219, semilla=5)), ('NOTAS.TXT', (b'no soy una ROM' * 40, b'', b'')),
@@ -676,6 +677,102 @@ lanzo = lanzar(m)
 m.correr(200_000, nmi_cada=9000)
 comprobar(not lanzo and 'Error al escribir la SD 0B' in m.pantalla() and not m.fpga_cfgs[m.n_cfg:],
           'no se puede crear la partida: «Error al escribir la SD 0B» y no lanza')
+
+# ------------------------------------------------------------------ EEPROM serie del Bandai (eeprom.s)
+EEP = [('Saiya 159 (Japan).nes', rom(2, 1, 159, byte6=2, semilla=21)),                 # 24C01: 128 bytes
+       ('Gundam 16 (Japan).nes', rom(2, 1, 16, byte6=2, semilla=22)),                  # 24C02: 256 bytes
+       ('Datach 157 (Japan).nes', rom(2, 0, 157, semilla=23)),                         # base: 256 bytes, sin pila
+       ('Battle 157 (Japan).nes', rom(2, 0, 157, byte6=2, semilla=24)),                # + 24C01 del cartucho: 384
+       ('FCG 16 (Japan).nes', rom(2, 1, 16, semilla=25)),                              # FCG-1/2 sin pila: nada
+       ('Viejo 16 (Japan).nes', rom(2, 1, 16, byte6=2, semilla=26))]                   # con un .srm de 8 KiB de antes
+VIEJO = bytes((i * 9 + 1) & 0xFF for i in range(8192))
+
+def imagen_eep(nombre):
+    img = imagen5(nombre)
+    dest = f'{img}@@{8192 * 512}'
+    for n, datos in [(n, r[0]) for n, r in EEP] + [('EDFC/SAVE/Viejo 16 (Japan).srm', VIEJO)]:
+        f = t / 'tmp.bin'
+        f.write_bytes(datos)
+        subprocess.run(['mcopy', '-i', dest, str(f), f'::{n}'], check=True)
+    return img
+
+def marca_eep(m):
+    """Bits 4 (EEPROM) y 5 (recogida) del byte del índice de la marca."""
+    return m.prgram[0x10009] & 0x30 if marca(m) else None
+
+img_e = pathlib.Path(imagen_eep('eep.img')).read_bytes()
+for nombre, tam in (('Saiya 159 (Japan)', 128), ('Gundam 16 (Japan)', 256), ('Datach 157 (Japan)', 256),
+                    ('Battle 157 (Japan)', 384)):
+    m, ok = encender(img_e)
+    ir_a(m, nombre + '.nes')
+    ok = lanzar(m)
+    srm = f'EDFC/SAVE/{nombre}.srm'
+    comprobar(ok and leer_archivo(m, srm) == bytes([0xFF]) * tam and m.eeprom is not None
+              and bytes(m.eeprom[:tam]) == bytes([0xFF]) * tam and marca_eep(m) == 0x10 and fsck(m) == [],
+              f'{nombre}: crea «{srm}» de {tam} bytes a $FF, lo pasa a la EEPROM y deja la marca de EEPROM')
+    comprobar('Pulsa RESET antes de apagar' in fila25(m.pantalla()) and bytes(m.prgram[:0x2000]) != bytes([0xFF]) * 0x2000,
+              f'{nombre}: aviso «Pulsa RESET antes de apagar» y la PRG-RAM de los bancos 0-7 no se usa')
+    pat = bytes((i * 29 + tam) & 0xFF for i in range(tam))
+    m.eeprom[:tam] = pat                       # lo que guarda el juego
+    pan = volver(m)
+    comprobar('Partida guardada' in pan and leer_archivo(m, srm) == pat and not marca(m) and fsck(m) == [],
+              f'{nombre}: RESET en el juego: la EEPROM se recoge y se guarda ({tam} bytes, la marca se borra)')
+    n_esc = len(escrituras(m))
+    m.n_cfg = len(m.fpga_cfgs)
+    ok = lanzar(m)
+    comprobar(ok and bytes(m.eeprom[:tam]) == pat and len(escrituras(m)) == n_esc,
+              f'{nombre}: al lanzarlo otra vez (FPGA recién configurada) la EEPROM recibe la partida, sin escribir nada')
+
+m, ok = encender(img_e)
+ir_a(m, 'FCG 16 (Japan).nes')
+ok = lanzar(m)
+comprobar(ok and not marca(m) and nombres_save(m) == sorted(['OTRO JUEGO (Japan).SRM', 'Viejo 16 (Japan).srm']),
+          'mapper 16 sin pila (FCG-1/2): sin partida ni marca')
+m, ok = encender(img_e)
+ir_a(m, 'Viejo 16 (Japan).nes')
+ok = lanzar(m)
+comprobar(ok and bytes(m.eeprom[:256]) == VIEJO[:256] and marca_eep(m) == 0x10,
+          '.srm de 8 KiB de una versión anterior: la EEPROM recibe sus primeros 256 bytes')
+pat = bytes((i * 3 + 7) & 0xFF for i in range(256))
+m.eeprom[:256] = pat
+pan = volver(m)
+comprobar('Partida guardada' in pan and leer_archivo(m, 'EDFC/SAVE/Viejo 16 (Japan).srm') == pat + VIEJO[256:] and fsck(m) == [],
+          'y al guardar solo cambian esos 256 bytes (el archivo sigue midiendo 8 KiB)')
+
+# apagado dentro del juego: la FPGA se recarga y la EEPROM se pierde (la PRG-RAM con pila guarda la marca)
+m, ok = encender(img_e)
+ir_a(m, 'Saiya 159 (Japan).nes')
+ok = lanzar(m)
+m.eeprom[:128] = bytes(range(128))
+ram = bytearray(m.prgram)
+ram[0x12000:] = bytes(len(ram) - 0x12000)
+m2, ok = encender(bytes(m.sd.img), prgram=ram)
+comprobar(ok and 'EEPROM perdida al apagar' in m2.pantalla() and not marca(m2) and solo_lectura(m2)
+          and leer_archivo(m2, 'EDFC/SAVE/Saiya 159 (Japan).srm') == bytes([0xFF]) * 128,
+          'apagado sin RESET: «EEPROM perdida al apagar», la marca se borra y el .srm no se toca')
+# recogida pero sin poder escribir (tarjeta protegida) y después apagado: la copia del banco 8 se guarda al encender
+m, ok = encender(img_e)
+ir_a(m, 'Saiya 159 (Japan).nes')
+ok = lanzar(m)
+pat = bytes((i * 17 + 1) & 0xFF for i in range(128))
+m.eeprom[:128] = pat
+m.sd.__class__ = SDprotegida
+pan = volver(m)
+comprobar('Partida no guardada: 0B' in pan and marca_eep(m) == 0x30,
+          'EEPROM recogida con la tarjeta protegida: «Partida no guardada: 0B» y la marca dice «recogida»')
+ram = bytearray(m.prgram)
+ram[0x12000:] = bytes(len(ram) - 0x12000)
+m2, ok = encender(bytes(m.sd.img), prgram=ram)
+comprobar(ok and 'Partida guardada' in m2.pantalla() and leer_archivo(m2, 'EDFC/SAVE/Saiya 159 (Japan).srm') == pat
+          and not marca(m2) and fsck(m2) == [], 'al encender con la tarjeta bien se guarda la copia recogida en el banco 8')
+# un RBF sin la ventana (o una lectura que no llega a la CPU): no se lanza
+Maquina.RBF_EEPROM = None
+m, ok = encender(img_e)
+ir_a(m, 'Gundam 16 (Japan).nes')
+lanzo = lanzar(m)
+m.correr(200_000, nmi_cada=9000)
+comprobar(not lanzo and 'La EEPROM no responde' in m.pantalla() and not marca(m), 'RBF sin la ventana: «La EEPROM no responde» y no lanza')
+Maquina.RBF_EEPROM = staticmethod(lambda cfg: bytes(cfg[:64]) == rbf100[:64])
 
 # ------------------------------------------------------------------ etapa 6: menú ordenado, información y último juego
 def imagen6(nombre):

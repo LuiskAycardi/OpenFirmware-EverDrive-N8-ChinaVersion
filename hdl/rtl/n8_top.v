@@ -425,6 +425,8 @@ module n8_top (
 `ifdef N8_RBF_100
             8'd115:                                 begin g_dout = do_004; g_doe = doe_004; end
             8'd16, 8'd157, 8'd159:                  begin g_dout = do_016; g_doe = doe_016; end
+            // modo OS: la ventana $5400-$55FF de las EEPROM del Bandai (el único módulo que conduce en el OS)
+            8'hFF:                                  begin g_dout = do_016; g_doe = doe_016; end
 `endif
 `ifdef N8_RBF_101
             8'd243, 8'd150:                         begin g_dout = do_243; g_doe = doe_243; end
@@ -513,14 +515,15 @@ module n8_top (
     assign prg_ce_n = !(cpu_mem_on && s_prg_rom_en);
     assign ram_ce   =   cpu_mem_on && s_prg_ram_en && !s_prg_rom_en;
     // ------------------------------------------------------------ la FPGA conduce el bus de datos de la CPU
-    // Solo en lecturas, con M2 alto, fuera del OS, y con la habilitación estable dos ciclos de clk (40 ns).
+    // Solo en lecturas, con M2 alto, fuera del OS (salvo la ventana de las EEPROM), y con la habilitación estable dos ciclos de clk (40 ns).
     // /ROMSEL baja 15-30 ns después de subir M2: en ese hueco una lectura de ROM en $C101 o $D000 se parece
     // a una de $4101 o $5000; con 40 ns de espera ese instante nunca conduce. Quedan > 200 ns de M2 alto
     // para el dato. Se suelta en cuanto baja M2. Mientras tanto
     // las SRAM no sacan datos (prg_oe/ram_oe apagados). Solo los bits que conduce el chip real; los demás
     // quedan en Z y la CPU ve el bus abierto. Mismo esquema que el MMC5 del kit de Krikzz (hecho leído).
     // En el N8 de Famicom no hay transceptores: la FPGA llega al bus por 100 ohmios.
-    wire cpu_oe_now = !os_mode && cpu_rw && m2 && (g_doe != 8'd0);
+    // En el modo OS solo conduce la ventana de las EEPROM (mapper_bandaifcg.v, RBF 100), que el OS lee tras un RESET.
+    wire cpu_oe_now = cpu_rw && m2 && (g_doe != 8'd0);
     reg  cpu_oe_q1 = 1'b0, cpu_oe_q2 = 1'b0;
     always @(posedge clk) begin cpu_oe_q1 <= cpu_oe_now; cpu_oe_q2 <= cpu_oe_q1 && cpu_oe_now; end
     wire cpu_drive = cpu_oe_now && cpu_oe_q1 && cpu_oe_q2;

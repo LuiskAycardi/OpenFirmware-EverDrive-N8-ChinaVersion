@@ -11,6 +11,11 @@
 ;   partida_marcar      (justo antes de saltar al juego) deja la marca de «partida pendiente» en el banco 8
 ;   partida_pendiente   si hay marca, vuelca la PRG-RAM encima del archivo y borra la marca
 ;
+; EEPROM serie (Bandai 16/157/159, eeprom.s): con pt_eep_tam <> 0 (lo pone lanzar.s) la partida mide esos bytes
+; (128, 256 o 384) y no va a los bancos 0-7 sino a un sector del banco 8 ($6E00), que eeprom.s pasa a la EEPROM de
+; la FPGA antes de saltar y recoge de ella al volver. La marca lleva entonces el bit 4 del byte del índice (y el
+; bit 5 cuando ya se recogió: si después falla la escritura, la copia del banco 8 sigue valiendo tras apagar).
+;
 ; La marca vive en la PRG-RAM 0x10000 (banco 8, ventana $6000): fuera de los 64 KiB de las partidas, fuera de lo
 ; que carga la BIOS (el OS.BIN propio ocupa 0x18000-0x1FFFF y el v13, 0x12000-0x1FFFF) y ningún mapper la toca. Si
 ; la RAM tiene pila, sobrevive al apagado: la partida se guarda en el encendido siguiente.
@@ -23,7 +28,8 @@
         .include "os.inc"
 
         .export partida_nombre, partida_preparar, partida_marcar, partida_pendiente, pt_err, pt_sect_nueva
-        .export partida_hay_marca, banco_marca, pt_nom, pt_len, igual_largo
+        .export partida_hay_marca, banco_marca, pt_nom, pt_len, igual_largo, pt_eep_tam
+        .import eep_volcar
         .import dir_abrir_raiz, dir_abrir, dir_abrir_c, dir_buscar, dir_siguiente, ent_clus
         .import arch_abrir, arch_avanzar, arch_lba
         .import fat_error, fat_spc, fat_desp, sector, lfn_val, lfn_crudo, lfn_crudo_n
@@ -37,6 +43,9 @@ E_LLENA_FAT = 13                ; fat.s: E_LLENA
 REG_RAM     = 129               ; banco de 8 KiB de la PRG-RAM en $6000
 VENT        = $6000
 BANCO_MARCA = 8
+BUF_EEP     = $6E00             ; sector de la partida de EEPROM, en el banco 8 (eeprom.s)
+B_EEP       = $10               ; bits del byte del índice en la marca: partida de EEPROM
+B_RECOGIDA  = $20               ; y ya recogida de la FPGA al banco 8
 MAX_SECT    = 128               ; 64 KiB
 NOM_MAX     = 255               ; caracteres de un nombre largo
 
@@ -69,6 +78,8 @@ pt_hallada: .res 1
 pt_intentos: .res 1
 pt_ck:      .res 1
 pt_err:     .res 1              ; fat_error del último fallo (para el mensaje)
+pt_eep_tam: .res 2              ; bytes de la EEPROM del juego que se lanza (0 = no tiene; lo pone lanzar.s)
+pt_eep:     .res 1              ; <> 0: la partida que se carga o se guarda es de EEPROM (sector en $6E00)
 MARCA_TAM = 19
 pt_marca:   .res MARCA_TAM      ; "N8SV", versión, lba(4), idx, clus(4), tam(4), suma
 
@@ -748,6 +759,12 @@ crear:
         sta     pt_tam+3
         sta     pt_cur_ok
         sta     pt_i
+        lda     pt_eep                  ; EEPROM: el tamaño de la EEPROM (128, 256 o 384 bytes)
+        beq     @entrada
+        lda     pt_eep_tam
+        sta     pt_tam
+        lda     pt_eep_tam+1
+        sta     pt_tam+1
 @entrada:
         jsr     montar_ent
         lda     pt_i                    ; hc_lba[pt_i]: ¿es el sector que ya está en `sector`?
@@ -1000,6 +1017,9 @@ suma_corto:
 ; ------------------------------------------------------------------------------------------------ preparar
 ; Busca la partida (o la crea) y la copia a la PRG-RAM desde 0x00000. Acarreo = 1: no se puede (A = L_*).
 partida_preparar:
+        lda     pt_eep_tam
+        ora     pt_eep_tam+1
+        sta     pt_eep
         lda     #8
         sta     pt_intentos
 @busca: jsr     buscar
@@ -1056,7 +1076,9 @@ partida_preparar:
         bcc     @lee
         lda     fat_error
         jmp     @err
-@resto: lda     pt_sect                 ; si mide menos de 8 KiB, el resto de los 8 KiB a $FF
+@resto: lda     pt_eep                  ; (EEPROM: un sector y nada más)
+        bne     @hecho
+        lda     pt_sect                 ; si mide menos de 8 KiB, el resto de los 8 KiB a $FF
         cmp     #16
         bcs     @hecho
         jsr     ventana
@@ -1087,7 +1109,13 @@ partida_preparar:
 ventana:
         lda     #REG_RAM
         sta     REG_SEL
-        lda     pt_i
+        lda     pt_eep
+        beq     :+
+        lda     #BANCO_MARCA            ; EEPROM: un solo sector, en $6E00 del banco 8
+        sta     REG_DAT
+        lda     #>BUF_EEP
+        bne     @ptr
+:       lda     pt_i
         lsr
         lsr
         lsr
@@ -1100,7 +1128,7 @@ ventana:
         asl
         clc
         adc     #>VENT
-        sta     sd_ptr+1
+@ptr:   sta     sd_ptr+1
         lda     #<VENT
         sta     sd_ptr
         rts
@@ -1166,7 +1194,11 @@ abrir_partida:
         bcc     @abre
 @max:   lda     #MAX_SECT
         sta     pt_sect
-@abre:  jsr     arch_abrir
+@abre:  lda     pt_eep                  ; EEPROM: solo el primer sector (un .srm de 8 KiB de antes también vale)
+        beq     :+
+        lda     #1
+        sta     pt_sect
+:       jsr     arch_abrir
         clc
         rts
 @no:    lda     #L_PERDIDA
@@ -1195,8 +1227,12 @@ partida_marcar:
         sta     pt_marca+14,x
         dex
         bpl     @c
-        lda     pt_idx
+        lda     pt_eep
+        beq     :+
+        lda     #B_EEP
+:       ora     pt_idx
         sta     pt_marca+9
+escribir_marca:
         jsr     suma_marca
         sta     pt_marca+18
         jsr     banco_marca
@@ -1248,7 +1284,24 @@ partida_pendiente:
         lda     pt_marca+9
         and     #$0F
         sta     pt_idx
-        jsr     abrir_partida
+        lda     pt_marca+9
+        and     #B_EEP
+        sta     pt_eep
+        beq     @abre
+        lda     pt_marca+9              ; EEPROM: primero se recoge de la FPGA (si no se hizo ya)
+        and     #B_RECOGIDA
+        bne     @abre
+        jsr     eep_volcar              ; (el banco 8 está en la ventana: partida_hay_marca)
+        bcc     :+
+        jsr     borrar_marca            ; la FPGA se recargó: la partida de esa sesión se perdió
+        lda     #M_EEPPERD
+        clc
+        rts
+:       lda     pt_marca+9
+        ora     #B_RECOGIDA
+        sta     pt_marca+9
+        jsr     escribir_marca
+@abre:  jsr     abrir_partida
         bcc     @escribe
         cmp     #L_PERDIDA
         bne     @mal

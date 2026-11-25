@@ -285,8 +285,10 @@ la ve.
 partida», «Error al escribir la SD nn» (`0B`: la tarjeta rechaza el bloque, por ejemplo protegida contra
 escritura), «Partida vacía en EDFC/SAVE» (un `.srm` de 0 bytes) y «Sin guardar la anterior: nn».
 
-**Límites:** no hay copia de seguridad del `.srm` anterior; los mappers con EEPROM (Bandai 16/159, Datach) o con
-RAM dentro del FPGA (sonido del Namco 163) no guardan; las partidas del v13 (`EDFC/SAVE/<rom>.nes`) no se leen.
+**Límites:** no hay copia de seguridad del `.srm` anterior; la RAM interna de 128 bytes del Namco 163 (la del
+sonido, dentro del FPGA) no se guarda: ningún juego de la colección guarda ahí, todos usan la PRG-RAM, que sí se
+guarda (igual que la del 153, Famicom Jump II); las partidas del v13 (`EDFC/SAVE/<rom>.nes`) no se leen. Las EEPROM
+serie del Bandai sí se guardan desde el 2026-11-24 (abajo).
 
 **Pruebas** (`herramientas/probar_os.py`, con fsck.fat y mtools sobre la imagen después de cada paso): crear la
 partida a `$FF`, marca en el banco 8, guardar al volver con RESET, cargarla al lanzar otra vez sin escribir nada,
@@ -294,6 +296,36 @@ apagado dentro del juego con la RAM con pila (se guarda al encender) y sin pila 
 o que no coincide, partida copiada del PC con otras mayúsculas, NES 2.0 de 32 KiB (4 bancos), ROM 8.3, `EDFC/SAVE`
 sin sitio (el nombre largo queda partido entre dos clústeres), sin `EDFC/SAVE`, FAT16, SDSC, tarjeta llena y
 tarjeta que rechaza las escrituras.
+
+### EEPROM serie del Bandai (`src/eeprom.s`, 2026-11-24)
+
+Algunos juegos de Bandai no guardan en una PRG-RAM sino en una **EEPROM serie** que el N8 lleva dentro del FPGA
+(`hdl/rtl/eeprom_24c0x.v`, en el 100.RBF): la 24C01 de 128 bytes del **159** (Dragon Ball Z: Kyoushuu! Saiya Jin,
+SD Gundam Gaiden, Magical Taruruuto-kun), la 24C02 de 256 bytes del **16** con pila (Dragon Ball Z II/III/Gaiden,
+SD Gundam Gaiden 2/3, Rokudenashi Blues) y las del **157** (Datach: la 24C02 de la base, que llevan todos sus juegos,
+y en Battle Rush, el único con pila, otra 24C01 en el cartucho). El 16 sin pila es la placa FCG-1/2, sin EEPROM.
+
+- **Formato:** `EDFC/SAVE/<nombre>.srm` con los bytes de la EEPROM tal cual: 128 (159), 256 (16 y 157) o 384 (Battle
+  Rush: los 256 de la base y después los 128 del cartucho). Es el contenido que guarda Mesen2 (comprobado en su
+  código) en `<rom>.eeprom128` / `<rom>.eeprom256`: basta con cambiar el nombre (Battle Rush va en los dos archivos:
+  se separa con `head -c 256` / `tail -c 128` y se une con `cat`). Una partida nueva empieza a `$FF`, como una EEPROM borrada. Un `.srm` de 8 KiB que
+  hubiera dejado una versión anterior vale también: se usan y se guardan sus primeros bytes.
+- **Cómo:** en el modo OS el mapper está en reset y la memoria de las EEPROM se ve en una ventana de la FPGA
+  (`$5400-$54FF` la principal, `$5500-$557F` la del cartucho del Datach, `$5580-$55FF` = `$A5`). Al lanzar, la
+  partida se lee a un sector del banco 8 de la PRG-RAM (`$6E00`, no a los bancos 0-7), y con el RBF del juego ya
+  cargado se copia a la ventana y se relee (si no coincide: «La EEPROM no responde» y no se lanza). La marca de
+  partida pendiente lleva el bit 4 del byte del índice. Al volver con **RESET** el RBF sigue en el FPGA y su memoria
+  intacta: el OS la recoge de la ventana al banco 8 (bit 5 de la marca: recogida) y la escribe en el `.srm`.
+- **Apagar:** la EEPROM está dentro del FPGA, que se recarga al encender. **Hay que salir del juego con RESET antes de
+  apagar**; al lanzar estos juegos el OS lo recuerda 1,5 s en la fila de mensajes («Pulsa RESET antes de apagar»).
+  Si se apaga dentro del juego, al encender sale «EEPROM perdida al apagar» (la partida de esa sesión se pierde; el
+  `.srm` se queda como estaba). Si se recogió pero no se pudo escribir (tarjeta protegida), la copia del banco 8 tiene
+  pila y se guarda en el encendido siguiente.
+- El código va en el overlay del banco 8 (`FDSOVL`, con el FDS y las opciones): la ROM del OS está casi llena.
+- **Pruebas** (`herramientas/probar_os.py`; el modelo de `tools/bios/maquina.py` tiene la ventana en el 100.RBF):
+  crear, pasar a la EEPROM, recoger y guardar al volver, volver a cargar los cuatro tamaños (159, 16, 157 y 157 con
+  pila), el 16 sin pila, un `.srm` antiguo de 8 KiB, apagado sin RESET, recogida con la tarjeta protegida y guardado al
+  encender, y un RBF sin la ventana.
 
 ### Resultados en la NES (2026-11-18, con la capturadora y el Nano, SD de 4 GB con clúster de 32 KiB)
 
