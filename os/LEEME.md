@@ -326,6 +326,15 @@ y en Battle Rush, el único con pila, otra 24C01 en el cartucho). El 16 sin pila
   crear, pasar a la EEPROM, recoger y guardar al volver, volver a cargar los cuatro tamaños (159, 16, 157 y 157 con
   pila), el 16 sin pila, un `.srm` antiguo de 8 KiB, apagado sin RESET, recogida con la tarjeta protegida y guardado al
   encender, y un RBF sin la ventana.
+- **En la Famicom (2026-11-25, N8 de Famicom, kit Lava, capturadora):** SD Gundam Gaiden (159), Battle Rush (157 con
+  pila) y Dragon Ball Z II (16) se lanzan con el aviso, así que la ventana se escribe y se relee bien desde el modo OS
+  (lo que conduce la FPGA en `$5400` llega a la CPU con el CPLD en modo OS). Al volver con el Lava: «Vuelta de juego»
+  y «Partida guardada». En la SD, los `.srm` miden 128, 256 y 384 bytes; el de Battle Rush lleva la 24C02 de la base
+  tal como la dejó el juego (la vio vacía y la inicializó: «BA» y ceros en los 256 bytes) y la 24C01 del cartucho a
+  `$FF`; los otros dos no escribieron en la EEPROM en esos segundos (en Mesen2 tampoco). Falta: el N8 de NES (con
+  transceptores) y la persistencia tras apagar (el N8 de Famicom tiene la pila agotada). Antes de la prueba, con el
+  menú quieto, la Famicom se colgó una vez (pantalla de basura y la copia del OS en la RAM dañada; hubo que apagar);
+  no se repitió en el resto de la sesión ni se sabe la causa.
 
 ### Resultados en la NES (2026-11-18, con la capturadora y el Nano, SD de 4 GB con clúster de 32 KiB)
 
