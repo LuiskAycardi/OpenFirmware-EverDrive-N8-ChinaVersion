@@ -331,10 +331,13 @@ y en Battle Rush, el único con pila, otra 24C01 en el cartucho). El 16 sin pila
   (lo que conduce la FPGA en `$5400` llega a la CPU con el CPLD en modo OS). Al volver con el Lava: «Vuelta de juego»
   y «Partida guardada». En la SD, los `.srm` miden 128, 256 y 384 bytes; el de Battle Rush lleva la 24C02 de la base
   tal como la dejó el juego (la vio vacía y la inicializó: «BA» y ceros en los 256 bytes) y la 24C01 del cartucho a
-  `$FF`; los otros dos no escribieron en la EEPROM en esos segundos (en Mesen2 tampoco). Falta: el N8 de NES (con
-  transceptores) y la persistencia tras apagar (el N8 de Famicom tiene la pila agotada). Antes de la prueba, con el
+  `$FF`; los otros dos no escribieron en la EEPROM en esos segundos (en Mesen2 tampoco). Antes de la prueba, con el
   menú quieto, la Famicom se colgó una vez (pantalla de basura y la copia del OS en la RAM dañada; hubo que apagar);
   no se repitió en el resto de la sesión ni se sabe la causa.
+- **En la NES (2026-11-25, N8 de NES con pila, botón RESET por D2):** Battle Rush se lanza (la ventana también pasa
+  por los transceptores del N8 de NES), RESET → «Vuelta de juego» y «Partida guardada»; lanzado otra vez y apagada
+  la consola dentro del juego, al encender: «Frío (BIOS)» y «EEPROM perdida al apagar». El caso «recogida pero sin
+  escribir y guardada al encender» solo está probado en el simulador.
 
 ### Resultados en la NES (2026-11-18, con la capturadora y el Nano, SD de 4 GB con clúster de 32 KiB)
 
