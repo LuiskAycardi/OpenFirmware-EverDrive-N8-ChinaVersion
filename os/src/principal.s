@@ -1772,15 +1772,24 @@ opc_cargar:
 ; NMI: lee el mando una vez por fotograma, como el v13 (puerto 1 y el de expansión de la Famicom: bits 0 y 1 de
 ; $4016 y $4017). El kit Lava ve las mismas lecturas para su reset (Select ~2 s y luego Select+A).
 ; No toca $4400/$4401: puede caer en mitad de una lectura de la SD.
-; Mientras el OS arranca (mando_on = 0) no lee el mando: así cada reset deja un silencio largo sin LATCH (lo que
-; tarda en leer la SD), que el Nano del banco cuenta como un reset. Con la lectura activa desde el principio el
-; silencio era de 54 ms, menos que su umbral de 60 ms (medido en la NES).
+; Mientras el OS arranca (mando_on = 0), los primeros ARR_SILENCIO fotogramas no lee el mando: así cada reset deja un
+; silencio sin LATCH que el Nano del banco cuenta como un reset (con la lectura activa desde el principio el silencio
+; era de 54 ms, menos que su umbral de 60 ms; medido en la NES). Después sí lo lee, aunque siga arrancando: el kit Lava
+; solo ve el mando cuando el programa lo lee, y si el arranque pasa segundos sin leerlo (al volver de un disco FDS,
+; fds_pendiente compara el disco entero con la SD) sigue viendo Select+A pulsados y resetea una y otra vez, cortando
+; cada vez la lectura de la SD, hasta que la tarjeta deja de contestar (2026-11-24, en la Famicom: «SD: error 01»).
+ARR_SILENCIO = 6                ; ~100 ms desde que se activa la NMI
 nmi:    pha
         txa
         pha
         lda     mando_on
-        beq     @sin_mando
-        lda     #1
+        bne     @leer
+        lda     nmis+1
+        bne     @leer
+        lda     nmis
+        cmp     #ARR_SILENCIO
+        bcc     @sin_mando
+@leer:  lda     #1
         sta     MANDO1
         lda     #0
         sta     MANDO1

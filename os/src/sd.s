@@ -47,6 +47,7 @@ sd_error:   .res 1
 sd_r1:      .res 1              ; última respuesta R1
 sd_sdhc:    .res 1              ; 1 = direcciones por bloque
 sd_v2:      .res 1              ; contestó a CMD8
+sd_mudo:    .res 1              ; ACMD41 seguidos sin respuesta
 
         .segment "CODE"
 
@@ -149,6 +150,7 @@ sd_iniciar:
         bne     @rel
 
         jsr     sd_parar                ; cortar una lectura múltiple a medias (la que deja la BIOS)
+        jsr     vaciar                  ; y terminar lo que quede (un bloque o la espera de una grabación)
 
         ; CMD0: a reposo
         ldy     #16
@@ -188,15 +190,25 @@ sd_iniciar:
 @sin8:  jsr     sd_fin
 
         ; ACMD41 hasta que salga del reposo
-        lda     #0
-        sta     sd_n+1                  ; hasta 4096 intentos
-        lda     #$10
+        lda     #$10                    ; hasta 4096 intentos
         sta     sd_n+1
+        lda     #0
+        sta     sd_mudo
         ldy     #0
 @a41:   jsr     arg_cero
         lda     #55
         jsr     orden_simple
-        jsr     arg_cero
+        cmp     #$FF                    ; sin respuesta: 16 seguidas y se da por perdida (con el SPI lento, los
+        bne     @habla                  ; 4096 intentos mudos tardaban decenas de segundos: parecía un cuelgue)
+        inc     sd_mudo
+        lda     sd_mudo
+        cmp     #16
+        bcc     @a41b
+        lda     #E_ACMD41
+        jmp     error
+@habla: lda     #0
+        sta     sd_mudo
+@a41b:  jsr     arg_cero
         lda     sd_v2
         beq     @sin_hcs
         lda     #$40                    ; HCS: admitimos SDHC
@@ -252,6 +264,26 @@ error:  sta     sd_error
         jsr     cs_alto
         sec
         rts
+
+; Con la tarjeta seleccionada, saca bytes hasta ver 16 $FF seguidos (como mucho 65536): termina un bloque de datos o
+; la espera de una grabación que un reset dejó a medias. Usa Y y sd_n.
+vaciar: jsr     cs_bajo
+        lda     #0
+        sta     sd_n
+        sta     sd_n+1
+@n16:   ldy     #16
+@v:     lda     #$FF
+        jsr     spi
+        cmp     #$FF
+        bne     @otra
+        dey
+        beq     @fin
+        bne     @v
+@otra:  dec     sd_n
+        bne     @n16
+        dec     sd_n+1
+        bne     @n16
+@fin:   jmp     sd_fin
 
 ; Corta una lectura múltiple (CMD12), espera a que la tarjeta quede libre y la suelta.
 sd_parar:

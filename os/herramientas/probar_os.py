@@ -1044,7 +1044,13 @@ fds_esperado = FDS_F4[:16] + b''.join(fdsmod.deshacer_cara(c, cambios[k]) for k,
 dif = {i // 512 for i in range(len(FDS_F4)) if FDS_F4[i] != fds_esperado[i]}
 n24 = len(escrituras(m))
 m.reset_consola()
+nmi0, lat0 = m.n_nmi, len(m.latches)
 m.correr(60_000_000, lambda m: m.prgram[0x10180] != 0x4E, nmi_cada=9000)     # hasta que se borra la marca
+lat = [(n - nmi0, pan) for n, pan in m.latches[lat0:]]
+comprobar(lat and lat[0][0] >= 6 and any(not pan for _, pan in lat),
+          f'F4: al volver, ningún LATCH del mando en las 6 primeras NMI (el Nano ve el reset) y sí mientras se compara '
+          f'el disco con la pantalla apagada (el kit Lava ve los botones sueltos) (primero en la NMI {lat[0][0] if lat else "-"}, '
+          f'{sum(1 for _, p in lat if not p)} con la pantalla apagada)')
 m.correr(PASOS, nmi_cada=9000)
 pan = m.pantalla()
 comprobar('Disco FDS guardado' in pan and 'Arranque: vuelta de juego' in pan, f'F4: al volver, «Disco FDS guardado» ({fila25(pan)})')

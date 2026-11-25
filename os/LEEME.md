@@ -541,3 +541,28 @@ Select+Start abre «Opciones» desde la lista; ▶ tres veces da +3, ◀ manteni
 da −2; B vuelve a la lista igual que estaba. El −2 sigue ahí tras un RESET (y Super Mario Bros. se lanza con él) y
 **tras apagar y encender** la consola (PRG-RAM con pila). Se dejó en 0. Que el volumen cambie de verdad solo se puede
 oír en la Famicom (pendiente, con la calibración).
+
+## Reset del kit Lava al volver de un disco FDS (corregido el 2026-11-24)
+
+**Síntoma (Famicom, dos de dos veces):** el reset del kit Lava desde un disco FDS se repetía unas 20 veces y acababa
+en «SD: error 01 R1=82» (o `R1=00`); con otro reset, pantalla negra hasta apagar. **Causa:** el Lava solo ve el mando
+cuando el programa lo lee. Al volver del disco, `fds_pendiente` compara el disco entero con la SD durante segundos
+sin leer el mando (la NMI no lo leía mientras el OS arrancaba), así que el Lava seguía «viendo» Select+A pulsados y
+reseteaba cada 1,4 s; cada reset cortaba la lectura de la SD a medias y volvía a empezar la comparación. La SD no
+llegó a escribirse (el disco y la FAT, intactos).
+
+**Arreglo:**
+- La NMI lee el mando también mientras el OS arranca, pasados los 6 primeros fotogramas (~100 ms): el Nano sigue
+  viendo el silencio del reset (su umbral es de 60 ms) y el Lava ve los botones sueltos.
+- `sd_iniciar`, tras el CMD12, vacía la tarjeta (hasta ver 16 `$FF` seguidos) antes del CMD0, por si un reset dejó
+  un bloque o una grabación a medias; y en ACMD41 se rinde tras 16 órdenes sin respuesta (antes, 4096 intentos con
+  el SPI lento tardaban decenas de segundos: parecía un cuelgue).
+
+**En la Famicom:** tres veces seguidas, disco FDS → reset del Lava → modo banco con la SD bien, y cada vez 1 vuelta +
+3 resets, los mismos 4 que cuenta el Nano. Banco: `probar_os.py` (F4) comprueba que tras el reset no hay LATCH del
+mando en las 6 primeras NMI y que sí lo hay mientras se compara el disco con la pantalla apagada (`tools/bios`
+registra ahora los LATCH en `Maquina.latches`).
+
+**Nota:** el N8 de Famicom de estas pruebas tiene la **pila agotada**. No influye en los resets (la consola sigue
+encendida y la PRG-RAM se conserva), pero al apagar pierde lo que guarda el banco 8: volumen, posición del modo banco,
+marca del disco FDS y partidas. El OS valida firma y suma, así que arranca con los valores por defecto.

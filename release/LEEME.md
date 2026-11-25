@@ -317,17 +317,19 @@ with your factory SD card it works exactly as before.
 - Partidas de los mappers con EEPROM (Bandai 16/159, Datach) y de la RAM interna del Namco 163.
 - Save states y Game Genie.
 - **Sonido de expansión** (VRC6, VRC7, Sunsoft 5B, Namco 163, MMC5, FDS): solo se oye en la **Famicom**; la NES no
-  mezcla el audio del cartucho. Aún no hay control de volumen (será la próxima versión).
-- FDS: probado en una NES real; en la Famicom todavía no. Una vez, nada más cambiar la SD, la vuelta con RESET tras
-  un disco arrancó el menú «en frío» y sin guardar el disco; no se ha vuelto a ver en las pruebas siguientes.
+  mezcla el audio del cartucho. El volumen se cambia con Select + Start (calibrado en una Famicom AV).
+- FDS: probado en una NES y en una Famicom reales. Hasta la v0.6.1, el reset del kit Lava RGB (Select y luego
+  Select+A) al salir de un disco podía repetirse sin fin y dejar la SD sin contestar («SD: error 01», solo se
+  arreglaba apagando); corregido después de la v0.6.1.
 
 **EN**
 - Saves for mappers with an EEPROM (Bandai 16/159, Datach) and for the Namco 163's internal RAM.
 - Save states and Game Genie.
 - **Expansion audio** (VRC6, VRC7, Sunsoft 5B, Namco 163, MMC5, FDS): only heard on the **Famicom**; the NES does not
-  mix the cartridge audio. There is no volume control yet (it will come in the next version).
-- FDS: tested on a real NES; not on the Famicom yet. Once, right after changing the SD card, going back with RESET
-  after a disk started the menu "cold" and without saving the disk; it has not happened again in later tests.
+  mix the cartridge audio. The volume is set with Select + Start (calibrated on a Famicom AV).
+- FDS: tested on a real NES and a real Famicom. Up to v0.6.1, the Lava RGB kit reset (Select then Select+A) when
+  leaving a disk could repeat endlessly and leave the SD card unresponsive ("SD: error 01", only fixed by switching
+  off); fixed after v0.6.1.
 
 ## Cosas que conviene saber / Good to know
 

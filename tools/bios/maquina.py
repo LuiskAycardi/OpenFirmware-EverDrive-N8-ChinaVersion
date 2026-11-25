@@ -149,6 +149,8 @@ class Maquina:
         self.fpga_cfgs = []            # bytes recibidos por $4403 en cada configuración (pulso 0->1 del reg 6)
         self.ultimo_spi = 0xFF
         self.ppu_ctrl = self.ppu_mask = self.ppu_addr = self.ppu_latch = self.vbl = 0
+        self.n_nmi = 0                # NMI dadas (correr con nmi_cada)
+        self.latches = []             # cada LATCH del mando ($4016 bit 0 = 1): (NMI, pantalla encendida)
         self.escrituras_prgram = collections.Counter()   # por banco de 8 KiB
         self.pad = 0                   # botones del mando 1: bit 7 = A ... bit 0 = Derecha (orden de lectura)
         self.pad_sr = 0
@@ -224,6 +226,7 @@ class Maquina:
         if a == 0x4016:
             if v & 1:
                 self.pad_sr = self.pad
+                self.latches.append((self.n_nmi, bool(self.ppu_mask & 0x08)))   # (NMI, pantalla encendida)
             return
         if 0x4400 <= a <= 0x45FF:
             if len(self.accesos) < self.max_accesos:
@@ -361,6 +364,7 @@ class Maquina:
             if parar is not None and parar(self):
                 return 'parada'
             if nmi_cada and n % nmi_cada == 0 and (self.ppu_ctrl & 0x80):
+                self.n_nmi += 1
                 cpu.nmi()
         return 'limite'
 
