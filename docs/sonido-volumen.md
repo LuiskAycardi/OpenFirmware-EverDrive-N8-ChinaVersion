@@ -28,33 +28,43 @@ los picos (la etapa satura en el fondo de escala, nunca da la vuelta).
   de la salida (512), para que no recorten antes por un lado.
 - `n8_top.v`, función `ganancia(chip, paso)`: tabla generada por `hdl/tools/gen_ganancia.py`.
 
-## Ganancia base de cada chip (provisional)
+## Ganancia base de cada chip (calibrada en la Famicom el 2026-11-24)
 
-Hasta la calibración, la proporción entre chips es la de la mezcla de Mesen2 (`NesSoundMixer::GetOutputVolume`,
-medida por sus autores sobre consolas reales), tomando el **VRC6 como referencia** (ganancia ×1: suena igual que
-en la v0.6.0):
+Punto de partida: la proporción de mezcla de Mesen2 (`NesSoundMixer::GetOutputVolume`), con el VRC6 como referencia.
+Después se midió en la consola cuánto suena cada chip frente al APU y se corrigió cada base para que la proporción
+sea la de Mesen2:
 
-| Chip | Nivel del HDL | Peso en Mesen2 | Unidades de Mesen2 por nivel | Ganancia base (/256) | Máximo en paso 0 |
-|---|---|---|---|---|---|
-| VRC6 | (pulsos + sierra) × 8, hasta 488 | ×75 (15 × 5) | 9,375 | 256 (×1) | 488 |
-| FDS | nivel 0-63 × 16 | ×20 | 1,25 | 34 (×0,13) | 134 |
-| Sunsoft 5B | suma de la tabla, hasta 531 | ×15 | 15 | 410 (×1,6) | 850 |
-| Namco 163 | 240 ± media × 2 | ×20 | 10 | 273 (×1,07) | 512 ± 256 |
-| VRC7 | 512 + muestra / 16 | ×1 | 16 | 437 (×1,71) | 512 ± (según el juego) |
-| MMC5 | pulsos + PCM, hasta 285 | ×43 | 43 | 1174 (×4,6) | 137 (pulsos), satura con PCM alto |
-| tono de prueba (mapper 247) | 192 | — | — | 256 (×1) | 192 |
+| Chip | Nivel del HDL | Peso en Mesen2 | Chip / APU en Mesen2 | Medido con la base de Mesen2 | Corrección | Base (/256) |
+|---|---|---|---|---|---|---|
+| VRC6 | (pulsos + sierra) × 8, hasta 488 | ×75 (15 × 5) | 1,506 | 1,136 | ×1,326 | 256 → **339** |
+| FDS | nivel 0-63 × 16 | ×20 | 1,687 | 1,327 | ×1,272 | 34 → **43** |
+| Sunsoft 5B | suma de la tabla, hasta 531 | ×15 | 3,555 | 2,709 | ×1,312 | 410 → **537** |
+| Namco 163 | 240 ± media × 2 | ×20 | 6,025 | 4,827 | ×1,248 | 273 → **341** |
+| VRC7 | 512 + muestra / 16 | ×1 | 4,257 | 3,399 | ×1,252 | 437 → **547** |
+| MMC5 | pulsos + PCM, hasta 285 | ×43 | 0,864 | 0,668 | ×1,294 | 1174 → **1519** |
+| tono de prueba (mapper 247) | 192 | — | — | — | — | 256 |
 
-Así el fondo de escala del convertidor (1023) equivale a unas 9600 unidades de Mesen2, casi el doble del máximo del
-APU (~5000): queda margen para los chips más fuertes. Lo que no se sabe sin medir es **cuánto suena el pin 97 frente
-al APU** en la Famicom (depende del filtro y de la resistencia de mezcla de la placa): eso lo fija la calibración.
+«Chip / APU» es la amplitud de la nota de 440 Hz del chip a su volumen máximo frente al pulso 1 del APU a volumen 15.
+Las proporciones de Mesen2 entre chips se cumplen en la consola con un ±3 %: solo faltaba un factor común de ~×1,28.
+Se usa la corrección medida de cada chip (la diferencia entre ellas, ±0,25 dB, no se oye).
 
-## Calibración en la Famicom (pendiente)
+**Recorte:** con el volumen calibrado, casi nada llega al fondo de escala del convertidor. Solo el PCM del MMC5 por
+encima de ~170 (de 255) y el 5B con sus tres canales a volumen 15 a la vez. Con pasos positivos recortan antes los
+chips más fuertes (5B, N163, VRC7): es el precio de subir el volumen.
 
-1. Una ROM de prueba propia por chip que alterne, cada segundo, una nota del APU (pulso a volumen 15, ciclo 50 %) y
-   una del chip a volumen conocido (en el FDS, un disco de prueba).
-2. Grabar el audio de la Famicom por la capturadora (HDMI del GBSC) y medir el nivel de las dos notas.
-3. Comparar la proporción con la de Mesen2 para esas mismas notas y ajustar el factor común (y, si un chip se aparta,
-   su base) en `gen_ganancia.py`; regenerar la tabla de `n8_top.v` y compilar los RBF.
+## Calibración (`tools/calibracion`, 2026-11-24)
+
+- Famicom AV (con kit Lava RGB → GBS-Control → capturadora HDMI MS2109, audio a 48 kHz) y el **N8 de Famicom**, con
+  la v0.6.1-beta (la primera vez que nuestro OS y nuestro 255.RBF corren en el N8 de Famicom: arrancan bien).
+- `cal.s` (una ROM por chip: VRC6, 5B, N163, VRC7, MMC5, y un disco para el FDS) alterna 1 s del pulso del APU, 0,5 s
+  de silencio, 2 s del chip y 0,5 s de silencio, todo a ~440 Hz. Validadas en Mesen2 con N8_AUDIO: los niveles son
+  los mismos con su mapper y con nuestro HDL.
+- `medir.py` graba 16 s, separa los tramos por duración y compara la amplitud de la fundamental de 440 Hz
+  (los filtros de la consola, del GBS-Control y de la capturadora afectan igual a las dos notas). La dispersión entre
+  tramos de una grabación fue del 0,0 %; el nivel del APU varió un ±4 % entre grabaciones (por eso se mide la
+  proporción dentro de cada una).
+- Lección: el reset del kit Lava solo funciona si el programa lee el mando. Las primeras ROMs no lo leían; ahora
+  `cal.s` lo lee en cada fotograma.
 
 ## Pruebas
 

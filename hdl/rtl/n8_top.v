@@ -600,8 +600,8 @@ module n8_top (
     end
 
     // Volumen (reg 137, docs/sonido-volumen.md): ganancia = base del chip x 2^((paso-4)/2), en 1/256. Tabla
-    // generada por hdl/tools/gen_ganancia.py (las bases salen de la mezcla de Mesen2, provisionales hasta la
-    // calibración con la Famicom). Constante por juego: el paso solo cambia en el modo OS.
+    // generada por hdl/tools/gen_ganancia.py: bases de la mezcla de Mesen2, calibradas en la Famicom el 2026-11-24
+    // (tools/calibracion). Constante por juego: el paso solo cambia en el modo OS.
     function [12:0] ganancia(input [2:0] chip, input [3:0] paso);
         case ({chip, paso})
             // tono  base  256
@@ -614,66 +614,66 @@ module n8_top (
             {3'd0, 4'd6}: ganancia = 13'd512;
             {3'd0, 4'd7}: ganancia = 13'd724;
             {3'd0, 4'd8}: ganancia = 13'd1024;
-            // fds   base   34
-            {3'd1, 4'd0}: ganancia = 13'd9;
-            {3'd1, 4'd1}: ganancia = 13'd12;
-            {3'd1, 4'd2}: ganancia = 13'd17;
-            {3'd1, 4'd3}: ganancia = 13'd24;
-            {3'd1, 4'd4}: ganancia = 13'd34;
-            {3'd1, 4'd5}: ganancia = 13'd48;
-            {3'd1, 4'd6}: ganancia = 13'd68;
-            {3'd1, 4'd7}: ganancia = 13'd96;
-            {3'd1, 4'd8}: ganancia = 13'd136;
-            // vrc6  base  256
-            {3'd2, 4'd0}: ganancia = 13'd64;
-            {3'd2, 4'd1}: ganancia = 13'd91;
-            {3'd2, 4'd2}: ganancia = 13'd128;
-            {3'd2, 4'd3}: ganancia = 13'd181;
-            {3'd2, 4'd4}: ganancia = 13'd256;
-            {3'd2, 4'd5}: ganancia = 13'd362;
-            {3'd2, 4'd6}: ganancia = 13'd512;
-            {3'd2, 4'd7}: ganancia = 13'd724;
-            {3'd2, 4'd8}: ganancia = 13'd1024;
-            // 5b    base  410
-            {3'd3, 4'd0}: ganancia = 13'd103;
-            {3'd3, 4'd1}: ganancia = 13'd146;
-            {3'd3, 4'd2}: ganancia = 13'd205;
-            {3'd3, 4'd3}: ganancia = 13'd290;
-            {3'd3, 4'd4}: ganancia = 13'd410;
-            {3'd3, 4'd5}: ganancia = 13'd580;
-            {3'd3, 4'd6}: ganancia = 13'd820;
-            {3'd3, 4'd7}: ganancia = 13'd1160;
-            {3'd3, 4'd8}: ganancia = 13'd1640;
-            // n163  base  273
-            {3'd4, 4'd0}: ganancia = 13'd68;
-            {3'd4, 4'd1}: ganancia = 13'd97;
-            {3'd4, 4'd2}: ganancia = 13'd137;
-            {3'd4, 4'd3}: ganancia = 13'd193;
-            {3'd4, 4'd4}: ganancia = 13'd273;
-            {3'd4, 4'd5}: ganancia = 13'd386;
-            {3'd4, 4'd6}: ganancia = 13'd546;
-            {3'd4, 4'd7}: ganancia = 13'd772;
-            {3'd4, 4'd8}: ganancia = 13'd1092;
-            // vrc7  base  437
-            {3'd5, 4'd0}: ganancia = 13'd109;
-            {3'd5, 4'd1}: ganancia = 13'd155;
-            {3'd5, 4'd2}: ganancia = 13'd219;
-            {3'd5, 4'd3}: ganancia = 13'd309;
-            {3'd5, 4'd4}: ganancia = 13'd437;
-            {3'd5, 4'd5}: ganancia = 13'd618;
-            {3'd5, 4'd6}: ganancia = 13'd874;
-            {3'd5, 4'd7}: ganancia = 13'd1236;
-            {3'd5, 4'd8}: ganancia = 13'd1748;
-            // mmc5  base 1174
-            {3'd6, 4'd0}: ganancia = 13'd294;
-            {3'd6, 4'd1}: ganancia = 13'd417;
-            {3'd6, 4'd2}: ganancia = 13'd587;
-            {3'd6, 4'd3}: ganancia = 13'd830;
-            {3'd6, 4'd4}: ganancia = 13'd1174;
-            {3'd6, 4'd5}: ganancia = 13'd1660;
-            {3'd6, 4'd6}: ganancia = 13'd2348;
-            {3'd6, 4'd7}: ganancia = 13'd3320;
-            {3'd6, 4'd8}: ganancia = 13'd4696;
+            // fds   base   43
+            {3'd1, 4'd0}: ganancia = 13'd11;
+            {3'd1, 4'd1}: ganancia = 13'd15;
+            {3'd1, 4'd2}: ganancia = 13'd22;
+            {3'd1, 4'd3}: ganancia = 13'd30;
+            {3'd1, 4'd4}: ganancia = 13'd43;
+            {3'd1, 4'd5}: ganancia = 13'd61;
+            {3'd1, 4'd6}: ganancia = 13'd86;
+            {3'd1, 4'd7}: ganancia = 13'd122;
+            {3'd1, 4'd8}: ganancia = 13'd172;
+            // vrc6  base  339
+            {3'd2, 4'd0}: ganancia = 13'd85;
+            {3'd2, 4'd1}: ganancia = 13'd121;
+            {3'd2, 4'd2}: ganancia = 13'd170;
+            {3'd2, 4'd3}: ganancia = 13'd240;
+            {3'd2, 4'd4}: ganancia = 13'd339;
+            {3'd2, 4'd5}: ganancia = 13'd479;
+            {3'd2, 4'd6}: ganancia = 13'd678;
+            {3'd2, 4'd7}: ganancia = 13'd959;
+            {3'd2, 4'd8}: ganancia = 13'd1356;
+            // 5b    base  537
+            {3'd3, 4'd0}: ganancia = 13'd134;
+            {3'd3, 4'd1}: ganancia = 13'd191;
+            {3'd3, 4'd2}: ganancia = 13'd269;
+            {3'd3, 4'd3}: ganancia = 13'd380;
+            {3'd3, 4'd4}: ganancia = 13'd537;
+            {3'd3, 4'd5}: ganancia = 13'd759;
+            {3'd3, 4'd6}: ganancia = 13'd1074;
+            {3'd3, 4'd7}: ganancia = 13'd1519;
+            {3'd3, 4'd8}: ganancia = 13'd2148;
+            // n163  base  341
+            {3'd4, 4'd0}: ganancia = 13'd85;
+            {3'd4, 4'd1}: ganancia = 13'd121;
+            {3'd4, 4'd2}: ganancia = 13'd171;
+            {3'd4, 4'd3}: ganancia = 13'd241;
+            {3'd4, 4'd4}: ganancia = 13'd341;
+            {3'd4, 4'd5}: ganancia = 13'd482;
+            {3'd4, 4'd6}: ganancia = 13'd682;
+            {3'd4, 4'd7}: ganancia = 13'd964;
+            {3'd4, 4'd8}: ganancia = 13'd1364;
+            // vrc7  base  547
+            {3'd5, 4'd0}: ganancia = 13'd137;
+            {3'd5, 4'd1}: ganancia = 13'd194;
+            {3'd5, 4'd2}: ganancia = 13'd274;
+            {3'd5, 4'd3}: ganancia = 13'd387;
+            {3'd5, 4'd4}: ganancia = 13'd547;
+            {3'd5, 4'd5}: ganancia = 13'd773;
+            {3'd5, 4'd6}: ganancia = 13'd1094;
+            {3'd5, 4'd7}: ganancia = 13'd1547;
+            {3'd5, 4'd8}: ganancia = 13'd2188;
+            // mmc5  base 1519
+            {3'd6, 4'd0}: ganancia = 13'd380;
+            {3'd6, 4'd1}: ganancia = 13'd540;
+            {3'd6, 4'd2}: ganancia = 13'd760;
+            {3'd6, 4'd3}: ganancia = 13'd1074;
+            {3'd6, 4'd4}: ganancia = 13'd1519;
+            {3'd6, 4'd5}: ganancia = 13'd2148;
+            {3'd6, 4'd6}: ganancia = 13'd3038;
+            {3'd6, 4'd7}: ganancia = 13'd4296;
+            {3'd6, 4'd8}: ganancia = 13'd6076;
             default: ganancia = 13'd256;
         endcase
     endfunction

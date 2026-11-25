@@ -80,3 +80,4 @@ tools/fds/salida_mesen/
 /tools/fds/prueba_boton/*.bin
 /tools/fds/sonido_replay/obj/
 /tools/fds/sonido_replay/replay
+/tools/calibracion/out/
