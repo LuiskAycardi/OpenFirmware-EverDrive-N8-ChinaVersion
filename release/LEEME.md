@@ -16,7 +16,8 @@ elegida en rojo, la información del juego, saltos por letra y vuelta al último
 para pruebas automáticas (ver «Uso»). **Novedad de la v0.6.0: Famicom Disk System** (discos `.fds`, con tu propia
 BIOS FDS; ver «Famicom Disk System»), carga rápida y cambio de cara automático. **Novedad de la v0.6.1: volumen del
 sonido de expansión** (FDS, VRC6, VRC7, 5B, N163, MMC5; se oye en la Famicom) en la pantalla de opciones,
-**Select + Start**.
+**Select + Start**. **Novedad de la v0.6.2: volumen calibrado en una Famicom** (cada chip suena frente al de la
+consola como en el emulador Mesen2) y arreglado el reset del kit Lava al salir de un disco FDS.
 
 **EN** — Free (GPL-3.0-or-later) firmware for the microSD card of the **EverDrive N8 China Version** (Chinese
 clone with an EP2C5 FPGA, NON-PRO version), **Famicom and NES** cartridges. It is a **complete own build**:
@@ -34,7 +35,9 @@ saves battery-backed games** (see "Saved games"). **New in v0.5.1: a sorted menu
 entry in red, game information, letter jumps and back to the last game at power-on) and a **test-bench mode** for
 automated tests (see "Usage"). **New in v0.6.0: Famicom Disk System** (`.fds` disks, with your own FDS BIOS; see
 "Famicom Disk System"), fast loading and automatic side switching. **New in v0.6.1: expansion audio volume**
-(FDS, VRC6, VRC7, 5B, N163, MMC5; heard on the Famicom) in the options screen, **Select + Start**.
+(FDS, VRC6, VRC7, 5B, N163, MMC5; heard on the Famicom) in the options screen, **Select + Start**. **New in v0.6.2:
+volume calibrated on a Famicom** (each chip sounds against the console's own sound as in the Mesen2 emulator) and a fix
+for the Lava kit reset when leaving an FDS disk.
 
 ## Qué contiene / Contents
 
@@ -320,7 +323,7 @@ with your factory SD card it works exactly as before.
   mezcla el audio del cartucho. El volumen se cambia con Select + Start (calibrado en una Famicom AV).
 - FDS: probado en una NES y en una Famicom reales. Hasta la v0.6.1, el reset del kit Lava RGB (Select y luego
   Select+A) al salir de un disco podía repetirse sin fin y dejar la SD sin contestar («SD: error 01», solo se
-  arreglaba apagando); corregido después de la v0.6.1.
+  arreglaba apagando); corregido en la v0.6.2.
 
 **EN**
 - Saves for mappers with an EEPROM (Bandai 16/159, Datach) and for the Namco 163's internal RAM.
@@ -329,7 +332,7 @@ with your factory SD card it works exactly as before.
   mix the cartridge audio. The volume is set with Select + Start (calibrated on a Famicom AV).
 - FDS: tested on a real NES and a real Famicom. Up to v0.6.1, the Lava RGB kit reset (Select then Select+A) when
   leaving a disk could repeat endlessly and leave the SD card unresponsive ("SD: error 01", only fixed by switching
-  off); fixed after v0.6.1.
+  off); fixed in v0.6.2.
 
 ## Cosas que conviene saber / Good to know
 

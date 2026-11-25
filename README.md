@@ -12,6 +12,14 @@ cartridge reads from the microSD card comes from here: **our own OS** (menu, bat
 menu RBF and **195 mappers** in Verilog. Clean-room implementation, validated against the Mesen2 emulator with
 synthetic-ROM fuzzing, simulation testbenches and real games on the console.
 
+> 🎚️ **ES — Novedad (25-11-2026): v0.6.2-beta, volumen calibrado en una Famicom.** Con ROMs de prueba propias y el
+> audio grabado de una Famicom AV, cada chip de sonido del cartucho suena frente al de la consola como en Mesen2 (a
+> menos de un 2 %). Además, el reset del kit Lava RGB al salir de un disco FDS ya no se repite sin fin.
+>
+> 🎚️ **EN — News (25 Nov 2026): v0.6.2-beta, volume calibrated on a Famicom.** With our own test ROMs and audio
+> recorded from a Famicom AV, each cartridge sound chip now sounds against the console's own sound as in Mesen2
+> (within 2 %). Also, the Lava RGB kit reset when leaving an FDS disk no longer repeats endlessly.
+>
 > 🔊 **ES — Novedad (24-11-2026): v0.6.1-beta, volumen del sonido de expansión.** Select+Start en el menú abre
 > «Opciones»: el volumen del sonido del cartucho (FDS, VRC6, VRC7, 5B, N163, MMC5) de −4 a +4, guardado con pila. Los
 > mappers se repartieron para que ningún RBF pase del 85 % del FPGA. Probado en una NES real.
