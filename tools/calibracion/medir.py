@@ -30,15 +30,15 @@ import numpy as np
 
 APU = 95.88 * 5000 / (8128 / 15 + 100)                  # pulso 1 a volumen 15
 FUND_CUAD = 4 / math.pi / 2                             # fundamental de una cuadrada del 50 % por unidad de pico a pico
-# chip: (pico a pico en Mesen2, forma, nivel pico a pico en el DAC con la ganancia de hoy (paso 0), ganancia base hoy)
+# chip: (pico a pico en Mesen2, forma, nivel pico a pico en el DAC con la ganancia de hoy (paso 0), ganancia base hoy, hdl/tools/gen_ganancia.py)
 VRC7_AMP = None                                         # amplitud del seno en unidades de Mesen2 (ver vrc7_amp)
 CHIPS = {
-    'VRC6': (15 * 75, 'cuadrada', 15 * 8, 256),
-    '5B':   (177 * 15, 'cuadrada', 177, 410),
-    'N163': (225 * 20, 'cuadrada', 450, 273),
-    'MMC5': (15 * 43, 'cuadrada', 15, 1174),
-    'FDS':  (63 * 20, 'cuadrada', 63 * 16, 34),
-    'VRC7': (None, 'seno', None, 437),
+    'VRC6': (15 * 75, 'cuadrada', 15 * 8, 339),
+    '5B':   (177 * 15, 'cuadrada', 177, 537),
+    'N163': (225 * 20, 'cuadrada', 450, 341),
+    'MMC5': (15 * 43, 'cuadrada', 15, 1519),
+    'FDS':  (63 * 20, 'cuadrada', 63 * 16, 43),
+    'VRC7': (None, 'seno', None, 547),
 }
 
 

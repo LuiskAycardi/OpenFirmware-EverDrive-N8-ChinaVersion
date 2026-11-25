@@ -63,6 +63,9 @@ chips más fuertes (5B, N163, VRC7): es el precio de subir el volumen.
   (los filtros de la consola, del GBS-Control y de la capturadora afectan igual a las dos notas). La dispersión entre
   tramos de una grabación fue del 0,0 %; el nivel del APU varió un ±4 % entre grabaciones (por eso se mide la
   proporción dentro de cada una).
+- **Comprobación con los RBF calibrados** (misma tarde, mismas ROMs): chip / APU medido frente a Mesen2: VRC6 1,532
+  (1,506), 5B 3,610 (3,555), N163 5,940 (6,025), MMC5 0,875 (0,864), VRC7 4,260 (4,257), FDS 1,687 (1,687). Todos a
+  menos de un 1,7 % de Mesen2 (±0,15 dB).
 - Lección: el reset del kit Lava solo funciona si el programa lee el mando. Las primeras ROMs no lo leían; ahora
   `cal.s` lo lee en cada fotograma.
 
