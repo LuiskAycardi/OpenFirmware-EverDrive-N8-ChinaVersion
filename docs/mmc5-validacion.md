@@ -100,6 +100,29 @@ calibración de mezcla y revisión de la frecuencia del frame de audio, y resolv
 el límite físico de fine-Y para poder afirmar split completo. Los tests de
 Mesen2 de 180 fotogramas no certifican todas las pantallas ni todos los juegos.
 
+## Prueba en la NES (2026-11-25, v0.6.3-beta, 103.RBF de la release)
+
+Primera prueba del 103 en la consola (NES con kit Lava RGB, capturadora y mando emulado con el Nano). Motivo: en la
+prueba de concepto del «modo imagen» del OS se vio que el transceptor de datos de la PPU (`ppu_ex = s_ciram_en` en
+`n8_top.v`) queda desconectado con A13=1 si la CIRAM está habilitada, y se sospechaba que el MMC5 tenía el mismo
+fallo. No lo tiene: `nt_internal` pone `ciram_en = 0` solo por dirección (y por el contador de fetch) en todas las
+lecturas que sirve la FPGA (ExRAM como nametable, fill, atributos extendidos, split), así que `ppu_ex` baja antes de
+/RD. `tb_mmc5_bus` lo comprueba ahora con /RD alto y durante la lectura (fill, atributo del fill, ExRAM como
+nametable en lectura y escritura, y CIRAM normal); con el fallo provocado (`ciram_en = ppu_a[13]`) da 6 errores.
+
+| Juego (NTSC) | Qué se vio | Resultado |
+|---|---|---|
+| Castlevania III (USA) | intro en tira de película, título, escena de la oración, fase 1 con marcador, scroll, velas | bien |
+| Just Breed (Japan) | partidas, nombre, intro con kanji, pueblo con color por casilla y scroll; «Partida guardada» al volver | bien |
+| Uchuu Keibitai SDF (Japan) | título, despegue, juego, READY, Game Over y continuar | bien (no se identificó la escena del split) |
+| Laser Invasion (USA) | título, sesión informativa con retrato, selección de equipo, cabina con el marcador partido por la IRQ | bien |
+| Bandit Kings of Ancient China (USA) | logos, título, menús y escenarios; «Partida guardada» al volver | bien |
+| Aoki Ookami to Shiroki Mejika - Genchou Hishi (Japan) | logos, título, mapa con ventanas, retratos y kanji | bien |
+
+Ninguna imagen con bloques de 16x16 de paletas al azar (el síntoma del transceptor). Sin comprobar: el sonido del
+MMC5 (el NES no saca el audio de expansión), el split vertical en una escena que lo use de verdad (con su límite de
+fine-Y) y partidas largas. Metal Slader Glory (512 KiB de CHR) no cabe en la SRAM CHR del N8 (0x7F000 es del menú).
+
 ## Reproducción desde la raíz
 
 ```
