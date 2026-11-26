@@ -144,13 +144,20 @@ module mapper_mmc5 (
     reg [1:0] repeated_nt=0, idle_cpu=0;
     reg [7:0] scanline=0;
     reg irq_pend=0, in_frame=0, need_frame=0;
+    // Fetch slot of the line: NT reads since the line start (32 BG tiles, 8 sprites, 2 prefetched tiles). An NT
+    // read right after another NT read is not counted, whatever its address: on the NES each sprite makes two
+    // garbage nametable reads (seen on the console with Uchuu Keibitai SDF: counting both, the 8x16 sprites after
+    // the 4th one took the BG CHR set; for the first sprite the two addresses differ, v is reloaded at dot 257).
+    // Mesen2 makes one NT and one attribute read. BG NT reads always follow a pattern read, so they always count.
     reg [5:0] tile_fetch=0;
     reg read_consumed=0;
     reg [9:0] nt_offset=0;
     wire read_event = rd_sync[2:1]==2'b10;
     wire cpu_tick = m2_sync[2:1]==2'b01;
     wire nt_tile = ppu_a[13:12]==2'b10 && ppu_a[9:6]!=4'hf;
-    wire [5:0] fetch_index=tile_fetch + ((nt_tile && !read_consumed)?6'd1:6'd0);
+    wire last_nt = last_read[13:12]==2'b10 && last_read[9:6]!=4'hf;
+    wire nt_new = nt_tile && !last_nt;
+    wire [5:0] fetch_index=tile_fetch + ((nt_new && !read_consumed)?6'd1:6'd0);
     wire attr_fetch = ppu_a[13:12]==2'b10 && ppu_a[9:6]==4'hf;
     wire rd_5204 = reg_sel && cpu_rw && ra==12'h204;
     reg ack_toggle=0;
@@ -175,7 +182,7 @@ module mapper_mmc5 (
                 idle_cpu<=0;
                 if(nt_tile) begin
                     nt_offset<=ppu_a[9:0];
-                    tile_fetch<=tile_fetch+1'b1;
+                    if(nt_new) tile_fetch<=tile_fetch+1'b1;
                     if(need_frame) begin in_frame<=1; need_frame<=0; end
                 end
                 // Three equal NT reads arm a line; the following read clocks it.

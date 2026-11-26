@@ -357,7 +357,7 @@ with your factory SD card it works exactly as before.
 - **Cabeceras:** el menú lee bien las cabeceras iNES y NES 2.0 (en v0.2.x el OS propio leía mal las NES 2.0 y
   lanzaba esas ROMs con el mapper equivocado; corregido en v0.3.0).
 - **Diferencias conocidas** con el emulador Mesen2 (detalle en `docs/fase4-mappers.md` del repositorio): el
-  split vertical del MMC5 tiene limitaciones por el cableado de la SRAM; Kart Fighter (116) recibe en Mesen2 una
+  split vertical del MMC5 solo admite el desplazamiento fino que permite el cableado, como los cartuchos de Nintendo (en la consola, Uchuu Keibitai SDF se ve bien); Kart Fighter (116) recibe en Mesen2 una
   IRQ que aquí no llega (en una NES real el juego va bien con nuestro mapper: la diferencia es del emulador); Famicom Jump II (153) se cuelga si su partida empieza a cero (también en el emulador);
   algunos efectos de pantalla partida difieren unos píxeles en la línea del corte.
 - **Qué está probado en una NES real:**
@@ -375,7 +375,7 @@ with your factory SD card it works exactly as before.
 - **Headers:** the menu reads iNES and NES 2.0 headers correctly (in v0.2.x our OS misread NES 2.0 headers and
   launched those ROMs with the wrong mapper; fixed in v0.3.0).
 - **Known differences** from the Mesen2 emulator (details in the repository's `docs/fase4-mappers.md`): the MMC5
-  vertical split is limited by the SRAM wiring; Kart Fighter (116) receives an IRQ in Mesen2 that does not arrive
+  vertical split only allows the fine scroll the wiring permits, like Nintendo's own boards (Uchuu Keibitai SDF looks right on the console); Kart Fighter (116) receives an IRQ in Mesen2 that does not arrive
   here (on a real NES the game works with our mapper: the difference is the emulator's); Famicom Jump II (153) hangs if its save starts zeroed (also in the emulator); some split-screen effects
   differ by a few pixels on the split line.
 - **What has been tested on a real NES:**

@@ -115,7 +115,7 @@ nametable en lectura y escritura, y CIRAM normal); con el fallo provocado (`cira
 |---|---|---|
 | Castlevania III (USA) | intro en tira de película, título, escena de la oración, fase 1 con marcador, scroll, velas | bien |
 | Just Breed (Japan) | partidas, nombre, intro con kanji, pueblo con color por casilla y scroll; «Partida guardada» al volver | bien |
-| Uchuu Keibitai SDF (Japan) | título, despegue, juego, READY, Game Over y continuar | bien (no se identificó la escena del split) |
+| Uchuu Keibitai SDF (Japan) | título, despegue, juego, READY, Game Over y continuar | bien; la intro con split, ver abajo |
 | Laser Invasion (USA) | título, sesión informativa con retrato, selección de equipo, cabina con el marcador partido por la IRQ | bien |
 | Bandit Kings of Ancient China (USA) | logos, título, menús y escenarios; «Partida guardada» al volver | bien |
 | Aoki Ookami to Shiroki Mejika - Genchou Hishi (Japan) | logos, título, mapa con ventanas, retratos y kanji | bien |
@@ -123,6 +123,38 @@ nametable en lectura y escritura, y CIRAM normal); con el fallo provocado (`cira
 Ninguna imagen con bloques de 16x16 de paletas al azar (el síntoma del transceptor). Sin comprobar: el sonido del
 MMC5 (el NES no saca el audio de expansión), el split vertical en una escena que lo use de verdad (con su límite de
 fine-Y) y partidas largas. Metal Slader Glory (512 KiB de CHR) no cabe en la SRAM CHR del N8 (0x7F000 es del menú).
+
+## Split y sprites de 8x16 en la NES (2026-11-26)
+
+**Split.** Uchuu Keibitai SDF lo usa en la intro, en la pantalla de datos de la nave (desde el fotograma 528 sin
+pulsar nada: `$5200=$D4`, región a la derecha desde la columna 20, banco `$0B`; `$5201` sube de 8 en 8). En la NES el
+panel de la derecha (F-ARMS, SPEC., MODEL…) sale limpio. El límite del fine-Y (A0-A2 de la SRAM CHR directas de la
+PPU) es el mismo que el de las placas de Nintendo («CL», según NESdev): solo valen valores de `$5201` cuyos 3 bits
+bajos coinciden con el fine-Y de la PPU, que es justo lo que hace SDF. El banco de Mesen2 no reproduce la
+temporización del split (la región sale desplazada con el RTL viejo y con el nuevo): para el split manda la consola.
+
+**Sprites de 8x16 (corregido).** En la misma escena, el texto «ROUND WAVER» (sprites de 8x16) salía en la NES con
+los sprites del 5.º en adelante tomados del juego B de CHR (el del fondo). Causa: la fase de sprites se reconoce
+contando lecturas de nametable por línea (32 tiles, 8 sprites, 2 de precarga) y en la NES cada sprite hace **dos**
+lecturas basura de nametable (Mesen2: una de nametable y otra de atributo), así que el contador corría el doble.
+Además, en el primer sprite las dos direcciones son distintas (la PPU recarga `v` en el punto 257). Arreglo:
+una lectura de nametable que va justo detrás de otra no cuenta, sea cual sea su dirección. Las de fondo siempre
+siguen a una de patrón y Mesen2 hace nametable + atributo, así que en el banco nada cambia salvo las lecturas de
+relleno (337/339 y el punto 1, que no afectan a la imagen).
+
+Se probaron y descartaron dos variantes: contar lecturas de patrón (arreglaba la consola, pero el puente del banco
+junta las dos lecturas de patrón de cada sprite y rompía el título de SDF) y no contar la repetida por dirección
+(en la consola quedaba un sprite roto por línea).
+
+- `tb_mmc5_spr` (nuevo): líneas completas con las lecturas basura de tres formas (nametable + atributo, dos de
+  nametable iguales y el 1.er sprite con dos direcciones); los 8 sprites con el juego A y el fondo con el B al
+  principio y al final de cada lectura. 1515 comprobaciones; el RTL anterior falla 48 en la segunda forma.
+- Trazas de lecturas de la PPU sacadas de Mesen2 (SDF y Castlevania III, dos fotogramas) pasadas por el RTL viejo y
+  el nuevo: mismo índice de fetch en todas las lecturas salvo las de relleno.
+- Banco frente a Mesen2 (900-1320 fotogramas): mismos fotogramas de separación que el RTL anterior (SDF 531 por el
+  split, Laser Invasion 242, CV3 y Just Breed diferencias menores; en CV3 6 píxeles de una línea distintos).
+- NES: «ROUND WAVER» limpio en 12 fotos seguidas; Castlevania III, Just Breed y Laser Invasion sin cambios.
+- 103.RBF: 1126 LE (24 %), holgura de +6,1 ns.
 
 ## Reproducción desde la raíz
 
