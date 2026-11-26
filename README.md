@@ -12,6 +12,18 @@ cartridge reads from the microSD card comes from here: **our own OS** (menu, bat
 menu RBF and **195 mappers** in Verilog. Clean-room implementation, validated against the Mesen2 emulator with
 synthetic-ROM fuzzing, simulation testbenches and real games on the console.
 
+> 🎮 **ES — Novedad (26-11-2026): v0.6.4-beta, MMC5 corregido y verificado en una NES real.** Los sprites de 8x16 de
+> los juegos MMC5 (RBF 103) ya no salen con tiles del fondo: la NES hace dos lecturas basura de nametable por sprite y el
+> mapper las contaba dos veces (lo destapó la intro de Uchuu Keibitai SDF). Probados a fondo en la consola Castlevania
+> III, Just Breed, Uchuu Keibitai SDF (con su split vertical), Laser Invasion, Bandit Kings y Aoki Ookami (con sus
+> partidas), y Kart Fighter y Somari (116).
+>
+> 🎮 **EN — News (26 Nov 2026): v0.6.4-beta, MMC5 fixed and verified on a real NES.** The 8x16 sprites of MMC5 games
+> (RBF 103) no longer show background tiles: the NES makes two garbage nametable reads per sprite and the mapper counted
+> both (Uchuu Keibitai SDF's intro revealed it). Tested in depth on the console: Castlevania III, Just Breed, Uchuu
+> Keibitai SDF (with its vertical split), Laser Invasion, Bandit Kings and Aoki Ookami (with their saves), and Kart
+> Fighter and Somari (116).
+>
 > 💾 **ES — Novedad (25-11-2026): v0.6.3-beta, partidas de los juegos con EEPROM.** Los Bandai que guardan en una
 > EEPROM serie (mappers 16, 159 y 157 Datach: Dragon Ball Z, SD Gundam Gaiden…) ya guardan su partida en la microSD,
 > en el mismo formato que Mesen2. Probado en una Famicom y en una NES reales. Sal con RESET antes de apagar.

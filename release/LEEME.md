@@ -18,7 +18,8 @@ BIOS FDS; ver «Famicom Disk System»), carga rápida y cambio de cara automáti
 sonido de expansión** (FDS, VRC6, VRC7, 5B, N163, MMC5; se oye en la Famicom) en la pantalla de opciones,
 **Select + Start**. **Novedad de la v0.6.2: volumen calibrado en una Famicom** (cada chip suena frente al de la
 consola como en el emulador Mesen2) y arreglado el reset del kit Lava al salir de un disco FDS. **Novedad de la
-v0.6.3: partidas de los juegos con EEPROM** de Bandai (Dragon Ball Z, SD Gundam Gaiden, Datach…; ver «Partidas»).
+v0.6.3: partidas de los juegos con EEPROM** de Bandai (Dragon Ball Z, SD Gundam Gaiden, Datach…; ver «Partidas»). **Novedad de la v0.6.4: MMC5 corregido y verificado en una NES real**
+(los sprites de 8x16 ya no toman tiles del fondo; split vertical de Uchuu Keibitai SDF comprobado).
 
 **EN** — Free (GPL-3.0-or-later) firmware for the microSD card of the **EverDrive N8 China Version** (Chinese
 clone with an EP2C5 FPGA, NON-PRO version), **Famicom and NES** cartridges. It is a **complete own build**:
@@ -39,7 +40,8 @@ automated tests (see "Usage"). **New in v0.6.0: Famicom Disk System** (`.fds` di
 (FDS, VRC6, VRC7, 5B, N163, MMC5; heard on the Famicom) in the options screen, **Select + Start**. **New in v0.6.2:
 volume calibrated on a Famicom** (each chip sounds against the console's own sound as in the Mesen2 emulator) and a fix
 for the Lava kit reset when leaving an FDS disk. **New in v0.6.3: saves for games with an EEPROM** from Bandai (Dragon
-Ball Z, SD Gundam Gaiden, Datach…; see "Saved games").
+Ball Z, SD Gundam Gaiden, Datach…; see "Saved games"). **New in v0.6.4: MMC5 fixed and verified on a real NES** (8x16 sprites
+no longer take background tiles; Uchuu Keibitai SDF's vertical split checked).
 
 ## Qué contiene / Contents
 
