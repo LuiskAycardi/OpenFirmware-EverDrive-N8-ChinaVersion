@@ -120,8 +120,9 @@ synthetic-ROM fuzzing, simulation testbenches and real games on the console.
   Wizards & Warriors III (7) y Metal Force (156); además, tramos de los mappers 3, 11, 30, 79 y 87 y la
   IRQ del 65 medida con una ROM de prueba. **Los RBF 103 a 106** también se han probado en la consola: 39
   juegos NTSC elegidos por cobertura, 20 segundos cada uno (MMC5, VRC7 y los mappers 35, 56, 59, 83, 90, 91,
-  105, 111, 114, 116, 117, 121, 176, 194, 209, 211, 215, 219, 222 y 234). El resto de mappers solo se ha
-  validado en el emulador.
+  105, 111, 114, 116, 117, 121, 176, 194, 209, 211, 215, 219, 222 y 234). Más a fondo (jugando y con sus
+  partidas): seis juegos MMC5 (`docs/mmc5-validacion.md`) y Kart Fighter y Somari (116), que en la consola van
+  bien aunque Kart Fighter difiere en Mesen2. El resto de mappers solo se ha validado en el emulador.
 - **RBF limpios**: cada RBF recibe el número de mapper tal cual está en la cabecera de la ROM. El OS v13 de
   fábrica cambia el 219 por 0 y el 220 por 4; hasta noviembre de 2026 el RTL deshacía ese cambio, y ya no.
   Con el OS de fábrica, el 219 (Toy Story) vuelve a no funcionar; con el OS propio sí debería, aunque no se ha
@@ -147,8 +148,9 @@ synthetic-ROM fuzzing, simulation testbenches and real games on the console.
   (7) and Metal Force (156); plus stretches of mappers 3, 11, 30, 79 and 87 and the mapper 65 IRQ
   measured with a test ROM. **RBF 103 to 106** have been tested on the console too: 39 NTSC games picked by
   coverage, 20 seconds each (MMC5, VRC7 and mappers 35, 56, 59, 83, 90, 91, 105, 111, 114, 116, 117, 121,
-  176, 194, 209, 211, 215, 219, 222 and 234). The remaining mappers have only been validated in the
-  emulator.
+  176, 194, 209, 211, 215, 219, 222 and 234). In more depth (playing, with their saves): six MMC5 games
+  (`docs/mmc5-validacion.md`) and Kart Fighter and Somari (116), which work on the console although Kart Fighter
+  differs in Mesen2. The remaining mappers have only been validated in the emulator.
 - **Clean RBF files**: each RBF gets the mapper number exactly as written in the ROM header. The factory OS
   v13 turns 219 into 0 and 220 into 4; until November 2026 the RTL undid that change, and it no longer does.
   With the factory OS, mapper 219 (Toy Story) fails again; with our own OS it should work, although it has

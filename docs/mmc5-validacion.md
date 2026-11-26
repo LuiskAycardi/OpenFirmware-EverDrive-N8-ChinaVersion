@@ -102,7 +102,8 @@ Mesen2 de 180 fotogramas no certifican todas las pantallas ni todos los juegos.
 
 ## Prueba en la NES (2026-11-25, v0.6.3-beta, 103.RBF de la release)
 
-Primera prueba del 103 en la consola (NES con kit Lava RGB, capturadora y mando emulado con el Nano). Motivo: en la
+Prueba larga del 103 en la consola (NES con kit Lava RGB, capturadora y mando emulado con el Nano); antes solo
+se había probado 20 segundos por juego en la tanda automática de los RBF 103-106. Motivo: en la
 prueba de concepto del «modo imagen» del OS se vio que el transceptor de datos de la PPU (`ppu_ex = s_ciram_en` en
 `n8_top.v`) queda desconectado con A13=1 si la CIRAM está habilitada, y se sospechaba que el MMC5 tenía el mismo
 fallo. No lo tiene: `nt_internal` pone `ciram_en = 0` solo por dirección (y por el contador de fetch) en todas las

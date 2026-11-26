@@ -358,11 +358,12 @@ with your factory SD card it works exactly as before.
   lanzaba esas ROMs con el mapper equivocado; corregido en v0.3.0).
 - **Diferencias conocidas** con el emulador Mesen2 (detalle en `docs/fase4-mappers.md` del repositorio): el
   split vertical del MMC5 tiene limitaciones por el cableado de la SRAM; Kart Fighter (116) recibe en Mesen2 una
-  IRQ que aquí no llega; Famicom Jump II (153) se cuelga si su partida empieza a cero (también en el emulador);
+  IRQ que aquí no llega (en una NES real el juego va bien con nuestro mapper: la diferencia es del emulador); Famicom Jump II (153) se cuelga si su partida empieza a cero (también en el emulador);
   algunos efectos de pantalla partida difieren unos píxeles en la línea del corte.
 - **Qué está probado en una NES real:**
   - con este OS y este 255: arranque, carpetas y páginas, RESET y kit Lava, Super Mario Bros. (0), Super Mario
-    Bros. 3 (4), Akira (33), Wario Land 2 (35), Toy Story (219) y Aoki Ookami (MMC5); partidas de Zelda (MMC1):
+    Bros. 3 (4), Akira (33), Wario Land 2 (35), Toy Story (219), los MMC5 Castlevania III, Just Breed, Uchuu Keibitai SDF, Laser
+    Invasion, Bandit Kings y Aoki Ookami (con sus partidas), y Kart Fighter y Somari (116); partidas de Zelda (MMC1):
     crear, guardar con RESET y con el apagado, y la tarjeta revisada después con `fsck.fat`;
   - los mappers, con el OS de fábrica: 71 mappers entre las pruebas a mano, una tanda automática de 39 juegos
     (RBF 103-106) y películas TAS de TASVideos comparadas con Mesen2. El resto, solo en el emulador. Lista en el
@@ -375,11 +376,12 @@ with your factory SD card it works exactly as before.
   launched those ROMs with the wrong mapper; fixed in v0.3.0).
 - **Known differences** from the Mesen2 emulator (details in the repository's `docs/fase4-mappers.md`): the MMC5
   vertical split is limited by the SRAM wiring; Kart Fighter (116) receives an IRQ in Mesen2 that does not arrive
-  here; Famicom Jump II (153) hangs if its save starts zeroed (also in the emulator); some split-screen effects
+  here (on a real NES the game works with our mapper: the difference is the emulator's); Famicom Jump II (153) hangs if its save starts zeroed (also in the emulator); some split-screen effects
   differ by a few pixels on the split line.
 - **What has been tested on a real NES:**
   - with this OS and this 255: boot, folders and pages, RESET and the Lava kit, Super Mario Bros. (0), Super
-    Mario Bros. 3 (4), Akira (33), Wario Land 2 (35), Toy Story (219) and Aoki Ookami (MMC5); Zelda (MMC1) saves:
+    Mario Bros. 3 (4), Akira (33), Wario Land 2 (35), Toy Story (219), the MMC5 games Castlevania III, Just Breed, Uchuu Keibitai SDF,
+    Laser Invasion, Bandit Kings and Aoki Ookami (with their saves), and Kart Fighter and Somari (116); Zelda (MMC1) saves:
     creating, saving with RESET and at power-off, and the card checked afterwards with `fsck.fat`;
   - the mappers, with the factory OS: 71 mappers across manual tests, an automated run of 39 games (RBF
     103-106) and TASVideos TAS movies compared with Mesen2. The rest only in the emulator. List in the

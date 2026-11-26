@@ -442,6 +442,11 @@ como referencia de hechos, sin copiar código).
       detector de A12 fuera de ese modo y además reacciona a un aviso de dirección de la PPU que no cambia
       la dirección (línea 240). Nada de eso es visible en el bus del cartucho; aquí esa IRQ no salta y el
       juego sigue otro camino desde el título. Hay que verlo en la consola.
+      **Comprobado en la NES (2026-11-26, 105.RBF de la v0.6.3-beta):** Kart Fighter (116) funciona igual que la
+      versión K-F1 (mapper 4, MMC3 normal): título, selección de personaje, pelea con el marcador partido por la
+      IRQ, pausa y vuelta al menú con RESET. Somari v1.1 (116) también: título, Green Hill Zone, enemigos, muerte y
+      reaparición. La diferencia es solo de Mesen2; el HDL no se cambia. (Una primera tanda con el cartucho movido
+      dio motas de sprites en el título, a Bowser roto y letras cambiadas en el menú: era el contacto.)
   - Correcciones que salieron de los juegos: el 253 arranca con el mirroring de la cabecera (Mesen2 no lo
     cambia hasta `$9400`); su CHR-RAM se escribe una vez por pulso de /WR; el 116 deja leer la PRG-RAM en
     `$6000-$7FFF` (nunca escrita: allí todo son registros), como el oráculo.
