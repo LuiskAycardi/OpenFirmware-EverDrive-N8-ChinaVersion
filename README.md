@@ -1,5 +1,13 @@
 # OpenFirmware-EverDrive-N8-ChinaVersion
 
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-apoya%20el%20proyecto%20%2F%20support%20the%20project-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/luiskaycardi)
+
+> ☕ **ES** — Si este firmware te resulta útil, puedes apoyar su desarrollo con una donación en
+> **[Ko-fi](https://ko-fi.com/luiskaycardi)**. ¡Gracias!
+>
+> ☕ **EN** — If this firmware is useful to you, you can support its development with a donation on
+> **[Ko-fi](https://ko-fi.com/luiskaycardi)**. Thank you!
+
 **ES** — **Firmware libre completo** para el **EverDrive N8 China Version** (el clon chino del EverDrive N8, con
 FPGA **Altera Cyclone II EP2C5**), en sus dos versiones: **Famicom y NES**. Todo lo que el cartucho lee de la microSD
 sale de aquí: un **OS propio** (menú, partidas con pila, Famicom Disk System), el RBF del menú y **195 mappers** en
@@ -12,6 +20,16 @@ cartridge reads from the microSD card comes from here: **our own OS** (menu, bat
 menu RBF and **195 mappers** in Verilog. Clean-room implementation, validated against the Mesen2 emulator with
 synthetic-ROM fuzzing, simulation testbenches and real games on the console.
 
+> 🔊 **ES — Novedad (26-11-2026): v0.6.5-beta, sonido del Namco 163 como el chip real.** El N163 alterna sus canales
+> cada 15 ciclos, como el cartucho original (con 6-8 canales se oye su pitido de ~15 kHz; medido en una Famicom con
+> Erika to Satoru). El volumen calibrado no cambia. Además, el audio del MMC5 se ha comparado con el emulador Mesen2
+> en juegos reales (equivalente) y la música de Just Breed se ha oído en la Famicom.
+>
+> 🔊 **EN — News (26 Nov 2026): v0.6.5-beta, Namco 163 sound like the real chip.** The N163 cycles through its channels
+> every 15 cycles, like the original cartridge (with 6-8 channels you hear its ~15 kHz whine; measured on a Famicom with
+> Erika to Satoru). The calibrated volume does not change. Also, the MMC5 audio has been compared with the Mesen2
+> emulator in real games (equivalent) and Just Breed's music has been heard on the Famicom.
+>
 > 🎮 **ES — Novedad (26-11-2026): v0.6.4-beta, MMC5 corregido y verificado en una NES real.** Los sprites de 8x16 de
 > los juegos MMC5 (RBF 103) ya no salen con tiles del fondo: la NES hace dos lecturas basura de nametable por sprite y el
 > mapper las contaba dos veces (lo destapó la intro de Uchuu Keibitai SDF). Probados a fondo en la consola Castlevania

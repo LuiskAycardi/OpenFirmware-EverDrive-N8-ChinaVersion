@@ -1,5 +1,8 @@
 # Prueba F0 del FDS: escribir la SRAM PRG en modo juego
 
+> ☕ ¿Te resulta útil? Apoya el proyecto en **[Ko-fi](https://ko-fi.com/luiskaycardi)** / Find it useful? Support the
+> project on **[Ko-fi](https://ko-fi.com/luiskaycardi)**.
+
 Comprueba en la consola lo único del soporte FDS que depende del hardware y no del código: que la FPGA pueda
 **escribir la SRAM PRG en modo juego** (ahí vivirán la BIOS y las caras del disco) y **conducir lecturas en
 `$40xx`** (los registros del FDS). Ver [docs/fds-diseno.md](../../../docs/fds-diseno.md).

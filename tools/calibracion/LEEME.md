@@ -1,5 +1,8 @@
 # Calibración del volumen del sonido de expansión
 
+> ☕ ¿Te resulta útil? Apoya el proyecto en **[Ko-fi](https://ko-fi.com/luiskaycardi)** / Find it useful? Support the
+> project on **[Ko-fi](https://ko-fi.com/luiskaycardi)**.
+
 Mide en una Famicom cuánto suena cada chip de sonido del cartucho frente al APU de la consola, para ajustar su
 ganancia base (`hdl/tools/gen_ganancia.py`, `MEDIDO`). Resultados y método: [docs/sonido-volumen.md](../../docs/sonido-volumen.md).
 

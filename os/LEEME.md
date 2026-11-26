@@ -1,5 +1,8 @@
 # OS propio del EverDrive N8 clon — etapa 6: menú ordenado, información del juego y último juego
 
+> ☕ ¿Te resulta útil? Apoya el proyecto en **[Ko-fi](https://ko-fi.com/luiskaycardi)** / Find it useful? Support the
+> project on **[Ko-fi](https://ko-fi.com/luiskaycardi)**.
+
 `OS.BIN` propio (GPL-3.0-or-later): arranca desde la BIOS del cartucho, lee la microSD, recorre sus carpetas con
 nombres largos, lanza los juegos con nuestros RBF y guarda las partidas con pila en `EDFC/SAVE` (ver
 [docs/os-propio-viabilidad.md](../docs/os-propio-viabilidad.md) y [docs/bios-n8-clon.md](../docs/bios-n8-clon.md)).

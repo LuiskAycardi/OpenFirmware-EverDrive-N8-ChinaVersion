@@ -1,5 +1,8 @@
 # OpenFirmware-EverDrive-N8-ChinaVersion — compilación completa propia / complete own build {VERSION} (beta)
 
+> ☕ ¿Te resulta útil? Apoya el proyecto en **[Ko-fi](https://ko-fi.com/luiskaycardi)** / Find it useful? Support the
+> project on **[Ko-fi](https://ko-fi.com/luiskaycardi)**.
+
 **ES** — Firmware libre (GPL-3.0-or-later) para la microSD del **EverDrive N8 China Version** (clon chino con
 FPGA EP2C5, versión NO-PRO) de **Famicom y NES**. Es una **compilación completa y propia**: todo lo que el
 cartucho lee de la tarjeta sale de nuestro repositorio, **sin ningún archivo de Krikzz ni de fábrica**:
@@ -19,7 +22,9 @@ sonido de expansión** (FDS, VRC6, VRC7, 5B, N163, MMC5; se oye en la Famicom) e
 **Select + Start**. **Novedad de la v0.6.2: volumen calibrado en una Famicom** (cada chip suena frente al de la
 consola como en el emulador Mesen2) y arreglado el reset del kit Lava al salir de un disco FDS. **Novedad de la
 v0.6.3: partidas de los juegos con EEPROM** de Bandai (Dragon Ball Z, SD Gundam Gaiden, Datach…; ver «Partidas»). **Novedad de la v0.6.4: MMC5 corregido y verificado en una NES real**
-(los sprites de 8x16 ya no toman tiles del fondo; split vertical de Uchuu Keibitai SDF comprobado).
+(los sprites de 8x16 ya no toman tiles del fondo; split vertical de Uchuu Keibitai SDF comprobado). **Novedad de la
+v0.6.5: el Namco 163 alterna sus canales como el chip real** (con muchos canales se oye su pitido agudo, como en el
+cartucho original; volumen sin cambios).
 
 **EN** — Free (GPL-3.0-or-later) firmware for the microSD card of the **EverDrive N8 China Version** (Chinese
 clone with an EP2C5 FPGA, NON-PRO version), **Famicom and NES** cartridges. It is a **complete own build**:
@@ -41,7 +46,9 @@ automated tests (see "Usage"). **New in v0.6.0: Famicom Disk System** (`.fds` di
 volume calibrated on a Famicom** (each chip sounds against the console's own sound as in the Mesen2 emulator) and a fix
 for the Lava kit reset when leaving an FDS disk. **New in v0.6.3: saves for games with an EEPROM** from Bandai (Dragon
 Ball Z, SD Gundam Gaiden, Datach…; see "Saved games"). **New in v0.6.4: MMC5 fixed and verified on a real NES** (8x16 sprites
-no longer take background tiles; Uchuu Keibitai SDF's vertical split checked).
+no longer take background tiles; Uchuu Keibitai SDF's vertical split checked). **New in v0.6.5: the Namco 163 cycles
+through its channels like the real chip** (with many channels you hear its high-pitched whine, as on the original
+cartridge; volume unchanged).
 
 ## Qué contiene / Contents
 

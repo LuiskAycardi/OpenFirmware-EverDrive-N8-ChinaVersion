@@ -1,5 +1,8 @@
 # Disco de prueba del cambio de cara a mano
 
+> ☕ ¿Te resulta útil? Apoya el proyecto en **[Ko-fi](https://ko-fi.com/luiskaycardi)** / Find it useful? Support the
+> project on **[Ko-fi](https://ko-fi.com/luiskaycardi)**.
+
 Un disco FDS de dos caras con el mismo ID (como los 14 de la colección en los que el cambio de cara automático no sabe
 elegir). Su programa (`boton.s`) enseña cada fotograma:
 

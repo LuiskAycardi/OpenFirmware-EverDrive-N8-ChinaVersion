@@ -1,5 +1,8 @@
 # tools/bios — la BIOS del N8 clon en un emulador propio
 
+> ☕ ¿Te resulta útil? Apoya el proyecto en **[Ko-fi](https://ko-fi.com/luiskaycardi)** / Find it useful? Support the
+> project on **[Ko-fi](https://ko-fi.com/luiskaycardi)**.
+
 Banco para estudiar el arranque del EverDrive N8 clon y, más adelante, arrancar en el PC el OS propio con la BIOS
 real antes de probarlo en la consola. Resultados en [docs/bios-n8-clon.md](../../docs/bios-n8-clon.md).
 

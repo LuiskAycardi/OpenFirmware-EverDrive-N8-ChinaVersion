@@ -1,5 +1,8 @@
 # Pruebas de mappers en la consola, automáticas
 
+> ☕ ¿Te resulta útil? Apoya el proyecto en **[Ko-fi](https://ko-fi.com/luiskaycardi)** / Find it useful? Support the
+> project on **[Ko-fi](https://ko-fi.com/luiskaycardi)**.
+
 Sustituye a marcar a mano la página "Pruebas N8". Tú solo mueves la microSD. El PC:
 - hace de **mando 1** con un Arduino Nano;
 - **ve la consola** por la capturadora;
