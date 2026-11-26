@@ -119,11 +119,15 @@ module tb_n163;
         medir2(150, 450, 0);
         check(hi > 30 && lo > 30 && cambios >= 8 && cambios <= 11, "N163: canal 7 alterna (15-8)x15 y (0-8)x15");
         $display("      N163 1 canal: %0d en 450, %0d en 0, %0d cambios", hi, lo, cambios);
-        // 3 canales (los 5 y 6 en silencio): media de 3, truncada hacia cero
+        // 3 canales (los 5 y 6 en silencio): como el chip real, la salida alterna los canales cada 15 ciclos:
+        // el 7 a 450 o 0 y los 5 y 6 en reposo (240), dos de cada tres ranuras; la media es la de los 3 canales
         ram_w(7'h7F, 8'h2F);
-        medir2(200, 240 + 2 * 35, 240 - 2 * 40);
-        check(hi > 20 && lo > 20, "N163: 3 canales: 105/3 = 35 y -120/3 = -40");
-        $display("      N163 3 canales: %0d en 310, %0d en 160", hi, lo);
+        medir2(600, 450, 0);
+        check(hi > 60 && lo > 60, "N163: 3 canales: el canal 7 sale entero (450 y 0) en su ranura");
+        $display("      N163 3 canales: %0d en 450, %0d en 0", hi, lo);
+        medir2(600, 240, 1023);
+        check(hi > 330 && hi < 470, "N163: 3 canales: los dos en silencio ocupan 2 de cada 3 ranuras (240)");
+        $display("      N163 3 canales: %0d de 600 en 240", hi);
         // $E000 D6: sonido parado
         cpu_write(16'hE000, 8'h43);
         medir2(100, 0, 0);

@@ -24,8 +24,10 @@
 // Sonido (8 canales de tabla de ondas en la RAM interna; $7F D6-D4 = canales activos - 1):
 //   cada 15 ciclos de CPU se actualiza un canal, del 7 hacia abajo: fase += frecuencia (módulo largo x 2^16),
 //   muestra de 4 bits en la posición (fase >> 16) + desplazamiento; salida del canal = (muestra - 8) x volumen.
-//   La salida es la media de los canales activos (como Mesen2; el chip real los alterna cada 15 ciclos).
-//   Nivel para el DAC = (media + 120) x 2 (0-450).
+//   Como el chip real, la salida alterna los canales: tras cada actualización sale el canal recién calculado
+//   durante sus 15 ciclos (con 6-8 canales se oye el pitido de ~15 kHz de los cartuchos). Su media en el tiempo
+//   es la media de los canales activos, que es lo que saca Mesen2 (con un canal, idéntico).
+//   Nivel para el DAC = (salida del canal + 120) x 2 (0-450).
 // En la FPGA la RAM es de doble puerto: la CPU por un lado y un motor secuencial a 50 MHz por el otro (tiene
 // 15 ciclos de CPU = 420 ciclos de clk para cada actualización).
 // Dominio de M2: en la bajada de M2 primero la escritura del ciclo y después el pulso (IRQ y sonido).
@@ -164,7 +166,7 @@ module mapper_n163 (
     wire upd_go = (upd_s[2] != upd_s[1]);
 
     localparam S_IDLE = 4'd0, S_RD = 4'd1, S_MOD = 4'd2, S_SAMP = 4'd3, S_SAMP2 = 4'd4,
-               S_WR0 = 4'd5, S_WR1 = 4'd6, S_WR2 = 4'd7, S_SUM = 4'd8, S_DIV = 4'd9, S_OUT = 4'd10;
+               S_WR0 = 4'd5, S_WR1 = 4'd6, S_WR2 = 4'd7;
     reg [3:0]  st = S_IDLE;
     reg [3:0]  rd_i = 4'd0;            // lecturas pendientes: $7F y los 8 registros del canal
     reg [2:0]  ch = 3'd7;              // canal en curso
@@ -173,15 +175,9 @@ module mapper_n163 (
     reg [24:0] ph;
     reg [24:0] lim;
     reg [7:0]  spos;
-    reg signed [7:0] chout [0:7];
-    reg signed [11:0] sum = 12'sd0;
-    reg [3:0]  si = 4'd0;
-    reg [10:0] mag = 11'd0, q = 11'd0;
-    reg        neg = 1'b0;
-    reg [3:0]  div_n = 4'd0;
+    reg signed [7:0] cout = 8'sd0;     // salida del canal recién actualizado
     reg [9:0]  level = 10'd240;
     reg [6:0]  clr = 7'd0;             // borrado de la RAM interna durante el menú (Mesen2 la arranca a 0)
-    initial for (k = 0; k < 8; k = k + 1) chout[k] = 8'sd0;
 
     wire [6:0] base = {1'b1, ch, 3'b000};          // $40 + canal x 8
     wire [3:0] nib  = spos[0] ? b_rd[7:4] : b_rd[3:0];
@@ -190,8 +186,7 @@ module mapper_n163 (
     always @(posedge clk) begin
         b_we <= 1'b0;
         if (rst) begin
-            st <= S_IDLE; ch <= 3'd7; level <= 10'd240; sum <= 12'sd0;
-            for (k = 0; k < 8; k = k + 1) chout[k] <= 8'sd0;
+            st <= S_IDLE; ch <= 3'd7; level <= 10'd240; cout <= 8'sd0;
             b_we <= 1'b1; b_addr <= clr; b_wd <= 8'd0; clr <= clr + 7'd1;
         end else case (st)
             S_IDLE: if (upd_go) begin
@@ -223,32 +218,17 @@ module mapper_n163 (
                    end
             S_SAMP:  st <= S_SAMP2;                    // espera al dato de la RAM
             S_SAMP2: begin
-                       chout[ch] <= ($signed({4'd0, nib}) - 8'sd8) * $signed({4'd0, r7[3:0]});
+                       cout <= ($signed({4'd0, nib}) - 8'sd8) * $signed({4'd0, r7[3:0]});
                        b_addr <= base + 7'd1; b_wd <= ph[7:0];   b_we <= 1'b1; st <= S_WR0;
                      end
             S_WR0: begin b_addr <= base + 7'd3; b_wd <= ph[15:8];  b_we <= 1'b1; st <= S_WR1; end
             S_WR1: begin b_addr <= base + 7'd5; b_wd <= ph[23:16]; b_we <= 1'b1; st <= S_WR2; end
-            S_WR2: begin sum <= 12'sd0; si <= 4'd7; st <= S_SUM; end
-            // suma de los canales 7 .. 7 - nch
-            S_SUM: begin
-                     sum <= sum + {{4{chout[si[2:0]][7]}}, chout[si[2:0]]};
-                     if (si[2:0] == 3'd7 - nch) st <= S_DIV;
-                     else si <= si - 4'd1;
-                     // preparar la división (en S_DIV, con la suma ya completa)
-                   end
-            S_DIV: begin
-                     // media truncando hacia cero (como el / de C++): resta sucesiva
-                     neg <= sum[11];
-                     mag <= sum[11] ? -sum[10:0] : sum[10:0];
-                     q <= 11'd0; div_n <= {1'b0, nch} + 4'd1;
-                     st <= S_OUT;
-                   end
-            S_OUT: if (mag >= {7'd0, div_n}) begin mag <= mag - {7'd0, div_n}; q <= q + 11'd1; end
-                   else begin
-                       level <= neg ? (10'd240 - {q[8:0], 1'b0}) : (10'd240 + {q[8:0], 1'b0});
-                       // siguiente canal: del 7 hacia abajo, y vuelta al 7 tras el último activo
-                       ch <= (ch == 3'd7 - nch) ? 3'd7 : ch - 3'd1;
-                       st <= S_IDLE;
+            S_WR2: begin
+                     // sale este canal (240 +/- 2 x salida) y se pasa al siguiente: del 7 hacia abajo, y vuelta
+                     // al 7 tras el último activo
+                     level <= 10'd240 + {{2{cout[7]}}, cout[7:0]} + {{2{cout[7]}}, cout[7:0]};
+                     ch <= (ch == 3'd7 - nch) ? 3'd7 : ch - 3'd1;
+                     st <= S_IDLE;
                    end
             default: st <= S_IDLE;
         endcase

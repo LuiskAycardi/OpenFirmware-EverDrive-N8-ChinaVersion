@@ -24,7 +24,8 @@ los picos (la etapa satura en el fondo de escala, nunca da la vuelta).
   saturada, después del filtro que espera dos muestras iguales del nivel (dominio de 50 MHz, dos registros más).
   El modulador sigma-delta trabaja a 14 bits: con ganancia 256 (×1) la densidad de pulsos es nivel / 1024, igual
   que antes, y con ganancias pequeñas no se pierde resolución (el FDS en −4 sigue teniendo sus 64 niveles).
-- N163 (reposo 240) y VRC7 (reposo 512) son bipolares: la ganancia se aplica alrededor del reposo, que va al centro
+- N163 (reposo 240) y VRC7 (reposo 512) son bipolares (el N163, desde el 2026-11-26, alterna sus canales como el chip
+  real; la calibración se hizo con un canal, así que no cambia): la ganancia se aplica alrededor del reposo, que va al centro
   de la salida (512), para que no recorten antes por un lado.
 - `n8_top.v`, función `ganancia(chip, paso)`: tabla generada por `hdl/tools/gen_ganancia.py`.
 
@@ -83,3 +84,14 @@ chips más fuertes (5B, N163, VRC7): es el precio de subir el volumen.
 - `os/herramientas/probar_os.py`, bloque «opciones»: la pantalla, ◀▶ con tope y repetición, B y Start vuelven a la
   lista igual que estaba, lo guardado en el banco 8, el reg 137 al lanzar, al encender con la RAM con pila, con la
   suma mal y con la RAM a cero.
+
+## Famicom, 2026-11-26: N163 alternando canales y MMC5
+
+Grabado con la capturadora (MS2109, 48 kHz) con el 102.RBF que alterna los canales del N163:
+- Erika to Satoru (8 canales): pico de **+32,8 dB** sobre el fondo en 14 750 Hz, el pitido de la alternancia
+  (1 789 773 / 120 = 14 915 Hz; el 1 % de diferencia es del reloj de la capturadora). Música a −25 dBFS.
+- Megami Tensei II: pico de +13,5 dB a 15 kHz (menos canales a la vez); la intro (con su estática de televisión)
+  igual que en Mesen2.
+- Just Breed (MMC5): la música de la intro suena a −27 dBFS; las pantallas de partidas y nombre no tienen música
+  (en Mesen2 tampoco).
+- Sin probar en la consola: el PCM del MMC5 (voces de Shin 4 Nin Uchi Mahjong, solo al cantar jugadas).
