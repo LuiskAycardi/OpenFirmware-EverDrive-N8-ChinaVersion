@@ -24,7 +24,8 @@ consola como en el emulador Mesen2) y arreglado el reset del kit Lava al salir d
 v0.6.3: partidas de los juegos con EEPROM** de Bandai (Dragon Ball Z, SD Gundam Gaiden, Datach…; ver «Partidas»). **Novedad de la v0.6.4: MMC5 corregido y verificado en una NES real**
 (los sprites de 8x16 ya no toman tiles del fondo; split vertical de Uchuu Keibitai SDF comprobado). **Novedad de la
 v0.6.5: el Namco 163 alterna sus canales como el chip real** (con muchos canales se oye su pitido agudo, como en el
-cartucho original; volumen sin cambios).
+cartucho original; volumen sin cambios). **Novedad de la v0.6.6: las voces del MMC5 (canal PCM) suenan a su volumen**
+(antes casi el doble de fuertes que el DMC de la consola y saturaban; medido en una Famicom).
 
 **EN** — Free (GPL-3.0-or-later) firmware for the microSD card of the **EverDrive N8 China Version** (Chinese
 clone with an EP2C5 FPGA, NON-PRO version), **Famicom and NES** cartridges. It is a **complete own build**:
@@ -48,7 +49,8 @@ for the Lava kit reset when leaving an FDS disk. **New in v0.6.3: saves for game
 Ball Z, SD Gundam Gaiden, Datach…; see "Saved games"). **New in v0.6.4: MMC5 fixed and verified on a real NES** (8x16 sprites
 no longer take background tiles; Uchuu Keibitai SDF's vertical split checked). **New in v0.6.5: the Namco 163 cycles
 through its channels like the real chip** (with many channels you hear its high-pitched whine, as on the original
-cartridge; volume unchanged).
+cartridge; volume unchanged). **New in v0.6.6: the MMC5 voices (PCM channel) play at their proper volume**
+(before, almost twice as loud as the console's DMC and clipping; measured on a Famicom).
 
 ## Qué contiene / Contents
 

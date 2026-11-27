@@ -20,6 +20,16 @@ cartridge reads from the microSD card comes from here: **our own OS** (menu, bat
 menu RBF and **195 mappers** in Verilog. Clean-room implementation, validated against the Mesen2 emulator with
 synthetic-ROM fuzzing, simulation testbenches and real games on the console.
 
+> 🔊 **ES — Novedad (26-11-2026): v0.6.6-beta, voces del MMC5 a su volumen.** El canal PCM del MMC5 (las voces de
+> Shin 4 Nin Uchi Mahjong al cantar jugadas) sonaba casi el doble de fuerte que el DMC de la consola con la misma
+> entrada y saturaba; ahora suena como él, que es lo que describe NESdev (medido en una Famicom con una ROM de
+> calibración nueva, `CAL PCM.nes`). La música y los pulsos del MMC5 no cambian. Solo cambia el `103.RBF`.
+>
+> 🔊 **EN — News (26 Nov 2026): v0.6.6-beta, MMC5 voices at their proper volume.** The MMC5 PCM channel (the voices
+> of Shin 4 Nin Uchi Mahjong when calling tiles) sounded almost twice as loud as the console's DMC with the same input
+> and clipped; now it sounds like it, which is what NESdev describes (measured on a Famicom with a new calibration ROM,
+> `CAL PCM.nes`). The MMC5 music and pulse channels do not change. Only `103.RBF` changes.
+>
 > 🔊 **ES — Novedad (26-11-2026): v0.6.5-beta, sonido del Namco 163 como el chip real.** El N163 alterna sus canales
 > cada 15 ciclos, como el cartucho original (con 6-8 canales se oye su pitido de ~15 kHz; medido en una Famicom con
 > Erika to Satoru). El volumen calibrado no cambia. Además, el audio del MMC5 se ha comparado con el emulador Mesen2
