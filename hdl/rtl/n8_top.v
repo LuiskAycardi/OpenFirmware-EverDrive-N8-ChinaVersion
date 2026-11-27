@@ -667,16 +667,16 @@ module n8_top (
             {3'd5, 4'd6}: ganancia = 13'd1094;
             {3'd5, 4'd7}: ganancia = 13'd1547;
             {3'd5, 4'd8}: ganancia = 13'd2188;
-            // mmc5  base 1519
-            {3'd6, 4'd0}: ganancia = 13'd380;
-            {3'd6, 4'd1}: ganancia = 13'd540;
-            {3'd6, 4'd2}: ganancia = 13'd760;
-            {3'd6, 4'd3}: ganancia = 13'd1074;
-            {3'd6, 4'd4}: ganancia = 13'd1519;
-            {3'd6, 4'd5}: ganancia = 13'd2148;
-            {3'd6, 4'd6}: ganancia = 13'd3038;
-            {3'd6, 4'd7}: ganancia = 13'd4296;
-            {3'd6, 4'd8}: ganancia = 13'd6076;
+            // mmc5  base  760
+            {3'd6, 4'd0}: ganancia = 13'd190;
+            {3'd6, 4'd1}: ganancia = 13'd270;
+            {3'd6, 4'd2}: ganancia = 13'd380;
+            {3'd6, 4'd3}: ganancia = 13'd537;
+            {3'd6, 4'd4}: ganancia = 13'd760;
+            {3'd6, 4'd5}: ganancia = 13'd1075;
+            {3'd6, 4'd6}: ganancia = 13'd1520;
+            {3'd6, 4'd7}: ganancia = 13'd2149;
+            {3'd6, 4'd8}: ganancia = 13'd3040;
             default: ganancia = 13'd256;
         endcase
     endfunction

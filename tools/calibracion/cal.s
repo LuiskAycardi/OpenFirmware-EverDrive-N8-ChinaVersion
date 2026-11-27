@@ -13,6 +13,11 @@
 ;   VRC7  instrumento propio: portadora seno (multiplicador 1), moduladora a TL 63, canal 0 a volumen máximo
 ;   MMC5  pulso 1, como el del APU
 ;   FDS   onda de 64 muestras (32 x 63, 32 x 0), ganancia 32, volumen general máximo
+;
+; CHIP=7 (PCM, mapper 5) es otra prueba: compara el canal PCM del MMC5 ($5011) con el DMC del APU ($4011). El tramo
+; de 60 fotogramas es una onda cuadrada de ~440 Hz en $4011 y el de 120, la misma onda en $5011, las dos entre los
+; niveles 1 y 65 (64 pasos; el PCM ignora el 0). Las ondas las hace la CPU con un bucle de retardo. Según NESdev el
+; PCM suena «como el APU con la misma entrada»: la proporción PCM / DMC tendría que salir 1.
 
         .setcpu "6502"
 
@@ -26,6 +31,7 @@ S5B_C  = 3
 N163_C = 4
 VRC7_C = 5
 MMC5_C = 6
+PCM_C  = 7
 
 .if CHIP = FDS_C
         .segment "CODIGO"
@@ -40,13 +46,94 @@ MMC5_C = 6
         MAPPER .set 19
   .elseif CHIP = VRC7_C
         MAPPER .set 85
-  .elseif CHIP = MMC5_C
+  .elseif CHIP = MMC5_C || CHIP = PCM_C
         MAPPER .set 5
   .endif
         .byte   "NES", $1A, 2, 1, (MAPPER & $0F) << 4, MAPPER & $F0, 0, 0, 0, 0, 0, 0, 0, 0
         .segment "CODIGO"
 .endif
 
+.if CHIP = PCM_C
+destino = $00                                   ; registro de la onda: $4011 (DMC) o $5011 (PCM)
+
+reset:  sei
+        cld
+        ldx     #$FF
+        txs
+        lda     #0
+        sta     PPUCTRL
+        sta     PPUMASK
+        jsr     vblank
+        jsr     vblank
+        lda     #$40                    ; APU: sin IRQ del contador de tramas
+        sta     $4017
+        lda     #$00                    ; canales del APU apagados ($4011 se carga igual)
+        sta     $4015
+        lda     #3                      ; MMC5: PRG de 8 KiB (el último banco, fijo, es este código)
+        sta     $5100
+        lda     #$00                    ; PCM en modo escritura, sin IRQ; pulsos del MMC5 apagados
+        sta     $5010
+        sta     $5015
+        lda     #1
+        sta     $4011
+        sta     $5011
+        lda     #$11
+        sta     destino
+bucle:  lda     #$40                    ; DMC
+        sta     destino+1
+        ldx     #60
+        jsr     cuadrada
+        ldx     #30
+        jsr     esperar
+        lda     #$50                    ; PCM del MMC5
+        sta     destino+1
+        ldx     #120
+        jsr     cuadrada
+        ldx     #30
+        jsr     esperar
+        jmp     bucle
+
+; Onda cuadrada (niveles 65 y 1) en (destino) durante X fotogramas. Cada semiperiodo son ~2040 ciclos (~440 Hz) y
+; al final de cada uno se mira el VBlank ($2002 bit 7, que dura ~2270 ciclos: no se pierde) y se lee el mando.
+cuadrada:
+        ldy     #0
+        lda     #65
+        sta     (destino),y
+        jsr     medio
+        cpx     #0
+        beq     @fin
+        ldy     #0
+        lda     #1
+        sta     (destino),y
+        jsr     medio
+        cpx     #0
+        bne     cuadrada
+@fin:   lda     #1                      ; deja el nivel bajo
+        ldy     #0
+        sta     (destino),y
+        rts
+medio:  ldy     #183                    ; 183 x 11 ciclos
+@d:     nop
+        nop
+        nop
+        dey
+        bne     @d
+        bit     PPUSTATUS
+        bpl     @n
+        jsr     mando
+        dex
+@n:     rts
+
+mando:  lda     #1
+        sta     $4016
+        lda     #0
+        sta     $4016
+        ldy     #8
+@m:     lda     $4016
+        dey
+        bne     @m
+        rts
+.else
 reset:  sei
         cld
         ldx     #$FF
@@ -82,6 +169,7 @@ bucle:  lda     #$BF                    ; APU: ciclo 50 %, contador parado, volu
         ldx     #30
         jsr     esperar
         jmp     bucle
+.endif
 
 ; Espera X fotogramas leyendo el mando en cada uno: sin lecturas del mando, el reset del kit Lava RGB (Select y luego
 ; Select+A) no ve los botones y no resetea (2026-11-24, en la Famicom).

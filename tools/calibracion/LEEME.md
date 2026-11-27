@@ -10,10 +10,14 @@ ganancia base (`hdl/tools/gen_ganancia.py`, `MEDIDO`). Resultados y método: [do
 python3 -I tools/calibracion/hacer.py --kyodaku-de "/ruta/a/un/disco.fds"    # ROMs y disco en tools/calibracion/out
 ```
 
-Salen `CAL VRC6.nes`, `CAL 5B.nes`, `CAL N163.nes`, `CAL VRC7.nes`, `CAL MMC5.nes` y `CAL FDS.fds` (el disco lleva el
+Salen `CAL VRC6.nes`, `CAL 5B.nes`, `CAL N163.nes`, `CAL VRC7.nes`, `CAL MMC5.nes`, `CAL PCM.nes` y `CAL FDS.fds` (el disco lleva el
 archivo de licencia `KYODAKU-` copiado de un disco del usuario: no entra en el repositorio). Cada una repite: 1 s del
 pulso 1 del APU, 0,5 s de silencio, 2 s de la misma nota en el chip y 0,5 s de silencio, todo a ~440 Hz y a volumen
 máximo. La pantalla queda negra. Leen el mando en cada fotograma, para que funcione el reset del kit Lava.
+
+`CAL PCM.nes` es otra medida: alterna la misma onda cuadrada (437 Hz, niveles 1 y 65) 1 s en el DMC del APU
+($4011) y 2 s en el PCM del MMC5 ($5011); `medir.py PCM` da la proporción PCM / DMC (NESdev: 1) y el peso del PCM
+que haría falta en `hdl/rtl/snd_mmc5.v`.
 
 Con la ROM sonando en la consola y el audio entrando por la capturadora (en este PC, la MS2109 es `hw:3,0`):
 

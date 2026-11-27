@@ -161,10 +161,11 @@ compara las dos señales y tolera desfases de hasta 3 ciclos alrededor de cada c
 - Gimmick! (5B): no coincide ciclo a ciclo porque la fase de los generadores de tono depende del arranque
   (Mesen2: desde el encendido; N8: desde que sale del menú). `audiodiff.py` compara entonces por
   fotograma (nivel medio y número de cambios): equivalente en 3596 de 3599 fotogramas.
-- MMC5 (desde el 2026-11-26, Mesen2 parcheado en Mmc5Audio.h con la misma escala: pulsos + PCM): Just Breed y
+- MMC5 (desde el 2026-11-26, Mesen2 parcheado en Mmc5Audio.h con la misma escala: desde el 26-11, 2 × pulsos + PCM × 33/32): Just Breed y
   Shin 4 Nin Uchi Mahjong equivalentes por fotograma, 1800 fotogramas (0,3 % y 0,05 % de ciclos distintos, en 11
   y 6 niveles como mucho). Solo pulsos: el PCM (voces de Shin 4 Nin al cantar jugadas) no sale con botones
-  aleatorios (9000 fotogramas sin escribir en $5011); lo cubre solo tb_snd_mmc5.
+  aleatorios (9000 fotogramas sin escribir en $5011; 12 000 más el 26-11, tampoco); el PCM lo cubren `CAL PCM.nes`
+  (idéntico ciclo a ciclo) y tb_snd_mmc5, y las voces se oyeron en la Famicom (docs/sonido-volumen.md).
 - N163 desde el 2026-11-26: alterna los canales como el chip real (cada 15 ciclos sale el canal recién
   actualizado) y Mesen2 saca su media, así que ya no coinciden los cambios, solo la media por fotograma:
   Megami Tensei II 0,28, Erika to Satoru 0,11 y Final Lap 0,65 de diferencia media (escala 0-450). Final Lap ya se

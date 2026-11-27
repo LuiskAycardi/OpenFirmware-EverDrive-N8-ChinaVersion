@@ -4,7 +4,7 @@
   python3 -I tools/calibracion/hacer.py [--kyodaku-de DISCO.fds] [--salida DIR]
 
 Ensambla cal.s una vez por chip (necesita cc65) y deja en DIR (por defecto tools/calibracion/out):
-  CAL VRC6.nes (24), CAL 5B.nes (69), CAL N163.nes (19), CAL VRC7.nes (85), CAL MMC5.nes (5)
+  CAL VRC6.nes (24), CAL 5B.nes (69), CAL N163.nes (19), CAL VRC7.nes (85), CAL MMC5.nes (5), CAL PCM.nes (5: PCM del MMC5 frente al DMC)
 y, con --kyodaku-de, CAL FDS.fds: un disco de una cara con el archivo de licencia (KYODAKU-) copiado de un disco del
 usuario, que no es nuestro y no entra en el repositorio (como tools/fds/prueba_boton).
 """
@@ -16,7 +16,7 @@ import tempfile
 
 AQUI = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(AQUI.parent / 'fds'))
-CHIPS = {'VRC6': 2, '5B': 3, 'N163': 4, 'VRC7': 5, 'MMC5': 6}
+CHIPS = {'VRC6': 2, '5B': 3, 'N163': 4, 'VRC7': 5, 'MMC5': 6, 'PCM': 7}
 
 
 def ensamblar(chip, cfg, salida):

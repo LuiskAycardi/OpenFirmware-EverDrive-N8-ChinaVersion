@@ -35,6 +35,33 @@ index 4f7744d..98ca9b4 100644
  	switch(romData.Info.MapperID) {
  		case 0: return new NROM();
  		case 1: return new MMC1();
+diff --git a/Core/NES/Mappers/Audio/Mmc5Audio.h b/Core/NES/Mappers/Audio/Mmc5Audio.h
+index ee205a7..9a870d8 100644
+--- a/Core/NES/Mappers/Audio/Mmc5Audio.h
++++ b/Core/NES/Mappers/Audio/Mmc5Audio.h
+@@ -5,6 +5,10 @@
+ #include "NES/APU/NesApu.h"
+ #include "NES/NesConsole.h"
+ #include "NES/NesMemoryManager.h"
++#ifdef N8_FPGA_SIM
++#include "NES/NesCpu.h"
++#include "N8AudioLog.h"   // banco N8: registro del nivel para comparar
++#endif
+ 
+ class Mmc5Square : public SquareChannel
+ {
+@@ -81,6 +85,11 @@ protected:
+ 		//"The sound output of the square channels are equivalent in volume to the corresponding APU channels"
+ 		//"The polarity of all MMC5 channels is reversed compared to the APU."
+ 		int16_t summedOutput = -(_square1.GetOutput() + _square2.GetOutput() + _pcmOutput);
++#ifdef N8_FPGA_SIM
++		// escala de hdl/rtl/snd_mmc5.v: 2*(pulsos) + pcm + (pcm>>5) (el PCM pesa 33/64 de un paso de pulso en el HDL;
++		// lo que Mesen2 manda al mezclador no cambia)
++		N8AudioLog(_console->GetCpu()->GetCycleCount(), 2 * (_square1.GetOutput() + _square2.GetOutput()) + _pcmOutput + (_pcmOutput >> 5));
++#endif
+ 		if(summedOutput != _lastOutput) {
+ 			_console->GetApu()->AddExpansionAudioDelta(AudioChannel::MMC5, summedOutput - _lastOutput);
+ 			_lastOutput = summedOutput;
 diff --git a/Core/NES/Mappers/Audio/Namco163Audio.h b/Core/NES/Mappers/Audio/Namco163Audio.h
 index 307dd0e..a03ae6b 100644
 --- a/Core/NES/Mappers/Audio/Namco163Audio.h

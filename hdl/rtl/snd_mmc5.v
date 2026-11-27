@@ -3,7 +3,11 @@
 // A15 is !romsel_n. Writes/read side effects commit on falling M2.
 // rst: synchronous active-high full deterministic reset (not chip power-on).
 // Frame divider M2/7424 follows the die-derived, unconfirmed NESdev estimate.
-// snd: unsigned linear sum, 0..285; board gain/inversion/filtering external.
+// snd: unsigned linear sum, 0..322; board gain/inversion/filtering external.
+// Escala: snd = 2*(pulso0+pulso1) + pcm + (pcm>>5). El PCM pesa 33/64 = 0,516 de un paso de pulso (cada paso
+// de pulso vale 2 niveles). Medido en la Famicom (2026-11-26) con onda cuadrada entre los niveles 1 y 65,
+// el PCM sonaba 1,94 veces mas fuerte que el DMC del APU con la misma entrada; NESdev (MMC5_audio) dice que
+// es "equivalent in volume to the APU with equivalent input". Mesen2 le da peso 1 (igual que un paso de pulso).
 // $5010 drives bits 7,0 (revision=1); $5015 drives bits 1,0 only.
 // Frame/write collision: writes win; envelope restart waits until next tick.
 module snd_mmc5 (
@@ -56,7 +60,7 @@ module snd_mmc5 (
  wire [3:0] volume1=control[1][4] ? control[1][3:0] : decay[1];
  wire [3:0] pulse0=(length[0]!=0 && duty_on(control[0][7:6],phase[0])) ? volume0 : 4'd0;
  wire [3:0] pulse1=(length[1]!=0 && duty_on(control[1][7:6],phase[1])) ? volume1 : 4'd0;
- assign snd={2'b0,pcm}+{6'b0,pulse0}+{6'b0,pulse1};
+ assign snd={2'b0,pcm}+{5'b0,pcm[7:5]}+{4'b0,pulse0,1'b0}+{4'b0,pulse1,1'b0};
  always @* begin
  cpu_dout=0; cpu_doe=0;
  if(!rst && m2 && cpu_rw && romsel_n) begin

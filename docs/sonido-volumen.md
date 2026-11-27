@@ -42,15 +42,14 @@ sea la de Mesen2:
 | Sunsoft 5B | suma de la tabla, hasta 531 | ×15 | 3,555 | 2,709 | ×1,312 | 410 → **537** |
 | Namco 163 | 240 ± media × 2 | ×20 | 6,025 | 4,827 | ×1,248 | 273 → **341** |
 | VRC7 | 512 + muestra / 16 | ×1 | 4,257 | 3,399 | ×1,252 | 437 → **547** |
-| MMC5 | pulsos + PCM, hasta 285 | ×43 | 0,864 | 0,668 | ×1,294 | 1174 → **1519** |
+| MMC5 | 2 × pulsos + PCM × 33/32, hasta 322 (desde el 26-11; antes pulsos + PCM y base 1519) | ×21,5 | 0,864 | 0,668 | ×1,294 | 587 → **760** |
 | tono de prueba (mapper 247) | 192 | — | — | — | — | 256 |
 
 «Chip / APU» es la amplitud de la nota de 440 Hz del chip a su volumen máximo frente al pulso 1 del APU a volumen 15.
 Las proporciones de Mesen2 entre chips se cumplen en la consola con un ±3 %: solo faltaba un factor común de ~×1,28.
 Se usa la corrección medida de cada chip (la diferencia entre ellas, ±0,25 dB, no se oye).
 
-**Recorte:** con el volumen calibrado, casi nada llega al fondo de escala del convertidor. Solo el PCM del MMC5 por
-encima de ~170 (de 255) y el 5B con sus tres canales a volumen 15 a la vez. Con pasos positivos recortan antes los
+**Recorte:** con el volumen calibrado, casi nada llega al fondo de escala del convertidor. Solo el 5B con sus tres canales a volumen 15 a la vez. Con pasos positivos recortan antes los
 chips más fuertes (5B, N163, VRC7): es el precio de subir el volumen.
 
 ## Calibración (`tools/calibracion`, 2026-11-24)
@@ -94,4 +93,25 @@ Grabado con la capturadora (MS2109, 48 kHz) con el 102.RBF que alterna los canal
   igual que en Mesen2.
 - Just Breed (MMC5): la música de la intro suena a −27 dBFS; las pantallas de partidas y nombre no tienen música
   (en Mesen2 tampoco).
-- Sin probar en la consola: el PCM del MMC5 (voces de Shin 4 Nin Uchi Mahjong, solo al cantar jugadas).
+- El PCM del MMC5 (voces de Shin 4 Nin Uchi Mahjong): ver la sección siguiente.
+
+## Famicom, 2026-11-26: PCM del MMC5 frente al DMC
+
+NESdev (MMC5_audio): el PCM ($5011) es «equivalent in volume to the APU with equivalent input» y, con su bit de
+más, puede sonar el doble que el DMC. Mesen2 (y nuestro RTL hasta la v0.6.5) le daba el mismo peso que a un paso de
+pulso. Los hilos del foro de NESdev no traen medidas. Se mide con la consola como referencia, igual que el volumen:
+- `CAL PCM.nes` (cal.s con `CHIP=7`, mapper 5): onda cuadrada de 437 Hz entre los niveles 1 y 65 durante 1 s en el
+  DMC del APU ($4011) y 2 s en el PCM ($5011), hecha con un bucle de CPU. `medir.py PCM` da la proporción PCM / DMC.
+  Mesen2 daría 1,575 (su DMC no lineal frente al PCM sumado a los pulsos); NESdev, 1.
+- **Con el 103.RBF de la v0.6.5: 1,934 y 1,949.** En Shin 4 Nin las voces saturaban la capturadora (pico 1,0) y el
+  sonido más fuerte llegaba a 10 veces la música.
+- **Arreglo** (`snd_mmc5.v`): nivel = 2 × (pulso 1 + pulso 2) + PCM + PCM / 32, o sea el PCM a 33/64 = 0,516 de un paso
+  de pulso, sin multiplicador y sin perder los 8 bits. La base del MMC5 pasa de 1519 a 760, así que los pulsos suenan
+  igual que antes. Con el máximo (322) el convertidor ya no recorta (956 de 1023 con el paso 0).
+- **Con el RBF nuevo: 1,105 y 1,105** (otra sesión, tras apagar). El PCM bajó lo previsto (×0,527 frente a ×0,516),
+  pero el DMC de la consola midió un 8 % menos que en la primera sesión: los pesos que darían 1 en cada sesión son
+  0,515 y 0,467, y el elegido queda dentro de esa variación (±0,5 dB). En Shin 4 Nin ya no satura (pico 0,83) y el
+  sonido más fuerte queda a 5 veces la música.
+- El banco compara con el Mesen2 local, que registra en `Mmc5Audio.h` la misma escala (parche en
+  `tools/mesen2-n8.patch`): `CAL PCM` sale idéntico ciclo a ciclo. El modo lectura y la IRQ del PCM, que Mesen2 no
+  implementa, siguen cubiertos solo por `tb_snd_mmc5`.

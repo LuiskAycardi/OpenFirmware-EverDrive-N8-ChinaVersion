@@ -218,7 +218,7 @@ module tb_sonido;
         check(dut.snd_gain == 13'd537, "volumen: 5B, ganancia base 537/256");
         back_to_menu;
         start_game(8'd5, 5'b01111, 8'b011111, 8'd0);
-        check(dut.snd_gain == 13'd1519, "volumen: MMC5, ganancia base 1519/256");
+        check(dut.snd_gain == 13'd760, "volumen: MMC5, ganancia base 760/256");
         back_to_menu;
         os_reg(8'd137, 8'd8);
         start_game(8'd19, 5'b01111, 8'b011111, 8'd0);
